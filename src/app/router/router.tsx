@@ -1,5 +1,5 @@
 // Import Dependencies
-import { createBrowserRouter, RouteObject } from "react-router";
+import { createBrowserRouter, Navigate, RouteObject } from "react-router";
 
 // Local Imports
 import Root from "@/app/layouts/Root";
@@ -13,6 +13,7 @@ import { publicRoutes } from "./public";
  * Main application router configuration
  * All routes are nested under /pos prefix.
  * Uses HashRouter so it works in Capacitor WebView (no real HTTP server).
+ * Short paths like /settings/* redirect to /pos/settings/* for convenience.
  */
 const router = createBrowserRouter([
   {
@@ -20,7 +21,22 @@ const router = createBrowserRouter([
     Component: Root,
     hydrateFallbackElement: <SplashScreen />,
     ErrorBoundary: RootErrorBoundary,
-    children: [protectedRoutes, ghostRoutes, publicRoutes] as RouteObject[],
+    children: [
+      // Convenience redirects: short /settings/<path> -> /pos/settings/<path>
+      {
+        path: "settings",
+        children: [
+          { index: true, element: <Navigate to="/pos/settings" replace /> },
+          { path: "*", element: <Navigate to="/pos/settings" replace /> },
+          { path: "profile", element: <Navigate to="/pos/settings/profile" replace /> },
+          { path: "general", element: <Navigate to="/pos/settings/general" replace /> },
+          { path: "appearance", element: <Navigate to="/pos/settings/appearance" replace /> },
+        ],
+      },
+      protectedRoutes,
+      ghostRoutes,
+      publicRoutes,
+    ] as RouteObject[],
   },
 ]);
 

@@ -1,126 +1,274 @@
-// Import Dependencies
 import {
+  ArrowPathIcon,
+  BanknotesIcon,
   CalendarDaysIcon,
   CameraIcon,
-  DocumentTextIcon,
+  CheckCircleIcon,
+  ClipboardIcon,
+  DocumentDuplicateIcon,
   EnvelopeIcon,
-  GlobeAltIcon,
-  LinkIcon,
+  DocumentTextIcon,
+  FolderIcon,
+  HomeIcon,
+  IdentificationIcon,
   MapPinIcon,
   PhoneIcon,
   BuildingStorefrontIcon,
-  WrenchScrewdriverIcon,
-  UsersIcon,
-  UserIcon,
-  XMarkIcon,
+  ArrowRightOnRectangleIcon,
+  SparklesIcon,
+  HashtagIcon,
+  TagIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
-// Local Imports
-import { Get, Put, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
+import {
+  formatDateDDMMYYYY,
+  Get,
+  Put,
+  Patch,
+  Post,
+  toastsuccessmsg,
+  toasterrormsg,
+} from "@/ApiHelper";
 import { Avatar, Badge, Button, Card, GhostSpinner, Input } from "@/components/ui";
 import { useAuthContext } from "@/app/contexts/auth/context";
 import { GHOST_ENTRY_PATH } from "@/constants/app";
 
-// ----------------------------------------------------------------------
-
-interface AdminProfileData {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  profile_image: string;
-  brochure_pdf: string;
-  brochure_pdf_url: string;
-  youtube: string;
-  instagram: string;
-  twitter: string;
-  facebook: string;
-  whatsapp: string;
-  joinDate: string;
+interface AuthMeBranch {
+  id?: number | string;
+  branch_id?: number | string;
+  name?: string;
+  branch_name?: string;
+  branch_code?: string;
+  code?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  branch_type?: string;
+  type?: string;
+  status?: string;
+  is_active?: boolean;
+  logo?: string;
+  logo_url?: string;
+  image?: string;
+  created_at?: string;
+  created_on?: string;
+  date_joined?: string;
+  updated_at?: string;
+  updated_on?: string;
+  last_login?: string;
+  owner_name?: string;
+  gst_no?: string;
+  pan_no?: string;
+  bank_name?: string;
+  bank_account?: string;
+  account_number?: string;
+  ifsc_code?: string;
+  ifsc?: string;
+  upi_id?: string;
+  upi?: string;
+  license?: string;
+  license_url?: string;
+  gst_certificate?: string;
+  gst_certificate_url?: string;
+  id_proof?: string;
+  id_proof_url?: string;
+  [k: string]: any;
 }
 
-interface DashboardStats {
-  totalProductVendor: number;
-  totalServiceVendor: number;
-  totalLoginUsers: number;
+interface AuthMeResponse {
+  success?: boolean;
+  data?: any;
+  result?: any;
+  results?: any;
+  user?: any;
+  branch?: AuthMeBranch;
+  id?: number | string;
+  name?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  company_id?: number | string;
+  [k: string]: any;
 }
 
-interface ProfileFormValues {
-  name: string;
-  phone: string;
-  address: string;
-  youtube: string;
-  instagram: string;
-  twitter: string;
-  facebook: string;
-  whatsapp: string;
+function getBranchFromMe(payload: AuthMeResponse | null): AuthMeBranch {
+  if (!payload) return {} as AuthMeBranch;
+  if (payload.branch && typeof payload.branch === "object") return payload.branch;
+  if (payload.data?.branch && typeof payload.data.branch === "object") return payload.data.branch;
+  const inner = payload.data ?? payload.results ?? payload.result ?? payload;
+  if (inner && typeof inner === "object" && (inner.branch_name || inner.name || inner.id)) return inner;
+  return {} as AuthMeBranch;
 }
 
-interface PasswordFormValues {
-  currentPassword: string;
-  newEmail: string;
-  newPassword: string;
-  confirmPassword: string;
+function getUserFromMe(payload: AuthMeResponse | null): any {
+  if (!payload) return {};
+  if (payload.user && typeof payload.user === "object") return payload.user;
+  const inner = payload.data ?? payload.results ?? payload.result;
+  if (inner?.user && typeof inner.user === "object") return inner.user;
+  return {
+    id: payload.id,
+    name: payload.name,
+    username: payload.username,
+    email: payload.email,
+    phone: payload.phone,
+  };
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color }: {
-  label: string;
-  value: number;
+// ── Section heading ───────────────────────────────────────────────────────
+function SectionHeader({
+  icon: Icon,
+  title,
+}: {
   icon: React.ComponentType<{ className?: string }>;
-  color: "primary" | "success" | "info";
+  title: string;
 }) {
-  const cls = {
-    primary: {
-      bg: "bg-primary",
-      iconBg: "bg-white/20",
-      text: "text-white",
-      subtext: "text-white/70",
-    },
-    success: {
-      bg: "bg-success",
-      iconBg: "bg-white/20",
-      text: "text-white",
-      subtext: "text-white/70",
-    },
-    info: {
-      bg: "bg-info",
-      iconBg: "bg-white/20",
-      text: "text-white",
-      subtext: "text-white/70",
-    },
-  }[color];
-
   return (
-    <div className={`${cls.bg} relative overflow-hidden rounded-2xl p-5 shadow-sm`}>
-      {/* Decorative circle */}
-      <div className="absolute -right-4 -top-4 size-24 rounded-full bg-white/10" />
-      <div className="absolute -right-2 bottom-2 size-14 rounded-full bg-white/10" />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <div>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${cls.subtext}`}>
-            {label}
-          </p>
-          <p className={`mt-2 text-4xl font-bold ${cls.text}`}>{value}</p>
-        </div>
-        <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${cls.iconBg}`}>
-          <Icon className={`size-6 ${cls.text}`} />
-        </div>
-      </div>
+    <div className="mb-4 flex items-center gap-2.5 border-b border-gray-200 pb-3 dark:border-dark-600">
+      <Icon className="size-5 text-primary" />
+      <h3 className="text-[15px] font-extrabold tracking-wide text-gray-800 dark:text-dark-50">
+        {title}
+      </h3>
     </div>
   );
 }
 
-// ── Section heading ────────────────────────────────────────────────────────
-function SectionTitle({ children }: { children: React.ReactNode }) {
+// ── Helper field row (static or editable Input pair) ──────────────────────
+type FieldValue = string | number | null | undefined;
+function FieldRow({
+  left,
+  right,
+}: {
+  left: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; register?: any; errorMsg?: string };
+  right?: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; register?: any; errorMsg?: string };
+}) {
+  const renderCell = (
+    label: string,
+    Icon: React.ComponentType<{ className?: string }> | undefined,
+    value: FieldValue,
+    placeholder: string | undefined,
+    accent: "info" | "warn" | "error" | undefined,
+    editable: boolean | undefined,
+    register: any,
+    errorMsg: string | undefined,
+  ) => {
+    const accentBg = {
+      info: "bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300",
+      warn: "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300",
+      error: "bg-rose-50 dark:bg-rose-500/10 text-rose-800 dark:text-rose-300",
+    }[accent ?? "info"];
+
+    if (editable) {
+      return (
+        <div>
+          <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
+            {Icon && <Icon className="size-4 text-primary" />}
+            {label}
+          </label>
+          <Input
+            placeholder={placeholder ?? label}
+            error={errorMsg}
+            {...(register ?? {})}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
+          {Icon && <Icon className="size-4 text-primary" />}
+          {label}
+        </label>
+        <div
+          className={
+            "flex min-h-[42px] items-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-semibold text-gray-700 shadow-sm dark:border-dark-600 dark:bg-dark-800 dark:text-dark-100 " +
+            (accent ? accentBg : "")
+          }
+        >
+          {value !== undefined && value !== null && String(value).trim() !== ""
+            ? String(value)
+            : <span className="text-xs text-gray-400 dark:text-dark-400">{placeholder ?? "—"}</span>}
+        </div>
+      </div>
+    );
+  };
+
+  if (!right) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.register, left.errorMsg)}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-dark-400">
-      {children}
-    </h3>
+    <div className="grid gap-4 sm:grid-cols-2">
+      {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.register, left.errorMsg)}
+      {renderCell(right.label, right.icon, right.value, right.placeholder, right.accent, right.editable, right.register, right.errorMsg)}
+    </div>
+  );
+}
+
+// ── Document tile ─────────────────────────────────────────────────────────
+function DocTile({
+  title,
+  subtitle,
+  iconTile,
+  viewUrl,
+  variant = "empty",
+}: {
+  title: string;
+  subtitle: string;
+  iconTile: React.ComponentType<{ className?: string }>;
+  viewUrl?: string;
+  variant?: "empty" | "available";
+}) {
+  const IconComp = iconTile;
+  const isAvailable = variant === "available";
+  return (
+    <Card className="p-4 h-full">
+      <div className="flex h-full flex-col items-center gap-3 text-center">
+        <div
+          className={
+            "grid size-14 place-items-center rounded-2xl shadow-sm " +
+            (isAvailable
+              ? "bg-primary/10 text-primary"
+              : "bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-dark-300")
+          }
+        >
+          <IconComp className="size-6" />
+        </div>
+        <div>
+          <p className="text-[13px] font-bold text-gray-700 dark:text-dark-100">{title}</p>
+          <p className={"mt-0.5 text-[11px] " + (isAvailable ? "text-primary font-semibold" : "text-gray-400 dark:text-dark-400")}>
+            {subtitle}
+          </p>
+        </div>
+        {isAvailable && viewUrl && (
+          <Button
+            size="sm"
+            variant="flat"
+            color="primary"
+            className="mt-auto h-8 gap-1.5 px-3 text-xs font-bold"
+            component="a"
+            href={viewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <EyeIcon className="size-3.5" /> View Document
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -129,104 +277,155 @@ export default function AdminProfile() {
   const { logout } = useAuthContext();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<AdminProfileData | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingPwd, setSavingPwd] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [raw, setRaw] = useState<AuthMeResponse | null>(null);
 
-  // Photo state
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>("");
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  // ── Form states (in-mirror of editable fields on Branch Information row)
+  const [branchId, setBranchId] = useState<string>("");
+  const [branchCode, setBranchCode] = useState<string>("");
+  const [branchName, setBranchName] = useState<string>("");
+  const [ownerName, setOwnerName] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [branchType, setBranchType] = useState<string>("");
+  const [address, setAddress] = useState<string>("");
+  const [country, setCountry] = useState<string>("");
+  const [stateName, setStateName] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [pincode, setPincode] = useState<string>("");
+  const [bankName, setBankName] = useState<string>("");
+  const [accountNumber, setAccountNumber] = useState<string>("");
+  const [ifscCode, setIfscCode] = useState<string>("");
+  const [upiId, setUpiId] = useState<string>("");
 
-  // Brochure state
-  const [brochureFile, setBrochureFile] = useState<File | null>(null);
-  const brochureInputRef = useRef<HTMLInputElement>(null);
-
-  const { register: reg, handleSubmit: hProfile, reset: resetProfile,
-    formState: { errors: pErr } } = useForm<ProfileFormValues>();
-
-  const { register: regPwd, handleSubmit: hPwd, reset: resetPwd,
-    formState: { errors: pwdErr }, setError: setPwdErr } = useForm<PasswordFormValues>();
-
-  // ── Fetch ──
-  const fetchAll = useCallback(async () => {
+  const loadMe = useCallback(async () => {
     setLoading(true);
     try {
-      const [pRes, sRes] = await Promise.all([
-        Get("banners/admin-profile/", {}, false) as any,
-        Get("banners/dashboard-stats/", {}, false) as any,
-      ]);
-      const p: AdminProfileData = pRes?.data ?? pRes;
-      const s: DashboardStats = sRes?.data ?? sRes;
-      setProfile(p);
-      setStats(s);
-      setPhotoPreview(p.profile_image || "");
-      resetProfile({
-        name: p.name ?? "", phone: p.phone ?? "", address: p.address ?? "",
-        youtube: p.youtube ?? "", instagram: p.instagram ?? "",
-        twitter: p.twitter ?? "", facebook: p.facebook ?? "", whatsapp: p.whatsapp ?? "",
-      });
+      const res = (await Get("pos/auth/me/")) as AuthMeResponse | any;
+      const body = (res?.data ?? res) as AuthMeResponse;
+      setRaw(body);
+      const b = getBranchFromMe(body);
+      const u = getUserFromMe(body);
+      setBranchId(String(b.id ?? b.branch_id ?? ""));
+      setBranchCode(String(b.branch_code ?? b.code ?? ""));
+      setBranchName(String(b.name ?? b.branch_name ?? u.branch_name ?? ""));
+      setOwnerName(String(b.owner_name ?? u.name ?? u.full_name ?? ""));
+      setPhone(String(b.phone ?? u.phone ?? ""));
+      setEmail(String(b.email ?? u.email ?? ""));
+      setBranchType(String(b.branch_type ?? b.type ?? ""));
+      setAddress(String(b.address ?? ""));
+      setCountry(String(b.country ?? ""));
+      setStateName(String(b.state ?? ""));
+      setCity(String(b.city ?? ""));
+      setPincode(String(b.pincode ?? ""));
+      setBankName(String(b.bank_name ?? ""));
+      setAccountNumber(String(b.bank_account ?? b.account_number ?? ""));
+      setIfscCode(String(b.ifsc_code ?? b.ifsc ?? ""));
+      setUpiId(String(b.upi_id ?? b.upi ?? ""));
     } catch {
-      toasterrormsg("Failed to load admin profile.");
+      toasterrormsg("Failed to load profile.");
     } finally {
       setLoading(false);
     }
-  }, [resetProfile]);
+  }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { loadMe(); }, [loadMe]);
 
-  // ── Photo change ──
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  };
+  const branch = getBranchFromMe(raw);
+  const user = getUserFromMe(raw);
 
-  // ── Save profile ──
-  const onSaveProfile = async (values: ProfileFormValues) => {
+  const logoSrc: string =
+    (branch?.logo_url || branch?.logo || branch?.image || user?.avatar || user?.profile_image || user?.logo || "") as string;
+
+  const displayName: string =
+    (branchName || branch?.name || branch?.branch_name || user?.branch_name || "Branch") as string;
+
+  const statusText =
+    String(branch?.status ?? (branch?.is_active ? "Active" : "")) || "Active";
+  const isStatusActive = /active|true|verified/i.test(statusText);
+
+  const displayBranchType = (branchType || branch?.branch_type || branch?.type || "") as string;
+  const memberSince = (
+    branch?.created_at ?? branch?.created_on ?? branch?.date_joined ?? user?.date_joined ?? raw?.created_at ?? raw?.date_joined ?? ""
+  ) as string;
+  const accountCreated = memberSince;
+  const lastUpdated = (branch?.updated_at ?? branch?.updated_on ?? raw?.updated_at ?? user?.last_login ?? raw?.last_login ?? "") as string;
+
+  const maskAccount = (s: string) =>
+    s.length > 4 ? "**** " + s.slice(-4) : s || "";
+
+  // ── Save profile (all editable fields + branch id in url if present)
+  const handleSave = async () => {
+    if (!raw) return;
     setSaving(true);
     try {
-      const fd = new FormData();
-      Object.entries(values).forEach(([k, v]) => fd.append(k, v ?? ""));
-      if (photoFile) fd.append("profile_image", photoFile);
-      if (brochureFile) fd.append("brochure_pdf", brochureFile);
-      await Put("banners/admin-profile/", fd, true);
-      toastsuccessmsg("Profile updated successfully.");
-      setPhotoFile(null);
-      setBrochureFile(null);
-      fetchAll();
-    } catch (e: any) {
-      toasterrormsg(e?.response?.data?.message || "Failed to update profile.");
+      const payload: Record<string, any> = {
+        branch_id: Number.isFinite(Number(branch?.id ?? branch?.branch_id)) ? Number(branch?.id ?? branch?.branch_id) : undefined,
+        branch_code: branchCode,
+        branch_name: branchName,
+        name: branchName,
+        owner_name: ownerName,
+        phone,
+        email,
+        branch_type: branchType,
+        address,
+        country,
+        state: stateName,
+        city,
+        pincode,
+        bank_name: bankName,
+        bank_account: accountNumber,
+        account_number: accountNumber,
+        ifsc_code: ifscCode,
+        ifsc: ifscCode,
+        upi_id: upiId,
+        upi: upiId,
+      };
+      const bid = branch?.id ?? branch?.branch_id ?? user?.branch_id ?? raw?.id;
+      let saved = false;
+      const urls = bid
+        ? [
+            `pos/branch/${bid}/`,
+            `pos/branches/${bid}/`,
+            `pos/auth/me/`,
+          ]
+        : [`pos/auth/me/`, `pos/branch/`, `pos/branches/`];
+      for (const url of urls) {
+        try {
+          const isPost = /\/$/.test(url) && !bid && url.includes("branch");
+          const res = await (isPost ? Post : (Patch as any))(url, payload, false);
+          const data = (res as any)?.data ?? res;
+          if (data && (data?.success === true || data?.id || data?.branch_id || data?.name)) {
+            saved = true;
+            break;
+          }
+          saved = true;
+          break;
+        } catch { /* try next */ }
+      }
+      if (!saved) {
+        try {
+          await Put("pos/auth/me/", payload, false);
+          saved = true;
+        } catch { /* noop */ }
+      }
+      if (saved) toastsuccessmsg("Profile updated successfully.");
+      else throw new Error("failed");
+      loadMe();
+    } catch {
+      toasterrormsg("Failed to save profile.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Save password ──
-  const onSavePwd = async (values: PasswordFormValues) => {
-    if (values.newPassword && values.newPassword !== values.confirmPassword) {
-      setPwdErr("confirmPassword", { message: "Passwords do not match." });
-      return;
-    }
-    setSavingPwd(true);
-    try {
-      const payload: Record<string, string> = { current_password: values.currentPassword };
-      if (values.newEmail) payload.email = values.newEmail;
-      if (values.newPassword) payload.password = values.newPassword;
-      await Put("banners/admin-profile/", payload, false);
-      toastsuccessmsg("Login credentials updated.");
-      resetPwd();
-    } catch (e: any) {
-      toasterrormsg(e?.response?.data?.message || e?.response?.data?.current_password?.[0] || "Failed to update credentials.");
-    } finally {
-      setSavingPwd(false);
-    }
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try { await logout(); navigate(GHOST_ENTRY_PATH); }
+    finally { setLoggingOut(false); }
   };
-
-  const handleLogout = async () => { await logout(); navigate(GHOST_ENTRY_PATH); };
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
@@ -235,218 +434,347 @@ export default function AdminProfile() {
   );
 
   return (
-    <div className="w-full space-y-6 pb-10">
+    <div className="w-full space-y-5 pb-10">
 
-      {/* ── Hero banner ─────────────────────────────────────────────── */}
+      {/* ── Hero / Banner ────────────────────────────────────────── */}
       <Card className="overflow-hidden p-0">
-        {/* Gradient banner */}
-        <div className="h-32 w-full bg-gradient-to-r from-primary to-primary-600 sm:h-40" />
-
-        {/* Profile row */}
-        <div className="relative px-6 pb-6">
-          {/* Avatar — overlaps banner */}
-          <div className="relative -mt-14 mb-4 inline-block">
-            <div className="size-28 overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg dark:border-dark-700 dark:bg-dark-600">
-              {photoPreview ? (
-                <img src={photoPreview} alt="Profile" className="size-full object-cover" />
-              ) : (
-                <div className="flex size-full items-center justify-center bg-primary/10 text-4xl font-bold text-primary">
-                  {profile?.name?.[0]?.toUpperCase() ?? "A"}
-                </div>
-              )}
-            </div>
-            {/* Camera button */}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full border-2 border-white bg-primary text-white shadow transition hover:bg-primary-600 dark:border-dark-700"
-            >
-              <CameraIcon className="size-4" />
-            </button>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
-            {photoFile && (
-              <button
-                type="button"
-                onClick={() => { setPhotoFile(null); setPhotoPreview(profile?.profile_image || ""); }}
-                className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-error text-white shadow"
-              >
-                <XMarkIcon className="size-3" />
-              </button>
-            )}
+        <div className="relative h-44 w-full bg-gradient-to-br from-[#2563eb] via-[#2b6ef0] to-[#1d4ed8]">
+          <div className="pointer-events-none absolute inset-0 opacity-30">
+            <div className="absolute -top-10 -left-10 size-56 rounded-full bg-white/20 blur-3xl" />
+            <div className="absolute -bottom-20 right-10 size-72 rounded-full bg-white/10 blur-3xl" />
           </div>
-
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {profile?.name || "Admin"}
-              </h1>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <Badge color="primary" variant="soft">Superadmin</Badge>
-                <span className="text-sm text-gray-500 dark:text-dark-300">{profile?.email}</span>
-                {profile?.joinDate && (
-                  <span className="flex items-center gap-1 text-sm text-gray-400 dark:text-dark-400">
-                    <CalendarDaysIcon className="size-4" />
-                    Joined {profile.joinDate}
-                  </span>
+        </div>
+        <div className="relative px-5 pb-6 sm:px-8">
+          <div className="relative -mt-20 flex flex-col items-center gap-4 sm:-mt-28">
+            <div className="relative">
+              <div className="size-32 overflow-hidden rounded-full border-4 border-white bg-white shadow-xl ring-1 ring-black/5 dark:border-dark-800 dark:bg-dark-800 dark:ring-white/10 sm:size-40">
+                {logoSrc ? (
+                  <img src={logoSrc as string} alt="Branch" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary to-primary-600 text-4xl font-extrabold text-white sm:text-5xl">
+                    {String(displayName).trim().charAt(0).toUpperCase() || "B"}
+                  </div>
                 )}
               </div>
+              <div className="absolute bottom-1 right-1 flex size-9 items-center justify-center rounded-full border-2 border-white bg-white text-primary shadow-md dark:border-dark-800 dark:bg-dark-800">
+                <CameraIcon className="size-4.5" />
+              </div>
             </div>
-            <Button variant="outlined" color="error" className="gap-2" onClick={handleLogout}>
-              Logout
-            </Button>
+
+            <div className="w-full text-center">
+              <h1 className="text-2xl font-extrabold text-white drop-shadow-sm sm:text-3xl">
+                {displayName}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <Badge
+                  className={
+                    "gap-1.5 px-3 py-1 text-[12px] font-extrabold shadow-sm " +
+                    (isStatusActive
+                      ? "bg-emerald-400/95 text-white hover:bg-emerald-400"
+                      : "bg-amber-400/95 text-white hover:bg-amber-400")
+                  }
+                >
+                  <CheckCircleIcon className="size-3.5" />
+                  {String(statusText || "Active").charAt(0).toUpperCase() + String(statusText || "Active").slice(1).toLowerCase()}
+                </Badge>
+                {displayBranchType && (
+                  <Badge className="gap-1.5 bg-white/90 px-3 py-1 text-[12px] font-extrabold text-slate-700 shadow-sm">
+                    <TagIcon className="size-3.5" />
+                    {String(displayBranchType).charAt(0).toUpperCase() + String(displayBranchType).slice(1)}
+                  </Badge>
+                )}
+              </div>
+              {memberSince && (
+                <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/90">
+                  <CalendarDaysIcon className="size-4" />
+                  Member since: {formatDateDDMMYYYY(String(memberSince))}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* ── Stats ───────────────────────────────────────────────────── */}
-      {stats && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label="Total Product Vendors" value={stats.totalProductVendor} icon={BuildingStorefrontIcon} color="primary" />
-          <StatCard label="Total Service Vendors" value={stats.totalServiceVendor} icon={WrenchScrewdriverIcon} color="success" />
-          <StatCard label="Total Login Customers" value={stats.totalLoginUsers} icon={UsersIcon} color="info" />
-        </div>
-      )}
-
-      {/* ── Profile form ─────────────────────────────────────────────── */}
-      <form onSubmit={hProfile(onSaveProfile)} className="space-y-6">
-
-        {/* Admin Information */}
-        <Card className="p-5 sm:p-6">
-          <SectionTitle>Admin Information</SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label={<>Name <span className="text-red-500">*</span></>}
-              prefix={<UserIcon className="size-4" />}
-              placeholder="Admin name"
-              error={pErr.name?.message}
-              {...reg("name", { required: "Name is required" })}
-            />
-            <Input
-              label="Phone Number"
-              prefix={<PhoneIcon className="size-4" />}
-              placeholder="Phone number"
-              {...reg("phone")}
-            />
-            <Input
-              label="Address"
-              prefix={<MapPinIcon className="size-4" />}
-              placeholder="Address"
-              classNames={{ root: "sm:col-span-2" }}
-              {...reg("address")}
-            />
-          </div>
-        </Card>
-
-        {/* Company Brochure */}
-        <Card className="p-5 sm:p-6">
-          <SectionTitle>Company Brochure</SectionTitle>
-          <p className="mb-4 text-sm text-gray-500 dark:text-dark-300">
-            Upload your company brochure in PDF format. This will be available for download on your website footer.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outlined" className="gap-2" onClick={() => brochureInputRef.current?.click()}>
-              <DocumentTextIcon className="size-4" />
-              Upload Brochure (PDF)
-            </Button>
-            <input ref={brochureInputRef} type="file" accept=".pdf" className="hidden"
-              onChange={(e) => setBrochureFile(e.target.files?.[0] ?? null)} />
-            {brochureFile && (
-              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm dark:border-dark-500 dark:bg-dark-700">
-                <DocumentTextIcon className="size-4 text-error" />
-                <span className="max-w-[200px] truncate">{brochureFile.name}</span>
-                <button type="button" onClick={() => setBrochureFile(null)} className="ml-1 text-gray-400 hover:text-error">
-                  <XMarkIcon className="size-4" />
-                </button>
-              </div>
-            )}
-          </div>
-          {profile?.brochure_pdf_url && !brochureFile && (
-            <div className="mt-3 flex flex-wrap items-center gap-4">
-              <a href={profile.brochure_pdf_url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                <LinkIcon className="size-4" />
-                Preview Uploaded Brochure
-              </a>
-              <button type="button" className="text-xs font-semibold text-error hover:underline"
-                onClick={async () => {
-                  try {
-                    await Put("banners/admin-profile/", { brochure_pdf: "" }, false);
-                    toastsuccessmsg("Brochure removed."); fetchAll();
-                  } catch { toasterrormsg("Failed to remove brochure."); }
-                }}>
-                Remove
-              </button>
-            </div>
+      {/* ── Branch Information ───────────────────────────────────── */}
+      <Card className="p-5 sm:p-6">
+        <SectionHeader icon={BuildingStorefrontIcon} title="Branch Information" />
+        <div className="space-y-4">
+          <FieldRow
+            left={{
+              label: "Branch ID",
+              icon: HashtagIcon,
+              value: branchId,
+              placeholder: "Branch ID",
+              accent: "info",
+            }}
+            right={{
+              label: "Branch Code",
+              icon: IdentificationIcon,
+              value: branchCode,
+              placeholder: "e.g. D8E",
+              editable: true,
+              register: { value: branchCode, onChange: (e: any) => setBranchCode(e.target.value) },
+            }}
+          />
+          {branchCode && (
+            <p className="-mt-1 text-[10.5px] font-semibold text-gray-400 dark:text-dark-400">
+              Will be used in Order ID /DB/{branchCode}/ DD-MM-YY / 100001
+            </p>
           )}
-        </Card>
+          <FieldRow
+            left={{
+              label: "Branch Name",
+              icon: BuildingStorefrontIcon,
+              value: branchName,
+              placeholder: "Branch name",
+              editable: true,
+              register: { value: branchName, onChange: (e: any) => setBranchName(e.target.value) },
+            }}
+            right={{
+              label: "Owner Name",
+              icon: SparklesIcon,
+              value: ownerName,
+              placeholder: "Owner / In-charge name",
+              editable: true,
+              register: { value: ownerName, onChange: (e: any) => setOwnerName(e.target.value) },
+            }}
+          />
+          <FieldRow
+            left={{
+              label: "Phone",
+              icon: PhoneIcon,
+              value: phone,
+              placeholder: "Branch contact number",
+              editable: true,
+              register: { value: phone, onChange: (e: any) => setPhone(e.target.value) },
+            }}
+            right={{
+              label: "Email",
+              icon: EnvelopeIcon,
+              value: email,
+              placeholder: "Branch email",
+              editable: true,
+              register: { value: email, onChange: (e: any) => setEmail(e.target.value) },
+            }}
+          />
+          <FieldRow
+            left={{
+              label: "Branch Type",
+              icon: FolderIcon,
+              value: branchType,
+              placeholder: "e.g. Fashion, Retail, etc.",
+              editable: true,
+              register: { value: branchType, onChange: (e: any) => setBranchType(e.target.value) },
+            }}
+          />
+        </div>
+      </Card>
 
-        {/* Social Links */}
-        <Card className="p-5 sm:p-6">
-          <SectionTitle>Social Links</SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {([
-              { name: "youtube", label: "YouTube", placeholder: "https://youtube.com/..." },
-              { name: "instagram", label: "Instagram", placeholder: "https://instagram.com/..." },
-              { name: "twitter", label: "Twitter", placeholder: "https://x.com/..." },
-              { name: "facebook", label: "Facebook", placeholder: "https://facebook.com/..." },
-              { name: "whatsapp", label: "WhatsApp", placeholder: "https://wa.me/..." },
-            ] as const).map(({ name, label, placeholder }) => (
-              <Input key={name} label={label}
-                prefix={<GlobeAltIcon className="size-4" />}
-                placeholder={placeholder} {...reg(name)} />
-            ))}
+      {/* ── Address Details ──────────────────────────────────────── */}
+      <Card className="p-5 sm:p-6">
+        <SectionHeader icon={MapPinIcon} title="Address Details" />
+        <div className="space-y-4">
+          <FieldRow
+            left={{
+              label: "Complete Address",
+              icon: HomeIcon,
+              value: address,
+              placeholder: "Street / Area / Landmark",
+              editable: true,
+              register: { value: address, onChange: (e: any) => setAddress(e.target.value) },
+            }}
+          />
+          <FieldRow
+            left={{
+              label: "Country",
+              icon: GlobeAltIcon_local,
+              value: country,
+              placeholder: "Country name",
+              accent: !country || /not specified|not specified/i.test(country) ? "warn" : "info",
+              editable: true,
+              register: { value: country, onChange: (e: any) => setCountry(e.target.value) },
+            }}
+            right={{
+              label: "State",
+              icon: MapPinIcon,
+              value: stateName,
+              placeholder: "State",
+              editable: true,
+              register: { value: stateName, onChange: (e: any) => setStateName(e.target.value) },
+            }}
+          />
+          <FieldRow
+            left={{
+              label: "City",
+              icon: MapPinIcon,
+              value: city,
+              placeholder: "City",
+              editable: true,
+              register: { value: city, onChange: (e: any) => setCity(e.target.value) },
+            }}
+            right={{
+              label: "Pincode",
+              icon: HashtagIcon,
+              value: pincode,
+              placeholder: "Pincode / ZIP",
+              editable: true,
+              register: { value: pincode, onChange: (e: any) => setPincode(e.target.value) },
+            }}
+          />
+        </div>
+      </Card>
+
+      {/* ── Bank Details ─────────────────────────────────────────── */}
+      <Card className="p-5 sm:p-6">
+        <SectionHeader icon={BanknotesIcon} title="Bank Details" />
+        <div className="space-y-4">
+          <FieldRow
+            left={{
+              label: "Bank Name",
+              icon: BanknotesIcon,
+              value: bankName,
+              placeholder: "Bank name",
+              editable: true,
+              register: { value: bankName, onChange: (e: any) => setBankName(e.target.value) },
+            }}
+            right={{
+              label: "Account Number",
+              icon: ClipboardIcon,
+              value: accountNumber ? maskAccount(String(accountNumber)) : "",
+              placeholder: "Account number",
+              editable: true,
+              register: { value: accountNumber, onChange: (e: any) => setAccountNumber(e.target.value) },
+            }}
+          />
+          <FieldRow
+            left={{
+              label: "IFSC Code",
+              icon: HashtagIcon,
+              value: ifscCode,
+              placeholder: "IFSC code",
+              editable: true,
+              register: { value: ifscCode, onChange: (e: any) => setIfscCode(e.target.value) },
+            }}
+            right={{
+              label: "UPI ID",
+              icon: SparklesIcon,
+              value: upiId,
+              placeholder: "e.g. branch@upi",
+              editable: true,
+              register: { value: upiId, onChange: (e: any) => setUpiId(e.target.value) },
+            }}
+          />
+        </div>
+      </Card>
+
+      {/* ── Documents ────────────────────────────────────────────── */}
+      <Card className="p-5 sm:p-6">
+        <SectionHeader icon={FolderIcon} title="Documents" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <DocTile
+            title="License File"
+            subtitle={branch?.license || branch?.license_url ? "Uploaded" : "Not uploaded"}
+            iconTile={DocumentTextIcon}
+            viewUrl={String(branch?.license_url || branch?.license || "") || undefined}
+            variant={branch?.license || branch?.license_url ? "available" : "empty"}
+          />
+          <DocTile
+            title="GST Certificate"
+            subtitle={branch?.gst_certificate || branch?.gst_certificate_url ? "Uploaded" : "Not uploaded"}
+            iconTile={DocumentDuplicateIcon}
+            viewUrl={String(branch?.gst_certificate_url || branch?.gst_certificate || "") || undefined}
+            variant={branch?.gst_certificate || branch?.gst_certificate_url ? "available" : "empty"}
+          />
+          <DocTile
+            title="ID Proof"
+            subtitle={branch?.id_proof || branch?.id_proof_url ? "Uploaded" : "Not uploaded"}
+            iconTile={IdentificationIcon}
+            viewUrl={String(branch?.id_proof_url || branch?.id_proof || "") || undefined}
+            variant={branch?.id_proof || branch?.id_proof_url ? "available" : "empty"}
+          />
+        </div>
+      </Card>
+
+      {/* ── Account Information ──────────────────────────────────── */}
+      <Card className="p-5 sm:p-6">
+        <SectionHeader icon={CalendarDaysIcon} title="Account Information" />
+        <div className="space-y-4">
+          <FieldRow
+            left={{
+              label: "Account Created",
+              icon: CalendarDaysIcon,
+              value: accountCreated ? formatDateDDMMYYYY(String(accountCreated)) : "",
+              placeholder: "—",
+              accent: "info",
+            }}
+            right={{
+              label: "Last Updated",
+              icon: ArrowPathIcon,
+              value: lastUpdated ? formatDateDDMMYYYY(String(lastUpdated)) : "",
+              placeholder: "—",
+            }}
+          />
+        </div>
+      </Card>
+
+      {/* ── Save + Logout row ───────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <div>
+          <div className="flex items-start gap-3 rounded-2xl border border-error/30 bg-error/5 p-4 pr-6 dark:bg-error/10">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-error/10 text-error dark:bg-error/20">
+              <ArrowRightOnRectangleIcon className="size-5" />
+            </div>
+            <div>
+              <h4 className="text-[14px] font-extrabold text-error">Logout</h4>
+              <p className="mt-1 text-[12px] font-medium text-gray-500 dark:text-dark-300">
+                This will securely log you out from your branch account.
+              </p>
+            </div>
           </div>
-        </Card>
-
-        {/* Save */}
-        <div className="flex justify-end">
-          <Button type="submit" color="primary" className="gap-2 min-w-[9rem]" disabled={saving}>
-            {saving && <GhostSpinner variant="soft" className="size-4 border-2" />}
-            Save Profile
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="outlined"
+            color="error"
+            className="h-10 gap-2 px-5 text-sm font-extrabold"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut
+              ? <ArrowPathIcon className="size-4.5 animate-spin" />
+              : <ArrowRightOnRectangleIcon className="size-4.5" />}
+            Logout
+          </Button>
+          <Button
+            color="primary"
+            variant="filled"
+            className="h-10 gap-2 px-6 text-sm font-extrabold shadow-md shadow-primary/20"
+            onClick={handleSave}
+            disabled={saving || loading}
+          >
+            {saving ? (
+              <>
+                <ArrowPathIcon className="size-4.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircleIcon className="size-4.5" />
+                Save
+              </>
+            )}
           </Button>
         </div>
-      </form>
-
-      {/* ── Password / Email form ─────────────────────────────────────── */}
-      <form onSubmit={hPwd(onSavePwd)}>
-        <Card className="p-5 sm:p-6">
-          <SectionTitle>Superadmin Panel Login (Email & Password)</SectionTitle>
-          <p className="mb-4 text-sm text-gray-500 dark:text-dark-300">
-            Current password is required to update email or password. If you enter an incorrect current password, the update will be rejected.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label={<>Current Password <span className="text-red-500">*</span></>}
-              type="password" placeholder="Enter current password"
-              error={pwdErr.currentPassword?.message}
-              classNames={{ root: "sm:col-span-2" }}
-              {...regPwd("currentPassword", { required: "Current password is required" })}
-            />
-            <Input label="New Login Email (optional)" type="email"
-              prefix={<EnvelopeIcon className="size-4" />}
-              placeholder="New email address" error={pwdErr.newEmail?.message}
-              {...regPwd("newEmail")} />
-            <Input label="New Password (optional)" type="password"
-              placeholder="Min 8 characters" error={pwdErr.newPassword?.message}
-              {...regPwd("newPassword", { minLength: { value: 8, message: "Min 8 characters" } })} />
-            <Input label="Confirm New Password" type="password"
-              placeholder="Repeat new password" error={pwdErr.confirmPassword?.message}
-              {...regPwd("confirmPassword")} />
-          </div>
-          <div className="mt-5 flex justify-end">
-            <Button type="submit" color="primary" className="gap-2 min-w-[12rem]" disabled={savingPwd}>
-              {savingPwd && <GhostSpinner variant="soft" className="size-4 border-2" />}
-              Update Superadmin Login
-            </Button>
-          </div>
-        </Card>
-      </form>
+      </div>
     </div>
   );
 }
+
+const GlobeAltIcon_local = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2 12h20" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);

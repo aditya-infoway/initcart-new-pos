@@ -293,6 +293,13 @@ userMaster: UsersIcon,
   "posStockMaster.stockTransfer": ArrowsRightLeftIcon,
   "posStockMaster.stockAdjust":   DocumentTextIcon,
 
+  // B2B Inventory
+  posB2BInventory: CubeIcon,
+  "posB2BInventory.stockReturn": ReceiptRefundIcon,
+  "posB2BInventory.stockTransfer": ArrowsRightLeftIcon,
+  "posB2BInventory.stockTransfer.sendOrder": DocumentPlusIcon,
+  "posB2BInventory.stockTransfer.receivedOrders": ClipboardDocumentCheckIcon,
+
   // Transaction Master
   posTransactionMaster: ArrowsRightLeftIcon,
   "posTransactionMaster.debitNote":    DocumentTextIcon,

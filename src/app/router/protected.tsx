@@ -265,6 +265,55 @@ const protectedRoutes: RouteObject = {
           ],
         },
 
+        // ── B2B Inventory ───────────────────────────────────────────────
+        {
+          path: "b2b-inventory",
+          children: [
+            { index: true, element: <Navigate to="/pos/b2b-inventory/stock-return" replace /> },
+            {
+              path: "stock-return",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-return")).default,
+                  }),
+                },
+                {
+                  path: "create",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-return/create")).default,
+                  }),
+                },
+                {
+                  path: "detail/:id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-return/detail")).default,
+                  }),
+                },
+              ],
+            },
+            {
+              path: "stock-transfer",
+              children: [
+                { index: true, element: <Navigate to="/pos/b2b-inventory/stock-transfer/send-order" replace /> },
+                {
+                  path: "send-order",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order")).default,
+                  }),
+                },
+                {
+                  path: "received-orders",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-transfer/received-orders")).default,
+                  }),
+                },
+              ],
+            },
+          ],
+        },
+
         // ── Purchase Master ────────────────────────────────────────────
         {
           path: "purchase",
@@ -320,6 +369,29 @@ const protectedRoutes: RouteObject = {
                   path: "new",
                   lazy: async () => ({
                     Component: (await import("@/app/pages/sales-master/sales-entry/new-sale")).default,
+                  }),
+                },
+              ],
+            },
+            {
+              path: "sales-entry2",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/sales-master/sales-entry/sales-entry-form2")).default,
+              }),
+            },
+            {
+              path: "sales-return-report",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/sales-master/sales-return")).default,
+                  }),
+                },
+                {
+                  path: "new",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/sales-master/sales-return/new-return")).default,
                   }),
                 },
               ],

@@ -1,5 +1,4 @@
 import {
-  CalendarDaysIcon,
   CurrencyRupeeIcon,
   DocumentTextIcon,
   MagnifyingGlassIcon,
@@ -11,26 +10,36 @@ import {
   ShoppingCartIcon,
   TrashIcon,
   TruckIcon,
-  UserPlusIcon,
+  PrinterIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
+import {
+  Dialog, DialogPanel, Transition, TransitionChild,
+} from "@headlessui/react";
+import { Fragment } from "react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { DatePicker } from "@/components/shared/form/Datepicker";
+import { Button, Card, Input, Table, THead, TBody, Th, Tr, Td, Textarea } from "@/components/ui";
 import { Get, Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
 import {
   CartLine,
   Customer,
   SaleItem,
-  calcCartLine,
+  buildCartLine,
   calcSummary,
+  mapApiCustomer,
   mapApiSaleItem,
+  mapTaxResponse,
 } from "./data";
 import { ItemSelectorModal } from "./ItemSelectorModal";
 import { CustomerModal } from "./CustomerModal";
+import { SaleReceiptModal } from "./SaleReceiptModal";
 
 // ── Field label helper ────────────────────────────────────────────────────────
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -71,17 +80,23 @@ export default function NewSalePage() {
   const barcodeRef = useRef<HTMLInputElement>(null);
 
   // Bill details
+  interface PaymentTerm { id: string; label: string; }
+
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [billNo, setBillNo] = useState("");
   const [narration, setNarration] = useState("");
-  const [terms, setTerms] = useState<{ id: string; label: string } | null>(null);
-  const [termOptions, setTermOptions] = useState([
+  const [terms, setTerms] = useState<PaymentTerm>({ id: "Cash", label: "Cash" });
+  const [termOptions] = useState<PaymentTerm[]>([
     { id: "Cash", label: "Cash" },
+    { id: "Bank", label: "Bank" },
     { id: "Credit", label: "Credit" },
   ]);
-  const [cashAccount, setCashAccount] = useState<{ id: string; label: string } | null>(null);
-  const [cashAccounts, setCashAccounts] = useState<{ id: string; label: string }[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<{ id: string; label: string } | null>(null);
+  const [accounts, setAccounts] = useState<{ id: string; label: string }[]>([]);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [dueDate, setDueDate] = useState("");
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Item entry
   const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
@@ -89,8 +104,11 @@ export default function NewSalePage() {
   const [price, setPrice] = useState(0);
   const [discPercent, setDiscPercent] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartIdCounter, setCartIdCounter] = useState(1);
   const [barcodeInput, setBarcodeInput] = useState("");
+  const [barcodeScanning, setBarcodeScanning] = useState(false);
   const [allItems, setAllItems] = useState<SaleItem[]>([]);
+  const [currentNetValue, setCurrentNetValue] = useState("0.00");
 
   // Additional charges
   const [freight, setFreight] = useState(0);
@@ -102,6 +120,9 @@ export default function NewSalePage() {
   const [customerModal, setCustomerModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [accountError, setAccountError] = useState(false);
+  const [savedSaleId, setSavedSaleId] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // ── Load initial data ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -111,14 +132,20 @@ export default function NewSalePage() {
 
     Get("pos/default-customer/").then((res: any) => {
       const d = res?.data?.customer ?? res?.data;
-      if (d) setCustomer({ id: Number(d.id), name: d.name ?? d.account_name ?? "Default Customer", mobile: "", email: "", address: "" });
+      if (d) setCustomer(mapApiCustomer(d));
+    }).catch(() => {});
+
+    Get("pos/customers/").then((res: any) => {
+      const body = res?.data ?? res;
+      const rows: any[] = Array.isArray(body?.results) ? body.results : Array.isArray(body) ? body : [];
+      setCustomers(rows.map(mapApiCustomer));
     }).catch(() => {});
 
     Get("pos/account-terms-type/?terms=Cash").then((res: any) => {
       const body = res?.data ?? res;
       const rows: any[] = Array.isArray(body) ? body : Array.isArray(body?.results) ? body.results : [];
       const mapped = rows.map((r: any) => ({ id: String(r.id), label: r.account_name ?? r.name ?? "" }));
-      setCashAccounts(mapped);
+      setAccounts(mapped);
     }).catch(() => {});
 
     Get("pos/sale-search-item/").then((res: any) => {
@@ -134,77 +161,245 @@ export default function NewSalePage() {
     setPrice(item.salesPrice);
     setQty(1);
     setDiscPercent(0);
+    setTimeout(() => barcodeRef.current?.focus(), 100);
+  };
+
+  const fetchItemTax = async (itemId: number, customerId: number, quantity: number, itemPrice: number, discount: number) => {
+    const res = await Post("pos/sale-item-tax/", {
+      item_id: itemId,
+      customer_id: customerId,
+      qty: quantity,
+      price: itemPrice,
+      discount_percent: discount,
+    }) as any;
+    return mapTaxResponse(res?.data ?? res);
+  };
+
+  useEffect(() => {
+    if (!selectedItem?.itemId || !customer?.id || qty <= 0 || price <= 0) {
+      setCurrentNetValue("0.00");
+      return;
+    }
+    let cancelled = false;
+    fetchItemTax(selectedItem.itemId, customer.id, qty, price, discPercent)
+      .then(tax => { if (!cancelled) setCurrentNetValue(tax.net.toFixed(2)); })
+      .catch(() => { if (!cancelled) setCurrentNetValue("0.00"); });
+    return () => { cancelled = true; };
+  }, [selectedItem?.itemId, customer?.id, qty, price, discPercent]);
+
+  useEffect(() => {
+    if (!terms || terms.id === "Credit") {
+      setAccounts([]);
+      setSelectedAccount(null);
+      return;
+    }
+
+    setAccountLoading(true);
+    Get(`pos/account-terms-type/?terms=${terms.id}`)
+      .then((res: any) => {
+        const body = res?.data ?? res;
+        const rows: any[] = Array.isArray(body) ? body
+          : Array.isArray(body?.results) ? body.results
+          : [];
+        const mapped = rows.map((r: any) => ({ id: String(r.id), label: r.account_name ?? r.name ?? "" }));
+        setAccounts(mapped);
+        setSelectedAccount(null);
+      })
+      .catch(() => toasterrormsg("Failed to load accounts."))
+      .finally(() => setAccountLoading(false));
+  }, [terms]);
+
+  const handleBarcodeSearch = async (barcode: string) => {
+    const trimmed = barcode.trim();
+    if (!trimmed) return;
+    if (!customer?.id) {
+      toasterrormsg("Please select a customer first.");
+      setBarcodeInput("");
+      return;
+    }
+
+    setBarcodeScanning(true);
+    try {
+      const localMatch = allItems.find(
+        i => i.barcode && i.barcode.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (localMatch) {
+        if (localMatch.stock <= 0) {
+          toasterrormsg(`Item "${localMatch.itemName}" is out of stock.`);
+          return;
+        }
+        handleSelectItem(localMatch);
+        toastsuccessmsg(`Item selected: ${localMatch.itemName}`);
+        return;
+      }
+
+      const res = await Get(`pos/sale-search-item/`, { query: trimmed }) as any;
+      const body = res?.data ?? res;
+      const rows: any[] = Array.isArray(body?.results) ? body.results : Array.isArray(body) ? body : [];
+      const apiMatch = rows
+        .map(mapApiSaleItem)
+        .find(i => i.barcode && i.barcode.toLowerCase() === trimmed.toLowerCase());
+
+      if (!apiMatch) {
+        toasterrormsg(`No item found with barcode "${trimmed}".`);
+        return;
+      }
+      if (apiMatch.stock <= 0) {
+        toasterrormsg(`Item "${apiMatch.itemName}" is out of stock.`);
+        return;
+      }
+      handleSelectItem(apiMatch);
+      toastsuccessmsg(`Item selected: ${apiMatch.itemName}`);
+    } catch {
+      toasterrormsg("Barcode search failed. Please try again.");
+    } finally {
+      setBarcodeInput("");
+      setBarcodeScanning(false);
+      barcodeRef.current?.focus();
+    }
   };
 
   const handleBarcodeEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
-    const found = allItems.find(i => i.barcode === barcodeInput.trim());
-    if (found) { handleSelectItem(found); setBarcodeInput(""); }
-    else toasterrormsg("Item not found for this barcode.");
+    e.preventDefault();
+    handleBarcodeSearch(barcodeInput);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (!customer?.id) { toasterrormsg("Select customer first."); return; }
     if (!selectedItem) { toasterrormsg("Please select an item first."); return; }
-    if (qty < 1) { toasterrormsg("Qty must be at least 1."); return; }
-    const line = calcCartLine(selectedItem, qty, price, discPercent);
-    setCart(prev => [...prev, line]);
-    setSelectedItem(null); setQty(1); setPrice(0); setDiscPercent(0);
+    if (qty <= 0) { toasterrormsg("Qty must be at least 1."); return; }
+    if (price <= 0) { toasterrormsg("Enter a valid price."); return; }
+
+    try {
+      const tax = await fetchItemTax(selectedItem.itemId, customer.id, qty, price, discPercent);
+      const line = buildCartLine(cartIdCounter, selectedItem, qty, price, discPercent, tax);
+      setCart(prev => [...prev, line]);
+      setCartIdCounter(p => p + 1);
+      setSelectedItem(null);
+      setQty(1);
+      setPrice(0);
+      setDiscPercent(0);
+      setCurrentNetValue("0.00");
+      toastsuccessmsg("Item added!");
+    } catch {
+      toasterrormsg("Failed to calculate item values. Please try again.");
+    }
   };
 
-  const removeCartLine = (idx: number) => setCart(prev => prev.filter((_, i) => i !== idx));
+  const removeCartLine = (id: number) => setCart(prev => prev.filter(l => l.id !== id));
 
-  const updateCartQty = (idx: number, delta: number) => {
-    setCart(prev => prev.map((l, i) => {
-      if (i !== idx) return l;
-      const nq = Math.max(1, l.qty + delta);
-      return calcCartLine(
-        { id: l.saleItemId, itemName: l.itemName, hsn: l.hsn, barcode: l.barcode,
-          size: l.size, color: l.color, salesPrice: l.price, stock: 999,
-          unit: l.unit, taxPercent: l.taxPercent, variantId: l.variantId },
-        nq, l.price, l.discPercent,
-      );
-    }));
+  const updateCartQty = async (line: CartLine, newQty: number) => {
+    if (!customer?.id || newQty < 1) return;
+    try {
+      const tax = await fetchItemTax(line.itemId, customer.id, newQty, line.price, line.discPercent);
+      setCart(prev => prev.map(l => l.id === line.id
+        ? buildCartLine(l.id, {
+            id: l.variantId,
+            itemId: l.itemId,
+            itemName: l.itemName,
+            hsn: l.hsn,
+            barcode: l.barcode,
+            size: l.size,
+            color: l.color,
+            salesPrice: l.price,
+            perUnitPrice: l.price,
+            stock: 999,
+            unit: l.unit,
+            unitSupportsFractional: false,
+            taxPercent: l.taxPercent,
+          }, newQty, line.price, line.discPercent, tax)
+        : l));
+    } catch {
+      toasterrormsg("Failed to update quantity.");
+    }
+  };
+
+  const handleClearAll = () => {
+    setCart([]);
+    setCartIdCounter(1);
+    setSelectedItem(null);
+    setQty(1);
+    setPrice(0);
+    setDiscPercent(0);
   };
 
   const summary = calcSummary(cart, freight, otherExpense, roundAmt);
 
   // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!cashAccount) { setAccountError(true); toasterrormsg("Please select a cash account."); return; }
+    if (saving) return;
     if (cart.length === 0) { toasterrormsg("Add at least one item."); return; }
+    if (!customer?.id) { toasterrormsg("Please select a customer."); return; }
+    if (terms.id !== "Credit" && !selectedAccount) {
+      setAccountError(true);
+      toasterrormsg("Please select an account for Cash or Bank payment.");
+      return;
+    }
+    if (terms.id === "Credit" && !dueDate) {
+      toasterrormsg("Please choose a due date for credit sales.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         date,
-        bill_no: billNo,
+        customer: Number(customer.id),
+        payment_terms: terms.id,
         narration,
-        terms: terms?.id ?? "Cash",
-        cash_account: cashAccount.id,
-        customer_id: customer?.id,
-        freight,
-        other_expense: otherExpense,
-        round_off: roundAmt,
+        cash_account: null,
+        bank_account: null,
+        dueDate: terms.id === "Credit" ? dueDate : "",
+        total_basic: summary.totalBasic,
+        total_discount: summary.totalDiscount,
+        total_tax: summary.totalTax,
+        grand_total: summary.grandTotal,
+        frightcharge: freight,
+        otherexpnse: otherExpense,
+        roundamount: roundAmt,
         items: cart.map(l => ({
-          item_id: l.saleItemId,
+          item_id: l.itemId,
           variant_id: l.variantId,
+          hsn_code: l.hsn,
           qty: l.qty,
           price: l.price,
-          disc_percent: l.discPercent,
+          unit: l.unit,
+          discount_percent: l.discPercent,
+          tax_percent: l.taxPercent || 0,
+          basic_amount: l.basic,
+          discount_amount: l.discAmt,
+          tax_amount: l.taxAmt,
+          net_amount: l.net,
+          cgst: l.cgst,
+          sgst: l.sgst,
+          igst: l.igst,
         })),
       };
-      await Post("pos/salesentry-list/", payload);
+
+      if (terms.id === "Cash") payload.cash_account = Number(selectedAccount?.id);
+      if (terms.id === "Bank") payload.bank_account = Number(selectedAccount?.id);
+
+      const res = await Post("pos/salesentry-create/", payload) as any;
+      const body = res?.data ?? res;
+      if (body?.stock_alerts?.length) {
+        body.stock_alerts.forEach((msg: string) => toasterrormsg(msg));
+      }
       toastsuccessmsg("Sale saved successfully.");
-      navigate("/pos/sales/sales-entry-report");
+      setSavedSaleId(Number(body?.id ?? 0));
+      handleClearAll();
+      setShowConfirmModal(true);
     } catch (e: any) {
-      toasterrormsg(e?.response?.data?.message || e?.response?.data?.detail || "Failed to save sale.");
+      toasterrormsg(e?.response?.data?.error ?? e?.response?.data?.message ?? e?.response?.data?.detail ?? "Failed to save sale.");
     } finally {
       setSaving(false);
     }
   };
 
-  const netValue = selectedItem
-    ? ((price * qty) * (1 - discPercent / 100) * (1 + selectedItem.taxPercent / 100)).toFixed(2)
-    : "0.00";
+  const customerOptions = customers.map(c => ({ id: String(c.id), label: c.name }));
+  const selectedCustomerOption = customer
+    ? { id: String(customer.id), label: customer.name }
+    : null;
 
   return (
     <Page title="Sales Entry Form">
@@ -214,7 +409,8 @@ export default function NewSalePage() {
         <div className="flex items-center justify-between gap-4">
           <Button variant="outlined" className="h-9 gap-2 px-4 text-sm"
             onClick={() => navigate("/pos/sales/sales-entry-report")}>
-            ← Back
+            <ChevronLeftIcon className="size-4" />
+            Back
           </Button>
           <div className="flex items-center gap-2.5 rounded-full bg-primary px-6 py-2">
             <ShoppingCartIcon className="size-4 text-white" />
@@ -234,11 +430,10 @@ export default function NewSalePage() {
             {/* Date */}
             <div>
               <FieldLabel>Date</FieldLabel>
-              <Input
-                type="date"
+              <DatePicker
                 value={date}
-                onChange={e => setDate(e.target.value)}
-                prefix={<CalendarDaysIcon className="size-4" />}
+                onChange={(value) => setDate(value)}
+                placeholder="Select date"
               />
             </div>
             {/* Bill No */}
@@ -254,15 +449,20 @@ export default function NewSalePage() {
 
             {/* Customer */}
             <div>
-              <FieldLabel>Customer</FieldLabel>
+              <FieldLabel required>Customer</FieldLabel>
               <div className="flex gap-2">
-                <Input
-                  value={customer?.name ?? ""}
-                  readOnly
-                  placeholder="No customer selected"
-                  prefix={<UserPlusIcon className="size-4" />}
-                  classNames={{ input: "bg-gray-50 dark:bg-dark-800 cursor-default flex-1" }}
-                />
+                <div className="flex-1">
+                  <Listbox
+                    data={customerOptions}
+                    placeholder="Select Customer"
+                    value={selectedCustomerOption}
+                    onChange={(item: any) => {
+                      const found = customers.find(c => String(c.id) === item.id);
+                      if (found) setCustomer(found);
+                    }}
+                    displayField="label"
+                  />
+                </div>
                 <Button color="primary" className="h-10 shrink-0 gap-1 px-3 text-sm"
                   onClick={() => setCustomerModal(true)}>
                   <PlusIcon className="size-3.5" /> Add
@@ -277,28 +477,46 @@ export default function NewSalePage() {
                 data={termOptions}
                 placeholder="Select Terms"
                 value={terms}
-                onChange={(item: any) => setTerms(item)}
+                onChange={(item: any) => {
+                  setTerms(item);
+                  setDueDate("");
+                  setSelectedAccount(null);
+                  setAccountError(false);
+                }}
                 displayField="label"
               />
             </div>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Cash Account */}
-            <div>
-              <FieldLabel required>Cash Account</FieldLabel>
-              <Listbox
-                data={cashAccounts}
-                placeholder="Select Cash Account"
-                value={cashAccount}
-                onChange={(item: any) => { setCashAccount(item); setAccountError(false); }}
-                displayField="label"
-                error={accountError}
-              />
-              {accountError && (
-                <p className="mt-1 text-xs text-error">Account is required</p>
-              )}
-            </div>
+            {(terms.id === "Cash" || terms.id === "Bank") && (
+              <div>
+                <FieldLabel required>Account</FieldLabel>
+                <Listbox
+                  data={accounts}
+                  placeholder={`Select ${terms.label} Account`}
+                  value={selectedAccount}
+                  onChange={(item: any) => { setSelectedAccount(item); setAccountError(false); }}
+                  displayField="label"
+                  error={accountError}
+                  disabled={accountLoading}
+                />
+                {accountError && (
+                  <p className="mt-1 text-xs text-error">Account is required</p>
+                )}
+              </div>
+            )}
+
+            {terms.id === "Credit" && (
+              <div>
+                <FieldLabel required>Due Date</FieldLabel>
+                <DatePicker
+                  value={dueDate}
+                  onChange={(value) => setDueDate(value)}
+                  placeholder="Select due date"
+                />
+              </div>
+            )}
 
             {/* Narration */}
             <div>
@@ -325,14 +543,14 @@ export default function NewSalePage() {
                 onKeyDown={handleBarcodeEnter}
                 placeholder="Scan barcode here — cursor must be here to scan"
                 prefix={<QrCodeIcon className="size-4" />}
-                suffix={
-                  <button onClick={() => barcodeRef.current?.focus()}
-                    className="grid size-6 place-items-center rounded text-gray-400 hover:text-primary transition-colors">
-                    <QrCodeIcon className="size-4" />
-                  </button>
-                }
+                disabled={barcodeScanning}
               />
             </div>
+            <Button color="primary" className="h-10 shrink-0 px-4"
+              onClick={() => handleBarcodeSearch(barcodeInput)}
+              disabled={barcodeScanning || !barcodeInput.trim()}>
+              {barcodeScanning ? "Searching..." : "Search"}
+            </Button>
           </div>
           <p className="mt-1.5 text-xs text-gray-400 dark:text-dark-400">
             ✓ Keep cursor in this field and scan — item will be selected automatically
@@ -343,101 +561,107 @@ export default function NewSalePage() {
         <Card className="p-5">
           <SectionHeader icon={ShoppingCartIcon} title="Item Entry" />
 
-          {/* Selected item info bar */}
           {selectedItem && (
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 dark:bg-primary/10">
-              <span className="text-xs font-semibold text-primary">Selected:</span>
-              <span className="text-sm font-bold text-gray-800 dark:text-dark-100">{selectedItem.itemName}</span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{selectedItem.variant ?? "Default"}</span>
-              <span className="text-xs text-gray-500">Barcode: <span className="font-mono">{selectedItem.barcode}</span></span>
-              <span className="text-xs text-gray-500">Stock: <span className="font-semibold text-emerald-600">{selectedItem.stock}</span></span>
+            <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Selected Item</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-dark-100">{selectedItem.itemName}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-dark-300">
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">{selectedItem.unit ?? "Default"}</span>
+                  <span>Barcode: <span className="font-mono text-gray-800 dark:text-dark-100">{selectedItem.barcode}</span></span>
+                  <span>Stock: <span className="font-semibold text-emerald-600">{selectedItem.stock}</span></span>
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Select button */}
-            <div>
-              <FieldLabel>Item</FieldLabel>
-              <Button color="primary" className="h-10 gap-2 rounded-xl px-4 text-sm"
-                onClick={() => setItemModal(true)}>
-                <MagnifyingGlassIcon className="size-4" /> Select Item
-              </Button>
+          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="space-y-4">
+              <div>
+                <FieldLabel>Item</FieldLabel>
+                <Button color="primary" className="h-11 w-full gap-2 rounded-xl px-4 text-sm"
+                  onClick={() => setItemModal(true)}>
+                  <MagnifyingGlassIcon className="size-4" /> Select Item
+                </Button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <FieldLabel>HSN Code</FieldLabel>
+                  <ReadField value={selectedItem?.hsn} />
+                </div>
+                <div>
+                  <FieldLabel>Unit</FieldLabel>
+                  <ReadField value={selectedItem?.unit} />
+                </div>
+              </div>
             </div>
 
-            {/* HSN */}
-            <div className="w-28">
-              <FieldLabel>HSN Code</FieldLabel>
-              <ReadField value={selectedItem?.hsn} />
-            </div>
-
-            {/* Qty */}
-            <div className="w-24">
-              <FieldLabel>Qty</FieldLabel>
-              <Input
-                type="number"
-                min={1}
-                value={qty}
-                onChange={e => setQty(Number(e.target.value))}
-                classNames={{ input: "text-center font-semibold" }}
-              />
-            </div>
-
-            {/* Price */}
-            <div className="w-28">
-              <FieldLabel>Price</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                value={price}
-                onChange={e => setPrice(Number(e.target.value))}
-                prefix={<CurrencyRupeeIcon className="size-4" />}
-              />
-            </div>
-
-            {/* Unit */}
-            <div className="w-20">
-              <FieldLabel>Unit</FieldLabel>
-              <ReadField value={selectedItem?.unit} />
-            </div>
-
-            {/* Disc% */}
-            <div className="w-24">
-              <FieldLabel>Disc%</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={discPercent}
-                onChange={e => setDiscPercent(Number(e.target.value))}
-                suffix={<span className="text-xs text-gray-400">%</span>}
-              />
-            </div>
-
-            {/* Tax% */}
-            <div className="w-20">
-              <FieldLabel>Tax%</FieldLabel>
-              <ReadField
-                value={<span className="font-semibold text-amber-600">{selectedItem?.taxPercent ?? 0}%</span>}
-              />
-            </div>
-
-            {/* Net Value */}
-            <div className="w-28">
-              <FieldLabel>Net Value</FieldLabel>
-              <ReadField
-                value={<span className="font-bold text-primary">₹{netValue}</span>}
-              />
-            </div>
-
-            {/* Add button */}
-            <div>
-              <FieldLabel>&nbsp;</FieldLabel>
-              <Button color="primary" className="h-10 gap-2 rounded-xl px-5 text-sm font-semibold"
-                onClick={handleAdd} disabled={!selectedItem}>
-                <PlusIcon className="size-4" /> Add
-              </Button>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <FieldLabel>Qty</FieldLabel>
+                <Input
+                  type="number"
+                  min={1}
+                  value={qty}
+                  onChange={e => setQty(Number(e.target.value))}
+                  classNames={{ input: "text-center font-semibold" }}
+                />
+              </div>
+              <div>
+                <FieldLabel>Price</FieldLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  value={price}
+                  onChange={e => setPrice(Number(e.target.value))}
+                  prefix={<CurrencyRupeeIcon className="size-4" />}
+                />
+              </div>
+              <div>
+                <FieldLabel>Disc%</FieldLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={discPercent}
+                  onChange={e => setDiscPercent(Number(e.target.value))}
+                  suffix={<span className="text-xs text-gray-400">%</span>}
+                />
+              </div>
+              <div>
+                <FieldLabel>Tax%</FieldLabel>
+                <ReadField
+                  value={<span className="font-semibold text-amber-600">{selectedItem?.taxPercent ?? 0}%</span>}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-auto">
+                <FieldLabel>Net Value</FieldLabel>
+                <ReadField
+                  value={<span className="font-bold text-primary">₹{currentNetValue}</span>}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-auto">
+                <FieldLabel>&nbsp;</FieldLabel>
+                <Button color="primary" className="h-11 w-full gap-2 rounded-xl px-4 text-sm font-semibold"
+                  onClick={handleAdd} disabled={!selectedItem}>
+                  <PlusIcon className="size-4" /> Add Item
+                </Button>
+              </div>
             </div>
           </div>
+
+          {selectedItem?.unitSupportsFractional && qty > 0 && price > 0 && (
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-primary">
+              <span className="font-semibold">Per Unit Price:</span>{" "}
+              ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {selectedItem.unit}
+              {" · "}
+              {qty} {selectedItem.unit} × ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+              {" = "}
+              <span className="font-bold">₹{(qty * price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
         </Card>
 
         {/* ── Cart Table ────────────────────────────────────────────────────── */}
@@ -449,65 +673,65 @@ export default function NewSalePage() {
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="bg-primary text-white">
+              <Table hoverable zebra className="min-w-full text-left">
+                <THead>
+                  <Tr className="bg-primary text-white">
                     {["#","Item","HSN","Qty","Price","Unit","Tax%","Disc%","Basic","Disc Amt","Tax Amt","Net","Del"].map(h => (
-                      <th key={h} className="whitespace-nowrap px-3 py-3 text-xs font-semibold">{h}</th>
+                      <Th key={h} className="whitespace-nowrap px-3 py-3 text-xs font-semibold">{h}</Th>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </Tr>
+                </THead>
+                <TBody>
                   {cart.map((l, i) => (
-                    <tr key={i} className="border-b border-gray-100 transition-colors hover:bg-primary/[0.03] dark:border-dark-700 dark:hover:bg-primary/10">
-                      <td className="px-3 py-3 text-gray-400">{i + 1}</td>
-                      <td className="px-3 py-3 font-medium text-gray-800 dark:text-dark-100">{l.itemName}</td>
-                      <td className="px-3 py-3 font-mono text-xs text-gray-500">{l.hsn}</td>
-                      <td className="px-3 py-3">
+                    <Tr key={l.id} className="border-b border-gray-100 transition-colors hover:bg-primary/[0.03] dark:border-dark-700 dark:hover:bg-primary/10">
+                      <Td className="px-3 py-3 text-gray-400">{i + 1}</Td>
+                      <Td className="px-3 py-3 font-medium text-gray-800 dark:text-dark-100">{l.itemName}</Td>
+                      <Td className="px-3 py-3 font-mono text-xs text-gray-500">{l.hsn}</Td>
+                      <Td className="px-3 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => updateCartQty(i, -1)}
+                          <button onClick={() => updateCartQty(l, l.qty - 1)}
                             className="grid size-6 place-items-center rounded-full border border-gray-300 text-gray-500 transition-colors hover:border-primary hover:text-primary dark:border-dark-500">
                             <MinusIcon className="size-3" />
                           </button>
                           <span className="w-8 text-center text-sm font-bold text-gray-800 dark:text-dark-100">{l.qty}</span>
-                          <button onClick={() => updateCartQty(i, 1)}
+                          <button onClick={() => updateCartQty(l, l.qty + 1)}
                             className="grid size-6 place-items-center rounded-full border border-gray-300 text-gray-500 transition-colors hover:border-primary hover:text-primary dark:border-dark-500">
                             <PlusIcon className="size-3" />
                           </button>
                         </div>
-                      </td>
-                      <td className="px-3 py-3 font-semibold text-gray-800 dark:text-dark-100">₹{l.price}</td>
-                      <td className="px-3 py-3 text-gray-500">{l.unit}</td>
-                      <td className="px-3 py-3">
+                      </Td>
+                      <Td className="px-3 py-3 font-semibold text-gray-800 dark:text-dark-100">₹{l.price}</Td>
+                      <Td className="px-3 py-3 text-gray-500">{l.unit}</Td>
+                      <Td className="px-3 py-3">
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">{l.taxPercent}%</span>
-                      </td>
-                      <td className="px-3 py-3 text-gray-500">{l.discPercent}%</td>
-                      <td className="px-3 py-3 text-gray-700 dark:text-dark-200">₹{l.basic.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-gray-500">₹{l.discAmt.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-gray-500">₹{l.taxAmt.toFixed(2)}</td>
-                      <td className="px-3 py-3 font-bold text-primary-600 dark:text-primary-400">₹{l.net.toFixed(2)}</td>
-                      <td className="px-3 py-3">
-                        <button onClick={() => removeCartLine(i)}
+                      </Td>
+                      <Td className="px-3 py-3 text-gray-500">{l.discPercent}%</Td>
+                      <Td className="px-3 py-3 text-gray-700 dark:text-dark-200">₹{l.basic.toFixed(2)}</Td>
+                      <Td className="px-3 py-3 text-gray-500">₹{l.discAmt.toFixed(2)}</Td>
+                      <Td className="px-3 py-3 text-gray-500">₹{l.taxAmt.toFixed(2)}</Td>
+                      <Td className="px-3 py-3 font-bold text-primary-600 dark:text-primary-400">₹{l.net.toFixed(2)}</Td>
+                      <Td className="px-3 py-3">
+                        <button onClick={() => removeCartLine(l.id)}
                           className="grid size-7 place-items-center rounded-full text-error transition-colors hover:bg-error/10">
                           <TrashIcon className="size-4" />
                         </button>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 dark:bg-dark-800">
-                    <td colSpan={8} className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-dark-300">Total:</td>
-                    <td className="px-3 py-3 font-bold text-gray-800 dark:text-dark-100">₹{summary.totalBasic.toFixed(2)}</td>
-                    <td className="px-3 py-3 font-bold text-gray-500">₹{summary.totalDiscount.toFixed(2)}</td>
-                    <td className="px-3 py-3 font-bold text-gray-500">₹{summary.totalTax.toFixed(2)}</td>
-                    <td className="px-3 py-3 font-bold text-primary-600 dark:text-primary-400">
+                </TBody>
+                <TBody>
+                  <Tr className="bg-gray-50 dark:bg-dark-800">
+                    <Td colSpan={8} className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-dark-300">Total:</Td>
+                    <Td className="px-3 py-3 font-bold text-gray-800 dark:text-dark-100">₹{summary.totalBasic.toFixed(2)}</Td>
+                    <Td className="px-3 py-3 font-bold text-gray-500">₹{summary.totalDiscount.toFixed(2)}</Td>
+                    <Td className="px-3 py-3 font-bold text-gray-500">₹{summary.totalTax.toFixed(2)}</Td>
+                    <Td className="px-3 py-3 font-bold text-primary-600 dark:text-primary-400">
                       ₹{cart.reduce((s, l) => s + l.net, 0).toFixed(2)}
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
+                    </Td>
+                    <Td />
+                  </Tr>
+                </TBody>
+              </Table>
             </div>
           </Card>
         )}
@@ -545,14 +769,20 @@ export default function NewSalePage() {
             <SectionHeader icon={ClipboardDocumentListIcon} title="Payment Summary" color="text-emerald-600 dark:text-emerald-400" />
             <div className="space-y-2">
               {[
-                { label: "Total Basic",    val: summary.totalBasic,    muted: false },
-                { label: "CGST",           val: summary.cgst,           muted: true },
-                { label: "SGST",           val: summary.sgst,           muted: true },
-                { label: "Total Tax",      val: summary.totalTax,       muted: false },
-                { label: "Total Discount", val: summary.totalDiscount,  muted: true },
-                { label: "Freight",        val: summary.freight,        muted: true },
-                { label: "Other Expense",  val: summary.otherExpense,   muted: true },
-                { label: "Round Off",      val: summary.roundAmt,       muted: true },
+                { label: "Total Basic", val: summary.totalBasic, muted: false },
+                ...(summary.cgst > 0 || summary.sgst > 0
+                  ? [
+                      { label: "CGST", val: summary.cgst, muted: true },
+                      { label: "SGST", val: summary.sgst, muted: true },
+                    ]
+                  : summary.igst > 0
+                    ? [{ label: "IGST", val: summary.igst, muted: true }]
+                    : []),
+                { label: "Total Tax", val: summary.totalTax, muted: false },
+                { label: "Total Discount", val: summary.totalDiscount, muted: true },
+                { label: "Freight", val: summary.freight, muted: true },
+                { label: "Other Expense", val: summary.otherExpense, muted: true },
+                { label: "Round Off", val: summary.roundAmt, muted: true },
               ].map(({ label, val, muted }) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className={clsx("text-sm", muted ? "text-gray-400 dark:text-dark-400" : "text-gray-600 dark:text-dark-200")}>
@@ -571,20 +801,72 @@ export default function NewSalePage() {
           </Card>
         </div>
 
-        {/* ── Bottom Save ───────────────────────────────────────────────────── */}
-        {cart.length > 0 && (
-          <div className="flex justify-end">
-            <Button color="primary" className="h-11 gap-2 px-8 text-base font-bold shadow-lg shadow-primary/30"
-              onClick={handleSave} disabled={saving}>
-              <ArrowDownOnSquareIcon className="size-5" />
-              {saving ? "Saving Sale..." : "Save Sale"}
-            </Button>
-          </div>
-        )}
+        {/* ── Bottom Actions ─────────────────────────────────────────────────── */}
+        <div className="flex flex-wrap justify-center gap-3 pb-4">
+          <Button variant="outlined" color="error" className="gap-2" onClick={handleClearAll} disabled={saving || cart.length === 0}>
+            <TrashIcon className="size-4" /> Clear All
+          </Button>
+          <Button color="primary" className="h-11 gap-2 px-8 text-base font-bold shadow-lg shadow-primary/30"
+            onClick={handleSave} disabled={saving || cart.length === 0}>
+            <ArrowDownOnSquareIcon className="size-5" />
+            {saving ? "Saving Sale..." : "Save Entry"}
+          </Button>
+          <Button variant="outlined" onClick={() => navigate("/pos/sales/sales-entry-report")} disabled={saving}>
+            List
+          </Button>
+        </div>
       </div>
 
       <ItemSelectorModal open={itemModal} onClose={() => setItemModal(false)} onSelect={handleSelectItem} />
-      <CustomerModal open={customerModal} onClose={() => setCustomerModal(false)} onSelect={setCustomer} />
+      <CustomerModal
+        open={customerModal}
+        onClose={() => setCustomerModal(false)}
+        onSelect={(c) => {
+          setCustomer(c);
+          setCustomers(prev => prev.some(x => x.id === c.id) ? prev : [...prev, c]);
+        }}
+      />
+
+      {/* Print confirmation after save */}
+      <Transition appear show={showConfirmModal} as={Fragment}>
+        <Dialog as="div" className="relative z-[210]" onClose={() => setShowConfirmModal(false)}>
+          <TransitionChild as="div"
+            enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
+            leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <TransitionChild as={DialogPanel}
+                enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
+                leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
+                className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl dark:bg-dark-700"
+              >
+                <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
+                  <CheckCircleIcon className="size-8 text-emerald-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-dark-100">Print Receipt?</h3>
+                <p className="mt-2 text-sm text-gray-500">Do you want to print the sales receipt?</p>
+                <div className="mt-6 flex justify-center gap-3">
+                  <Button color="primary" className="gap-2"
+                    onClick={() => { setShowConfirmModal(false); setShowReceiptModal(true); }}>
+                    <PrinterIcon className="size-4" /> Yes, Print
+                  </Button>
+                  <Button variant="outlined"
+                    onClick={() => { setShowConfirmModal(false); navigate("/pos/sales/sales-entry-report"); }}>
+                    No, Close
+                  </Button>
+                </div>
+              </TransitionChild>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      <SaleReceiptModal
+        saleId={savedSaleId}
+        open={showReceiptModal}
+        onClose={() => { setShowReceiptModal(false); navigate("/pos/sales/sales-entry-report"); }}
+      />
     </Page>
   );
 }
