@@ -4,6 +4,7 @@ import { posOrderManagement }    from "./segments/posOrderManagement";
 import { posPurchaseMaster }     from "./segments/posPurchaseMaster";
 import { posSalesMaster }        from "./segments/posSalesMaster";
 import { posStockMaster }        from "./segments/posStockMaster";
+import { posB2BInventory }       from "./segments/posB2BInventory";
 import { posTransactionMaster }  from "./segments/posTransactionMaster";
 import { posReporting }          from "./segments/posReporting";
 import { posAccounting }         from "./segments/posAccounting";
@@ -17,6 +18,7 @@ export const navigation = [
   posPurchaseMaster,    // Purchase Master
   posSalesMaster,       // Sales Master
   posStockMaster,       // Stock Master
+  posB2BInventory,      // B2B Inventory
   posTransactionMaster, // Transaction Master
   posReporting,         // Reporting
   posAccounting,        // Accounting

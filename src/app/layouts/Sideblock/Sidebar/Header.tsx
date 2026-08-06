@@ -4,7 +4,7 @@ import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 
 // Local Imports
-import { APP_LOGO } from "@/constants/app";
+import { APP_LOGO, HOME_PATH } from "@/constants/app";
 import { Button } from "@/components/ui";
 import { useSidebarContext } from "@/app/contexts/sidebar/context";
 import { useBreakpointsContext } from "@/app/contexts/breakpoint/context";
@@ -21,7 +21,7 @@ export function Header() {
         "flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-4 dark:border-dark-600 dark:bg-dark-900",
       )}
     >
-      <Link to="/" className="flex items-center gap-3">
+      <Link to={HOME_PATH} className="flex items-center gap-3">
         <img src={APP_LOGO} alt="InitCart SuperAdmin" className="h-8" />
       </Link>
 

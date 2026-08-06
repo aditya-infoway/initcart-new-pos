@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { SetStateAction, Dispatch } from "react";
 
 // Local Imports
-import { APP_LOGO } from "@/constants/app";
+import { APP_LOGO, HOME_PATH } from "@/constants/app";
 import { Menu } from "./Menu";
 import { Item } from "./Menu/item";
 import { Profile } from "../../Profile";
@@ -39,7 +39,7 @@ export function MainPanel({
       >
         {/* Application Logo */}
         <div className="flex pt-3.5">
-          <Link to="/">
+          <Link to={HOME_PATH}>
             <img
               src={APP_LOGO}
               alt="InitCart SuperAdmin"
