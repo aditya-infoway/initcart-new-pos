@@ -7,6 +7,8 @@ import { setThisClass } from "@/utils/setThisClass";
 import { ColorType } from "@/constants/app";
 
 export type SpinnerProps = {
+  /** Optional size token (e.g. 'xs','sm','md') used via className */
+  size?: string;
   animate?: boolean;
   isElastic?: boolean;
   disabled?: boolean;

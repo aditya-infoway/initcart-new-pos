@@ -13,7 +13,7 @@ import { Column } from "@tanstack/react-table";
 
 // Local Imports
 import { Button, Checkbox, Input } from "@/components/ui";
-import { DatePicker } from "../form/Datepicker";
+import { DatePicker } from "../form/DatePicker";
 
 // ----------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ export function ColumnFilter({ column }: { column: Column<any> }) {
           hasCalenderIcon={false}
           value={columnFilterValue ?? ""}
           readOnly
-          onChange={(date) => {
+          onChange={(date: any) => {
             if (date.length === 0) {
               column.setFilterValue([null, null]);
             }

@@ -156,7 +156,7 @@ export default function OrderDetailPage() {
         {/* ── Top bar ───────────────────────────────────────────────── */}
         <div className="px-(--margin-x) flex flex-wrap items-center gap-3 pt-4 pb-1">
           <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-            onClick={() => navigate("/pos/order-management/order-items")}>
+            onClick={() => navigate("/order-management/order-items")}>
             <ArrowLeftIcon className="size-4" /> Back to Orders
           </Button>
           <div className="h-5 w-px bg-gray-300 dark:bg-dark-500" />

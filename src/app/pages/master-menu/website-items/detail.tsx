@@ -287,7 +287,7 @@ export default function WebsiteItemDetailPage() {
       }
     } catch {
       toasterrormsg("Failed to load item details.");
-      navigate("/pos/master-menu/website-items");
+      navigate("/master-menu/website-items");
     } finally {
       setLoading(false);
     }
@@ -524,7 +524,7 @@ export default function WebsiteItemDetailPage() {
       <Page title="Website Item">
         <div className="px-(--margin-x) py-16 text-center">
           <p className="text-gray-500 dark:text-dark-400">Item not found.</p>
-          <Button variant="outlined" className="mt-4" onClick={() => navigate("/pos/master-menu/website-items")}>
+          <Button variant="outlined" className="mt-4" onClick={() => navigate("/master-menu/website-items")}>
             Go Back
           </Button>
         </div>
@@ -543,7 +543,7 @@ export default function WebsiteItemDetailPage() {
         <div className="px-(--margin-x) pt-4 pb-2">
           <button
             type="button"
-            onClick={() => navigate("/pos/master-menu/website-items")}
+            onClick={() => navigate("/master-menu/website-items")}
             className="mb-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary dark:text-dark-400 dark:hover:text-primary-400"
           >
             <ArrowLeftIcon className="size-4" /> Back to Website Items

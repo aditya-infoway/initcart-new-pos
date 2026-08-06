@@ -11,7 +11,7 @@ import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 import { VerifiedItem, AddedItem, extractVerifiedRows } from "./data";
 
@@ -268,7 +268,7 @@ export default function NewStockReturnPage() {
       const body = res?.data ?? res;
       if (body?.success !== false) {
         toastsuccessmsg(body?.message ?? "Return created successfully.");
-        navigate("/pos/order-management/stock-return");
+        navigate("/order-management/stock-return");
       } else {
         toasterrormsg(body?.message ?? "Failed to create return.");
       }
@@ -290,7 +290,7 @@ export default function NewStockReturnPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/pos/order-management/stock-return")}>
+              onClick={() => navigate("/order-management/stock-return")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -320,7 +320,7 @@ export default function NewStockReturnPage() {
               <DatePicker
                 label="Return Date"
                 value={returnDate}
-                onChange={v => setReturnDate(v || new Date().toISOString().split("T")[0])}
+                onChange={(v: any) => setReturnDate(v || new Date().toISOString().split("T")[0])}
               />
               <ReadField label="Return No."  value={returnNo} />
               <ReadField label="To Branch"   value={toBranch} />

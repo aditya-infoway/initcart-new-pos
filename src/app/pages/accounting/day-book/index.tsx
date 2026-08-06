@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input, Select } from "@/components/ui";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -453,14 +453,14 @@ export default function DayBookPage() {
                 <DatePicker
                   label="From Date"
                   value={dateFrom}
-                  onChange={v => setDateFrom(v || today)}
+                  onChange={(v: any) => setDateFrom(v || today)}
                   maxDate={dateTo}
                 />
                 {/* To Date */}
                 <DatePicker
                   label="To Date"
                   value={dateTo}
-                  onChange={v => setDateTo(v || today)}
+                  onChange={(v: any) => setDateTo(v || today)}
                   minDate={dateFrom}
                 />
                 {/* Category */}

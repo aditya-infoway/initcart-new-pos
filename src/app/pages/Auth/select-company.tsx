@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Page } from "@/components/shared/Page";
 import { Button } from "@/components/ui";
 import { useAuthContext } from "@/app/contexts/auth/context";
-import { APP_LOGO } from "@/constants/app";
+import { APP_LOGO, APP_SELECT_COMPANY_BANNER } from "@/constants/app";
 import { CreateCompanyForm } from "./CreateCompany";
 import { Get, toasterrormsg } from "@/ApiHelper";
 
@@ -177,7 +177,7 @@ export default function SelectCompany() {
             {/* Right Side - Branding Banner Image */}
             <div className="relative hidden lg:flex items-center justify-center bg-[#b81d24]">
               <img
-                src="/images/initcart/login.jpeg"
+                src={APP_SELECT_COMPANY_BANNER}
                 alt="Select Company"
                 className="absolute inset-0 w-full h-full object-cover"
               />

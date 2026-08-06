@@ -1,6 +1,6 @@
 /**
  * New Purchase Entry page
- * Route: /pos/purchase/purchase-entry/new
+ * Route: /purchase/purchase-entry/new
  * API endpoints (unchanged from old admin):
  *   GET  pos/voucher/generate/?type=PI
  *   GET  pos/account-terms-type/?terms=Cash|Bank
@@ -29,7 +29,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ function ItemPickModal({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let rows: any[] = [];
+      let rows: any = [];
       if (dq) {
         const res = await Get("pos/purchse-item-search/", { query: dq }) as any;
         rows = res?.data ?? res ?? [];
@@ -429,7 +429,7 @@ export default function NewPurchasePage() {
       };
       await Post("pos/purchase-create/", payload);
       toastsuccessmsg("Purchase saved successfully.");
-      navigate("/pos/purchase/purchase-entry");
+      navigate("/purchase/purchase-entry");
     } catch (e: any) {
       const d = e?.response?.data;
       toasterrormsg(d?.non_field_errors?.[0] ?? d?.detail ?? Object.values(d ?? {}).flat().join(", ") ?? "Failed to save purchase.");
@@ -445,7 +445,7 @@ export default function NewPurchasePage() {
           <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
             <div className="flex items-center gap-3">
               <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-                onClick={() => navigate("/pos/purchase/purchase-entry")}>
+                onClick={() => navigate("/purchase/purchase-entry")}>
                 <ArrowLeftIcon className="size-4" /> Back
               </Button>
               <div>
@@ -736,7 +736,7 @@ export default function NewPurchasePage() {
             <PrinterIcon className="size-4" /> Print
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-            onClick={() => navigate("/pos/purchase/purchase-entry")}>
+            onClick={() => navigate("/purchase/purchase-entry")}>
             <ArrowLeftIcon className="size-4" /> Cancel
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"

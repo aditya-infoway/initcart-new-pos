@@ -440,7 +440,7 @@ export default function ItemFormPage() {
       };
       if (isEdit) { await Put(`pos/item-update/${id}/`, payload); toastsuccessmsg("Item updated successfully."); }
       else { await Post("pos/item-create/", payload); toastsuccessmsg("Item & Variants saved successfully."); }
-      navigate("/pos/master-menu/add-items");
+      navigate("/master-menu/add-items");
     } catch (e: any) {
       const d = e?.response?.data;
       if (d && typeof d === "object") Object.entries(d).forEach(([k, v]) => toasterrormsg(`${k}: ${(v as any[]).join?.(", ") ?? v}`));
@@ -468,7 +468,7 @@ export default function ItemFormPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
           <div className="flex items-center gap-3">
             <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/pos/master-menu/add-items")}>
+              onClick={() => navigate("/master-menu/add-items")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -483,7 +483,7 @@ export default function ItemFormPage() {
 
           <Button type="button" variant="soft" color="primary"
             className="h-8 gap-2 rounded-md px-3 text-sm"
-            onClick={() => navigate("/pos/master-menu/pending-barcodes")}>
+            onClick={() => navigate("/master-menu/pending-barcodes")}>
             <QrCodeIcon className="size-4" /> Pending Barcodes
           </Button>
         </div>
@@ -786,11 +786,11 @@ export default function ItemFormPage() {
           <TrashIcon className="size-4" /> Clear Variants
         </Button>
         <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-          onClick={() => navigate("/pos/master-menu/add-items")}>
+          onClick={() => navigate("/master-menu/add-items")}>
           <ArrowLeftIcon className="size-4" /> Cancel
         </Button>
         <Button type="button" variant="soft" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
-          onClick={() => navigate("/pos/master-menu/pending-barcodes")}>
+          onClick={() => navigate("/master-menu/pending-barcodes")}>
           <QrCodeIcon className="size-4" /> Pending Barcodes
         </Button>
         <Button type="button" color="primary"

@@ -190,7 +190,7 @@ export default function B2BStockReturnDetailPage() {
       const res = await Post(`pos/b2b-stock-returns/${detail.id}/cancel/`, {}) as any;
       const body = res?.data ?? res;
       body?.success !== false
-        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/pos/b2b-inventory/stock-return"))
+        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/b2b-inventory/stock-return"))
         : toasterrormsg(body?.message ?? "Failed.");
     } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error."); }
   };
@@ -369,7 +369,7 @@ export default function B2BStockReturnDetailPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/pos/b2b-inventory/stock-return")}>
+              onClick={() => navigate("/b2b-inventory/stock-return")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>

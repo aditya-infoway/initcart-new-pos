@@ -26,6 +26,8 @@ export interface OrderDetailItem {
   adminNote: string;
 }
 
+export type OrderItem = OrderDetailItem;
+
 export interface OrderDetail {
   id: number;
   orderId: string;

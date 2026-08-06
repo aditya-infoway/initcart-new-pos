@@ -5,11 +5,11 @@ import { DynamicLayout } from "../layouts/DynamicLayout";
 import { AppLayout } from "../layouts/AppLayout";
 
 /**
- * Protected routes — all under /pos prefix.
+ * Protected routes — all under  prefix.
  */
 const protectedRoutes: RouteObject = {
   id: "protected",
-  path: "pos",
+  path: "",
   Component: AuthGuard,
   children: [
     {
@@ -18,14 +18,14 @@ const protectedRoutes: RouteObject = {
       children: [
         {
           index: true,
-          element: <Navigate to="/pos/dashboards/home" replace />,
+          element: <Navigate to="/dashboards/home" replace />,
         },
 
         // ── Dashboard ──────────────────────────────────────────────────
         {
           path: "dashboards",
           children: [
-            { index: true, element: <Navigate to="/pos/dashboards/home" replace /> },
+            { index: true, element: <Navigate to="/dashboards/home" replace /> },
             {
               path: "home",
               lazy: async () => ({
@@ -39,7 +39,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "master-menu",
           children: [
-            { index: true, element: <Navigate to="/pos/master-menu/account-creation" replace /> },
+            { index: true, element: <Navigate to="/master-menu/account-creation" replace /> },
             {
               path: "account-creation",
               lazy: async () => ({
@@ -117,7 +117,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "order-management",
           children: [
-            { index: true, element: <Navigate to="/pos/order-management/order-items" replace /> },
+            { index: true, element: <Navigate to="/order-management/order-items" replace /> },
             {
               path: "order-items",
               children: [
@@ -194,7 +194,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "reporting",
           children: [
-            { index: true, element: <Navigate to="/pos/reporting/outstanding" replace /> },
+            { index: true, element: <Navigate to="/reporting/outstanding" replace /> },
             {
               path: "outstanding",
               lazy: async () => ({
@@ -244,7 +244,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "stock",
           children: [
-            { index: true, element: <Navigate to="/pos/stock/stock-report" replace /> },
+            { index: true, element: <Navigate to="/stock/stock-report" replace /> },
             {
               path: "stock-report",
               children: [
@@ -269,7 +269,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "b2b-inventory",
           children: [
-            { index: true, element: <Navigate to="/pos/b2b-inventory/stock-return" replace /> },
+            { index: true, element: <Navigate to="/b2b-inventory/stock-return" replace /> },
             {
               path: "stock-return",
               children: [
@@ -296,7 +296,7 @@ const protectedRoutes: RouteObject = {
             {
               path: "stock-transfer",
               children: [
-                { index: true, element: <Navigate to="/pos/b2b-inventory/stock-transfer/send-order" replace /> },
+                { index: true, element: <Navigate to="/b2b-inventory/stock-transfer/send-order" replace /> },
                 {
                   path: "send-order",
                   lazy: async () => ({
@@ -318,7 +318,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "purchase",
           children: [
-            { index: true, element: <Navigate to="/pos/purchase/purchase-entry" replace /> },
+            { index: true, element: <Navigate to="/purchase/purchase-entry" replace /> },
             {
               path: "purchase-entry",
               lazy: async () => ({
@@ -355,7 +355,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "sales",
           children: [
-            { index: true, element: <Navigate to="/pos/sales/sales-entry-report" replace /> },
+            { index: true, element: <Navigate to="/sales/sales-entry-report" replace /> },
             {
               path: "sales-entry-report",
               children: [
@@ -403,7 +403,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "accounting",
           children: [
-            { index: true, element: <Navigate to="/pos/accounting/bank-payment" replace /> },
+            { index: true, element: <Navigate to="/accounting/bank-payment" replace /> },
             {
               path: "bank-payment",
               lazy: async () => ({
@@ -453,7 +453,7 @@ const protectedRoutes: RouteObject = {
         {
           path: "transaction",
           children: [
-            { index: true, element: <Navigate to="/pos/transaction/ledger-report" replace /> },
+            { index: true, element: <Navigate to="/transaction/ledger-report" replace /> },
             {
               path: "day-book",
               lazy: async () => ({
@@ -500,7 +500,7 @@ const protectedRoutes: RouteObject = {
             Component: (await import("@/app/pages/settings/Layout")).default,
           }),
           children: [
-            { index: true, element: <Navigate to="/pos/settings/profile" replace /> },
+            { index: true, element: <Navigate to="/settings/profile" replace /> },
             {
               path: "profile",
               lazy: async () => ({
