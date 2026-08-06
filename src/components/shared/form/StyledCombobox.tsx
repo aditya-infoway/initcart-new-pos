@@ -139,6 +139,7 @@ function CustomCombobox<TValue = DataItem>(
   return (
     <div className={clsx("flex flex-col", classNames?.root)} {...rootProps}>
       <Combobox
+        as="div"
         multiple={multiple}
         value={value}
         onChange={handleChange}

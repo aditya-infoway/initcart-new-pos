@@ -14,5 +14,6 @@ export const posMasterMenu: NavigationTree = {
     { id: "posMasterMenu.orders",           type: "item", path: "/master-menu/orders",             title: "Orders",             icon: "posMasterMenu.orders" },
     { id: "posMasterMenu.group",            type: "item", path: "/master-menu/group",              title: "Group",              icon: "posMasterMenu.group" },
     { id: "posMasterMenu.itemImport",       type: "item", path: "/master-menu/item-import",        title: "Item Import",        icon: "posMasterMenu.itemImport" },
+    { id: "posMasterMenu.branchMaster",     type: "item", path: "/master-menu/branch-master",      title: "Branch Master",      icon: "posMasterMenu.branchMaster" },
   ],
 };

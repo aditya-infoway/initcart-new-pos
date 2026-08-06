@@ -94,6 +94,12 @@ const protectedRoutes: RouteObject = {
               }),
             },
             {
+              path: "branch-master",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/master-menu/branch-master/index")).default,
+              }),
+            },
+            {
               path: "website-items",
               children: [
                 {
