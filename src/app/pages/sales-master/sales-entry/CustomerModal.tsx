@@ -17,7 +17,7 @@ interface Props {
 }
 
 interface CustomerForm {
-  name: string; mobile: string; email: string; address: string;
+  account_name: string; state: string; mobile: string; address: string;
 }
 
 export function CustomerModal({ open, onClose, onSelect }: Props) {
@@ -51,10 +51,17 @@ export function CustomerModal({ open, onClose, onSelect }: Props) {
     : customers;
 
   const onAddSubmit = async (data: CustomerForm) => {
+    if (!data.account_name.trim()) { toasterrormsg("Customer name is required."); return; }
+    if (!data.state.trim()) { toasterrormsg("State is required for GST calculation."); return; }
     setSaving(true);
     try {
-      const res = await Post("pos/customer-create/", data) as any;
-      const newC = mapApiCustomer(res?.data?.customer ?? res?.data ?? data);
+      const res = await Post("pos/customer-create/", {
+        account_name: data.account_name,
+        state: data.state,
+        mobile: data.mobile,
+        address: data.address,
+      }) as any;
+      const newC = mapApiCustomer(res?.data?.customer ?? res?.data ?? { ...data, id: 0 });
       toastsuccessmsg("Customer created.");
       onSelect(newC);
       onClose();
@@ -122,11 +129,13 @@ export function CustomerModal({ open, onClose, onSelect }: Props) {
                 </>
               ) : (
                 <form onSubmit={handleSubmit(onAddSubmit)} className="p-5 space-y-4">
-                  <Input {...register("name", { required: "Name is required" })}
-                    label={<>Name <span className="text-red-500">*</span></>}
-                    placeholder="Customer name" error={errors.name?.message} />
+                  <Input {...register("account_name", { required: "Name is required" })}
+                    label={<>Customer Name <span className="text-red-500">*</span></>}
+                    placeholder="Enter customer name" error={errors.account_name?.message} />
+                  <Input {...register("state", { required: "State is required" })}
+                    label={<>State <span className="text-red-500">*</span></>}
+                    placeholder="e.g. Maharashtra" error={errors.state?.message} />
                   <Input {...register("mobile")} label="Mobile" placeholder="Mobile number" />
-                  <Input {...register("email")} label="Email" placeholder="Email address" />
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Address</label>
                     <textarea {...register("address")} rows={2} placeholder="Address"

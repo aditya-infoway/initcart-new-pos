@@ -13,7 +13,7 @@ import { useBreakpointsContext } from "@/app/contexts/breakpoint/context";
 import { Profile } from "../Profile";
 import { Search } from "@/components/template/Search";
 import { useThemeContext } from "@/app/contexts/theme/context";
-import { APP_LOGO } from "@/constants/app";
+import { APP_LOGO, HOME_PATH } from "@/constants/app";
 
 export function Header() {
   const { smAndUp } = useBreakpointsContext();
@@ -28,7 +28,7 @@ export function Header() {
     >
       <div className="flex  xl:hidden items-center gap-3">
         <SidebarToggleBtn />
-        <Link to="/" className="flex items-center gap-3">
+        <Link to={HOME_PATH} className="flex items-center gap-3">
           <img
             src={APP_LOGO}
             alt="InitCart SuperAdmin"

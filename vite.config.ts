@@ -10,6 +10,15 @@ export default defineConfig({
   base: "/",
   build: {
     outDir: "dist",
+    sourcemap: false,
+    cssMinify: true,
+    minify: "esbuild",
+    chunkSizeWarningLimit: 5000,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
   server: {
     port: 5001,

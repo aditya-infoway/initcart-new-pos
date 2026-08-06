@@ -10,26 +10,31 @@ export interface SaleRecord {
   narration: string;
   totalBasic: number;
   totalTax: number;
-  for_: number; // freight+other+round
+  for_: number;
   grandTotal: number;
 }
 
+/** Variant row from sale-search-item — `id` is variant id, `itemId` is pos_items id */
 export interface SaleItem {
   id: number;
+  itemId: number;
   itemName: string;
   hsn: string;
   barcode: string;
   size: string;
   color: string;
   salesPrice: number;
+  perUnitPrice: number;
   stock: number;
   unit: string;
+  unitSupportsFractional: boolean;
   taxPercent: number;
-  variantId?: number;
 }
 
 export interface CartLine {
-  saleItemId: number;
+  id: number;
+  itemId: number;
+  variantId: number;
   itemName: string;
   hsn: string;
   barcode: string;
@@ -44,7 +49,9 @@ export interface CartLine {
   discAmt: number;
   taxAmt: number;
   net: number;
-  variantId?: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
 }
 
 export interface Customer {
@@ -53,11 +60,22 @@ export interface Customer {
   mobile: string;
   email: string;
   address: string;
+  state?: string;
 }
 
 export interface PaymentTerm {
   id: string;
   label: string;
+}
+
+export interface SaleItemTaxResult {
+  basic: number;
+  discAmt: number;
+  taxAmt: number;
+  net: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
 }
 
 export function mapApiSaleRecord(raw: any): SaleRecord {
@@ -77,18 +95,28 @@ export function mapApiSaleRecord(raw: any): SaleRecord {
 }
 
 export function mapApiSaleItem(raw: any): SaleItem {
+  const variantId = Number(raw.id ?? 0);
+  const itemId = Number(raw.itemId ?? raw.item_id ?? 0);
+  const salesPrice = Number(raw.salesPrice ?? raw.sales_price ?? raw.price ?? 0);
+  const perUnitPrice = Number(raw.per_unit_price ?? salesPrice);
+  const unitSupportsFractional = Boolean(raw.unit_supports_fractional);
+  const effectivePrice =
+    unitSupportsFractional && perUnitPrice > 0 ? perUnitPrice : salesPrice;
+
   return {
-    id: Number(raw.id ?? 0),
-    itemName: String(raw.item_name ?? raw.name ?? ""),
-    hsn: String(raw.hsn ?? raw.hsn_code ?? ""),
+    id: variantId,
+    itemId,
+    itemName: String(raw.itemName ?? raw.item_name ?? raw.name ?? ""),
+    hsn: String(raw.hsnCode ?? raw.hsn_code ?? raw.hsn ?? ""),
     barcode: String(raw.barcode ?? ""),
     size: raw.size ? String(raw.size) : "—",
     color: raw.color ? String(raw.color) : "—",
-    salesPrice: Number(raw.sales_price ?? raw.price ?? 0),
-    stock: Number(raw.stock ?? 0),
+    salesPrice: effectivePrice,
+    perUnitPrice,
+    stock: Number(raw.current_stock ?? raw.stock ?? 0),
     unit: String(raw.unit ?? raw.unit_name ?? "pc"),
-    taxPercent: Number(String(raw.tax_percent ?? raw.gst ?? "0").replace("%", "")),
-    variantId: raw.variant_id ? Number(raw.variant_id) : undefined,
+    unitSupportsFractional,
+    taxPercent: Number(String(raw.taxSlab ?? raw.tax_percent ?? raw.gst ?? "0").replace("%", "")),
   };
 }
 
@@ -99,22 +127,34 @@ export function mapApiCustomer(raw: any): Customer {
     mobile: String(raw.mobile ?? raw.phone ?? ""),
     email: String(raw.email ?? ""),
     address: String(raw.address ?? ""),
+    state: raw.state ? String(raw.state) : undefined,
   };
 }
 
-export function calcCartLine(
+export function mapTaxResponse(d: any): SaleItemTaxResult {
+  return {
+    basic: Number(d.basic_amount ?? 0),
+    discAmt: Number(d.discount_amount ?? 0),
+    taxAmt: Number(d.total_tax ?? 0),
+    net: Number(d.net_amount ?? 0),
+    cgst: Number(d.cgst ?? 0),
+    sgst: Number(d.sgst ?? 0),
+    igst: Number(d.igst ?? 0),
+  };
+}
+
+export function buildCartLine(
+  id: number,
   item: SaleItem,
   qty: number,
   price: number,
   discPercent: number,
+  tax: SaleItemTaxResult,
 ): CartLine {
-  const basic = price * qty;
-  const discAmt = (basic * discPercent) / 100;
-  const taxable = basic - discAmt;
-  const taxAmt = (taxable * item.taxPercent) / 100;
-  const net = taxable + taxAmt;
   return {
-    saleItemId: item.id,
+    id,
+    itemId: item.itemId,
+    variantId: item.id,
     itemName: item.itemName,
     hsn: item.hsn,
     barcode: item.barcode,
@@ -125,11 +165,13 @@ export function calcCartLine(
     unit: item.unit,
     taxPercent: item.taxPercent,
     discPercent,
-    basic,
-    discAmt,
-    taxAmt,
-    net,
-    variantId: item.variantId,
+    basic: tax.basic,
+    discAmt: tax.discAmt,
+    taxAmt: tax.taxAmt,
+    net: tax.net,
+    cgst: tax.cgst,
+    sgst: tax.sgst,
+    igst: tax.igst,
   };
 }
 
@@ -142,8 +184,21 @@ export function calcSummary(
   const totalBasic = cart.reduce((s, l) => s + l.basic, 0);
   const totalDiscount = cart.reduce((s, l) => s + l.discAmt, 0);
   const totalTax = cart.reduce((s, l) => s + l.taxAmt, 0);
-  const cgst = totalTax / 2;
-  const sgst = totalTax / 2;
-  const grandTotal = totalBasic - totalDiscount + totalTax + freight + otherExpense + roundAmt;
-  return { totalBasic, totalDiscount, totalTax, cgst, sgst, freight, otherExpense, roundAmt, grandTotal };
+  const cgst = cart.reduce((s, l) => s + l.cgst, 0);
+  const sgst = cart.reduce((s, l) => s + l.sgst, 0);
+  const igst = cart.reduce((s, l) => s + l.igst, 0);
+  const itemsNet = cart.reduce((s, l) => s + l.net, 0);
+  const grandTotal = itemsNet + freight + otherExpense + roundAmt;
+  return {
+    totalBasic,
+    totalDiscount,
+    totalTax,
+    cgst,
+    sgst,
+    igst,
+    freight,
+    otherExpense,
+    roundAmt,
+    grandTotal,
+  };
 }

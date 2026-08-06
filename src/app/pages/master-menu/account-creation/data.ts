@@ -36,15 +36,15 @@ export interface AccountFormValues {
 }
 
 export const GROUP_OPTIONS = [
-  { id: "Sundry Creditor(Main)", label: "Sundry Creditor(Main)" },
   { id: "Customer", label: "Customer" },
-  { id: "Case In Hand", label: "Case In Hand" },
+  { id: "Supplier", label: "Supplier" },
   { id: "Bank Account", label: "Bank Account" },
-  { id: "Sundry Debtor", label: "Sundry Debtor" },
-  { id: "Capital Account", label: "Capital Account" },
-  { id: "Fixed Assets", label: "Fixed Assets" },
-  { id: "Current Assets", label: "Current Assets" },
-  { id: "Current Liabilities", label: "Current Liabilities" },
+  { id: "Case In Hand", label: "Case In Hand" },
+  { id: "Customer - Sundry Debitor", label: "Customer - Sundry Debitor" },
+  { id: "Supplier - Sundry Creditor", label: "Supplier - Sundry Creditor" },
+  { id: "Sundry Debitor(Internal)", label: "Sundry Debitor(Internal)" },
+  { id: "Sundry Creditor(Internal)", label: "Sundry Creditor(Internal)" },
+  { id: "Sundry Creditor(Main)", label: "Sundry Creditor(Main)" },
 ];
 
 export const DRCR_OPTIONS = [

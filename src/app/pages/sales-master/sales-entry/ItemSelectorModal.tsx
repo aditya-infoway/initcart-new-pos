@@ -5,7 +5,7 @@ import {
   MagnifyingGlassIcon, ShoppingBagIcon, XMarkIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { Button, Input } from "@/components/ui";
 import { Get, toasterrormsg } from "@/ApiHelper";
@@ -22,11 +22,9 @@ export function ItemSelectorModal({ open, onClose, onSelect }: Props) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    setSearch("");
+  const loadItems = useCallback((query?: string) => {
     setLoading(true);
-    Get("pos/sale-search-item/")
+    Get("pos/sale-search-item/", query ? { query } : {})
       .then((res: any) => {
         const body = res?.data ?? res;
         const rows: any[] = Array.isArray(body?.results) ? body.results
@@ -36,7 +34,19 @@ export function ItemSelectorModal({ open, onClose, onSelect }: Props) {
       })
       .catch(() => toasterrormsg("Failed to load items."))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setSearch("");
+    loadItems();
+  }, [open, loadItems]);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => loadItems(search.trim() || undefined), 300);
+    return () => clearTimeout(timer);
+  }, [search, open, loadItems]);
 
   const filtered = search.trim()
     ? items.filter(i =>
