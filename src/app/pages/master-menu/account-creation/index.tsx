@@ -28,6 +28,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ArrowPathIcon,
+  EnvelopeIcon,
   EllipsisHorizontalIcon,
   MagnifyingGlassIcon,
   PencilIcon,

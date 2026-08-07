@@ -5,6 +5,7 @@ import {
 import {
   ArrowLeftIcon, CheckCircleIcon, CubeIcon,
   PlusIcon, TrashIcon, XMarkIcon, TagIcon, QrCodeIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -170,9 +171,8 @@ export default function ItemFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
 
-  const isSuperAdmin = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("user") ?? "{}").role === "superadmin"; }
-    catch { return false; }
+const isSuperAdmin = useMemo(() => {
+    return localStorage.getItem("role") === "superadmin";
   }, []);
 
   // ── form fields ────────────────────────────────────────────────────────
@@ -226,6 +226,7 @@ export default function ItemFormPage() {
   // ── added variants ─────────────────────────────────────────────────────
   const [addedItems, setAddedItems] = useState<VariantRow[]>([]);
   const [uid, setUid] = useState(1);
+  const [editingUid, setEditingUid] = useState<number | null>(null); 
 
   // ── ui ─────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -322,11 +323,16 @@ export default function ItemFormPage() {
   }, [id, isEdit]);
 
   // ── barcode check (debounced, matches old screen's 500ms behaviour) ────
-  const checkBarcode = async (barcode: string): Promise<boolean> => {
+const checkBarcode = async (barcode: string): Promise<boolean> => {
     if (!isSuperAdmin || !barcode || barcode.length < 3) { setBarcodeError(""); return true; }
     setCheckingBarcode(true);
     try {
-      const res = await Get("pos/barcodes/check-branch-barcode/", { barcode }) as any;
+      // jis row ko edit kar rahe hain uska apna barcode dobara conflict na dikhaye
+      const editingRow = editingUid !== null ? addedItems.find(v => v.uid === editingUid) : null;
+      const params: any = { barcode };
+      if (editingRow?.serverId) params.exclude_variant = editingRow.serverId;
+
+      const res = await Get("pos/barcodes/check-branch-barcode/", params) as any;
       if ((res?.data ?? res)?.exists) {
         setBarcodeError(`Barcode "${barcode}" already exists in this branch.`); return false;
       }
@@ -356,6 +362,7 @@ export default function ItemFormPage() {
   }, []);
 
   // ── add variant ────────────────────────────────────────────────────────
+// ── add / update variant ──────────────────────────────────────────────
   const handleAddVariant = async () => {
     const pp = Number(cur.purchasePrice), sp = Number(cur.salesPrice), mrp = Number(cur.mrp);
 
@@ -368,9 +375,6 @@ export default function ItemFormPage() {
     if (sp > mrp) {
       toasterrormsg("Sales Price cannot be greater than MRP."); return;
     }
-    if (isSuperAdmin && entryType === "company" && !cur.barcode) {
-      toasterrormsg("Barcode is required for company items."); return;
-    }
     if (cur.barcode && !(await checkBarcode(cur.barcode))) {
       toasterrormsg(`Barcode "${cur.barcode}" already exists in this branch. Please use a different barcode.`);
       return;
@@ -378,16 +382,44 @@ export default function ItemFormPage() {
 
     const basic = (Number(cur.opStock) || 0) * pp;
     const taxAmt = basic * (taxRate / 100);
-    setAddedItems(prev => [...prev, {
-      uid,
+    const variantPayload = {
       ...branchFields.reduce((a, f) => ({ ...a, [f.key]: cur[f.key] ?? "" }), {}),
       purchasePrice: pp, salesPrice: sp,
       mrp, branchPrice: Number(cur.branchPrice) || pp,
       barcode: cur.barcode ?? "", opStock: Number(cur.opStock) || 0,
       basicAmount: basic, taxAmount: taxAmt, netValue: basic + taxAmt,
-    }]);
-    setUid(p => p + 1); setCur({ ...EMPTY }); setBarcodeError(""); currentBarcodeRef.current = "";
-    toastsuccessmsg("Variant added successfully.");
+    };
+
+    if (editingUid !== null) {
+      // pehle se list mein maujood row ko update karo (serverId preserve rehta hai)
+      setAddedItems(prev => prev.map(v => (v.uid === editingUid ? { ...v, ...variantPayload } : v)));
+      toastsuccessmsg("Variant updated successfully.");
+      setEditingUid(null);
+    } else {
+      setAddedItems(prev => [...prev, { uid, ...variantPayload }]);
+      setUid(p => p + 1);
+      toastsuccessmsg("Variant added successfully.");
+    }
+
+    setCur({ ...EMPTY }); setBarcodeError(""); currentBarcodeRef.current = "";
+  };
+
+  // table ke Edit icon se click hone par row ke values wapas form mein bhar do
+  const handleEditVariant = (v: VariantRow) => {
+    setCur({
+      size: v.size ?? "", color: v.color ?? "", srno: v.srno ?? "", warrantydate: v.warrantydate ?? "",
+      purchasePrice: String(v.purchasePrice ?? ""), salesPrice: String(v.salesPrice ?? ""),
+      mrp: String(v.mrp ?? ""), branchPrice: String(v.branchPrice ?? ""),
+      barcode: v.barcode ?? "", opStock: String(v.opStock ?? ""),
+    });
+    setEditingUid(v.uid);
+    setBarcodeError("");
+  };
+
+  const handleCancelEditVariant = () => {
+    setEditingUid(null);
+    setCur({ ...EMPTY });
+    setBarcodeError("");
   };
 
   const removeVariant = async (v: VariantRow) => {
@@ -457,9 +489,8 @@ export default function ItemFormPage() {
     </Page>
   );
 
-  const barcodeRequired = isSuperAdmin && entryType === "company";
-  const barcodeMissing = barcodeRequired && !cur.barcode;
-
+const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandatory nahi
+  const barcodeMissing = false;
   return (
     <Page title={isEdit ? "Edit Item" : "Add Item"}>
       <div className="transition-content w-full pb-32 space-y-5">
@@ -648,20 +679,7 @@ export default function ItemFormPage() {
                       barcodeError && "border-error-500",
                       barcodeMissing && "border-amber-300 bg-amber-50",
                     )} />
-                  <Button type="button" variant="soft" color="primary" className="h-9 shrink-0 rounded-lg px-2 text-xs"
-                    title="Auto-generate"
-                    onClick={async () => {
-                      let bc = "", ok = false, tries = 0;
-                      while (!ok && tries < 5) {
-                        bc = genBarcode(); tries++;
-                        try { const r = await Get("pos/barcodes/check-branch-barcode/", { barcode: bc }) as any; ok = !(r?.data ?? r)?.exists; }
-                        catch { ok = true; }
-                      }
-                      setCur((p: any) => ({ ...p, barcode: bc })); currentBarcodeRef.current = bc; setBarcodeError("");
-                      toastsuccessmsg("Auto-generated unique barcode: " + bc);
-                    }}>
-                    🔲 Auto
-                  </Button>
+
                 </div>
                 {barcodeError && <p className="mt-1 text-xs text-error-600">{barcodeError}</p>}
                 {!isSuperAdmin && entryType === "company" && !cur.barcode && !barcodeError && (
@@ -683,10 +701,18 @@ export default function ItemFormPage() {
                 {liveNet > liveBasic && <p className="text-xs text-gray-400">Net: ₹{liveNet.toFixed(2)}</p>}
               </div>
 
-              <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
-                onClick={handleAddVariant}>
-                <CheckCircleIcon className="size-4" /> Add
-              </Button>
+<div className="flex gap-2">
+                <Button type="button" color="primary" className="h-9 flex-1 gap-2 rounded-lg px-4 text-sm"
+                  onClick={handleAddVariant}>
+                  <CheckCircleIcon className="size-4" /> {editingUid !== null ? "Update" : "Add"}
+                </Button>
+                {editingUid !== null && (
+                  <Button type="button" variant="outlined" className="h-9 rounded-lg px-3 text-sm"
+                    onClick={handleCancelEditVariant}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </div>
 
             {selUnit?.supports_fractional && (
@@ -747,11 +773,17 @@ export default function ItemFormPage() {
                       <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-dark-300">{v.barcode || "—"}</td>
                       <td className="px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">{v.opStock}</td>
                       <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{v.netValue.toFixed(2)}</td>
-                      <td className="px-4 py-2.5">
-                        <Button type="button" isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
-                          onClick={() => removeVariant(v)}>
-                          <TrashIcon className="size-3.5 text-error-600" />
-                        </Button>
+<td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1">
+                          <Button type="button" isIcon variant="flat" className="size-7 rounded-full hover:bg-primary/10"
+                            title="Edit" onClick={() => handleEditVariant(v)}>
+                            <PencilSquareIcon className="size-3.5 text-primary-600" />
+                          </Button>
+                          <Button type="button" isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+                            title="Delete" onClick={() => removeVariant(v)}>
+                            <TrashIcon className="size-3.5 text-error-600" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -780,9 +812,9 @@ export default function ItemFormPage() {
 
       {/* ── Sticky footer ─────────────────────────────────────────── */}
       <div className="fixed bottom-0 inset-x-0 z-50 flex flex-wrap items-center justify-center gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-dark-500 dark:bg-dark-700/95">
-        <Button type="button" variant="outlined"
+<Button type="button" variant="outlined"
           className="h-9 gap-2 rounded-lg px-4 text-sm text-error-600 border-error-300 hover:bg-error-50 dark:border-error-700 dark:hover:bg-error-900/20"
-          onClick={() => { setAddedItems([]); setCur({ ...EMPTY }); }}>
+          onClick={() => { setAddedItems([]); setCur({ ...EMPTY }); setEditingUid(null); }}>
           <TrashIcon className="size-4" /> Clear Variants
         </Button>
         <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"

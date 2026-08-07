@@ -169,10 +169,8 @@ export default function ItemsListPage() {
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // detect superadmin from localStorage
-  const isSuperAdmin = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("user") ?? "{}").role === "superadmin"; }
-    catch { return false; }
+const isSuperAdmin = useMemo(() => {
+    return localStorage.getItem("role") === "superadmin";
   }, []);
   const TABS = isSuperAdmin ? TABS_SUPERADMIN : TABS_BRANCH;
 
