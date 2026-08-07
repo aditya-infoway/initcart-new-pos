@@ -17,6 +17,8 @@ type Variant = "filled" | "outlined" | "soft" | "flat";
 type ButtonOwnProps<E extends ElementType = "button"> = {
   children?: ReactNode;
   color?: ColorType;
+  /** Optional size token used by callers (e.g. 'sm', 'md', 'lg') */
+  size?: string;
   isIcon?: boolean;
   variant?: Variant;
   unstyled?: boolean;

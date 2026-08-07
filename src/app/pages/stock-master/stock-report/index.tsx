@@ -182,7 +182,7 @@ export default function StockReportPage() {
       cell: ({ row }: CellContext<StockItem, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/pos/stock/stock-report/${row.original.variantId}`)}
+            onClick={() => navigate(`/stock/stock-report/${row.original.variantId}`)}
             title="View History">
             <EyeIcon className="size-4" />
           </Button>

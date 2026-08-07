@@ -33,7 +33,7 @@ import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Button, Card, Input, Table, THead, TBody, Th, Tr, Td, Textarea, Badge } from "@/components/ui";
 import { Get, Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
 
@@ -225,12 +225,12 @@ const ReferralCodeInput: React.FC<{ value: string; onChange: (val: string) => vo
   const [toggleStatus, setToggleStatus] = useState<{ walk_in_toggle: boolean; mode: string; description: string } | null>(null);
   const lookupCalledByEnter = useRef(false);
   const isVerifying = useRef(false);
-  const blurTimeout = useRef<number | null>(null);
+  const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchToggle = async () => {
       try {
-        const r = await Get("pos/pos-profit-settings/");
+        const r = await Get("pos-profit-settings/");
         setToggleStatus(r.data);
       } catch {
         // Silent fail
@@ -1073,7 +1073,7 @@ export default function SalesEntryForm2() {
       toastsuccessmsg("Sale saved successfully!");
       if (r.data.stock_alerts) r.data.stock_alerts.forEach((m: any) => toasterrormsg(m));
       setAddedItems([]); setIdCounter(1);
-      navigate("/pos/sales/sales-entry-report");
+      navigate("/sales/sales-entry-report");
     } catch {
       toasterrormsg("Error saving sale");
     } finally {
@@ -1124,7 +1124,7 @@ export default function SalesEntryForm2() {
           <div className="flex items-center justify-between px-4 py-3 lg:px-6">
             <div className="flex items-center gap-3">
               <Button variant="outlined"
-                onClick={() => navigate("/pos/sales/sales-entry-report")}>
+                onClick={() => navigate("/sales/sales-entry-report")}>
                 <ChevronLeftIcon className="size-4" /> Back
               </Button>
               <div className="flex items-center gap-3">
@@ -1539,7 +1539,7 @@ className="pl-9 h-10"
           <ReceiptComponent
             savedSaleId={savedSaleId}
             showReceiptModal={showReceiptModal}
-            handleCloseReceipt={() => { setShowReceiptModal(false); navigate("/pos/sales/sales-entry-report"); }}
+            handleCloseReceipt={() => { setShowReceiptModal(false); navigate("/sales/sales-entry-report"); }}
           />
         )}
       </div>

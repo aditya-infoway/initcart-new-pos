@@ -174,13 +174,13 @@ export default function StockVerificationPage() {
         <div className="flex justify-center">
           {row.original.status === "verified" ? (
             <Button isIcon variant="flat" className="size-8 rounded-full"
-              onClick={() => navigate(`/pos/order-management/stock-verification/${row.original.id}`)}
+              onClick={() => navigate(`/order-management/stock-verification/${row.original.id}`)}
               title="View">
               <EyeIcon className="size-4" />
             </Button>
           ) : (
             <Button color="success" className="h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold"
-              onClick={() => navigate(`/pos/order-management/stock-verification/${row.original.id}/verify-items`)}
+              onClick={() => navigate(`/order-management/stock-verification/${row.original.id}/verify-items`)}
               title="Verify">
               <CheckCircleIcon className="size-4" /> Verify
             </Button>

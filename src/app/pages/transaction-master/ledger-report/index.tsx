@@ -140,7 +140,7 @@ export default function LedgerReportPage() {
       cell: ({ row }: CellContext<LedgerAccount, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/pos/transaction/ledger-report/${row.original.id}`)}
+            onClick={() => navigate(`/transaction/ledger-report/${row.original.id}`)}
             title="View Ledger">
             <EyeIcon className="size-4" />
           </Button>

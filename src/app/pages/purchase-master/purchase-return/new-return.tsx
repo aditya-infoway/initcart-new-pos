@@ -1,6 +1,6 @@
 /**
  * Purchase Return Form
- * Route: /pos/purchase/purchase-return/new
+ * Route: /purchase/purchase-return/new
  * APIs:
  *   GET  pos/purchase-return-voucher/
  *   GET  pos/original-bill-search/?type=purchase&query=
@@ -26,7 +26,7 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -433,7 +433,7 @@ export default function NewPurchaseReturnPage() {
         })),
       });
       toastsuccessmsg("Purchase Return created successfully.");
-      navigate("/pos/purchase/purchase-return");
+      navigate("/purchase/purchase-return");
     } catch (e: any) {
       const d = e?.response?.data;
       toasterrormsg(d?.message ?? d?.error ?? d?.detail ?? Object.values(d ?? {}).flat().join(", ") ?? "Failed to save.");
@@ -449,7 +449,7 @@ export default function NewPurchaseReturnPage() {
           <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
             <div className="flex items-center gap-3">
               <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-                onClick={() => navigate("/pos/purchase/purchase-return")}>
+                onClick={() => navigate("/purchase/purchase-return")}>
                 <ArrowLeftIcon className="size-4" /> Back
               </Button>
               <div>
@@ -718,7 +718,7 @@ export default function NewPurchaseReturnPage() {
             <TrashIcon className="size-4" /> Clear
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-            onClick={() => navigate("/pos/purchase/purchase-return")}>
+            onClick={() => navigate("/purchase/purchase-return")}>
             <ArrowLeftIcon className="size-4" /> Cancel
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"

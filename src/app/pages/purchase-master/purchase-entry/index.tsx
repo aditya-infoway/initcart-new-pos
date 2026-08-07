@@ -376,7 +376,7 @@ export default function PurchaseEntryPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/pos/purchase/purchase-entry/new")}>
+              onClick={() => navigate("/purchase/purchase-entry/new")}>
               <PlusIcon className="size-4" /><span>Add Purchase</span>
             </Button>
           </div>

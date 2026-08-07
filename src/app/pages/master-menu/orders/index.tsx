@@ -147,7 +147,7 @@ export default function BranchOrdersPage() {
       cell: ({ row }: CellContext<Order, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/pos/master-menu/orders/${row.original.id}`)}
+            onClick={() => navigate(`/master-menu/orders/${row.original.id}`)}
             title="View Order">
             <EyeIcon className="size-4" />
           </Button>

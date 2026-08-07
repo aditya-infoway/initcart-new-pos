@@ -357,9 +357,9 @@ export default function NewOrderPage() {
       toastsuccessmsg(body?.message || "Order placed successfully.");
       const orderId = body?.order?.id ?? body?.id;
       if (orderId) {
-        navigate(`/pos/order-management/order-items/${orderId}`);
+        navigate(`/order-management/order-items/${orderId}`);
       } else {
-        navigate("/pos/order-management/order-items");
+        navigate("/order-management/order-items");
       }
     } catch (e: any) {
       if (e?.custom) {
@@ -490,7 +490,7 @@ export default function NewOrderPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-9 gap-2 px-4 text-sm"
-              onClick={() => navigate("/pos/order-management/order-items")}>
+              onClick={() => navigate("/order-management/order-items")}>
               <ArrowLeftIcon className="size-4" /> Back to Orders
             </Button>
             <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2">

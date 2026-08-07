@@ -267,6 +267,7 @@ userMaster: UsersIcon,
   "posMasterMenu.orders":           ShoppingCartIcon,
   "posMasterMenu.group":            RectangleStackIcon,
   "posMasterMenu.itemImport":       ArrowUpTrayIcon,
+  "posMasterMenu.branchMaster":     BuildingStorefrontIcon,
 
   // Order Management
   posOrderManagement: ShoppingBagIcon,

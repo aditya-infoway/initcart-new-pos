@@ -9,7 +9,7 @@ import React from "react";
 // Local Imports
 import { Button } from "@/components/ui";
 import { useLocaleContext } from "@/app/contexts/locale/context";
-import { DatePicker } from "../form/Datepicker";
+import { DatePicker } from "../form/DatePicker";
 import { useBreakpointsContext } from "@/app/contexts/breakpoint/context";
 import { ResponsiveFilter } from "./ResponsiveFilter";
 import { BaseOptions, DateOption } from "../form/Flatpickr";

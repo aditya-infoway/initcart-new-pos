@@ -380,7 +380,7 @@ export default function WebsiteItemsListPage() {
             variant="flat"
             className="size-8 rounded-full"
             title="View Details"
-            onClick={() => navigate(`/pos/master-menu/website-items/${row.original.id}`)}
+            onClick={() => navigate(`/master-menu/website-items/${row.original.id}`)}
           >
             <EyeIcon className="size-5 text-primary-600" />
           </Button>
@@ -391,7 +391,7 @@ export default function WebsiteItemsListPage() {
             variant="flat"
             className="size-8 rounded-full"
             title="Add / Edit Product Information"
-            onClick={() => navigate(`/pos/master-menu/website-items/${row.original.id}`)}
+            onClick={() => navigate(`/master-menu/website-items/${row.original.id}`)}
           >
             <PlusCircleIcon className="size-5 text-purple-600" />
           </Button>
@@ -402,7 +402,7 @@ export default function WebsiteItemsListPage() {
             variant="flat"
             className="size-8 rounded-full"
             title="Edit"
-            onClick={() => navigate(`/pos/master-menu/website-items/${row.original.id}`)}
+            onClick={() => navigate(`/master-menu/website-items/${row.original.id}`)}
           >
             <PencilSquareIcon className="size-5 text-success-600" />
           </Button>

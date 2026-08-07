@@ -1,13 +1,16 @@
 export const APP_NAME = "InitCart POS";
 export const APP_KEY = "tailux";
-export const APP_LOGO = "/images/initcart/fav.png";
-export const APP_FAVICON = "/images/initcart/fav.png";
+export const APP_BASE_URL = import.meta.env.BASE_URL || "/";
+export const APP_LOGO = `${APP_BASE_URL}images/initcart/fav.png`;
+export const APP_FAVICON = `${APP_BASE_URL}images/initcart/fav.png`;
+export const APP_LOGIN_BANNER = `${APP_BASE_URL}images/login.png`;
+export const APP_SELECT_COMPANY_BANNER = `${APP_BASE_URL}images/initcart/login.jpeg`;
 
 // Redirect Paths
 export const REDIRECT_URL_KEY = "redirect";
-export const HOME_PATH = "/pos/dashboards/home";
-export const GHOST_ENTRY_PATH = "/pos/login";
-export const SELECT_COMPANY_PATH = "/pos/select-company";
+export const HOME_PATH = "/dashboards/home";
+export const GHOST_ENTRY_PATH = "/login";
+export const SELECT_COMPANY_PATH = "/select-company";
 
 // Navigation Types
 export type NavigationType = "root" | "group" | "collapse" | "item" | "divider";
