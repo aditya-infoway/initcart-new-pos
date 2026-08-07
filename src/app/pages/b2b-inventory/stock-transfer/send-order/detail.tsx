@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, Card, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -73,11 +73,11 @@ interface TransferDetailLite {
 }
 
 // ── Status Helpers ─────────────────────────────────────────────────────────
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  sent: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  no_stock: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  cancelled: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+const ORDER_STATUS_COLOR: Record<string, "info" | "success" | "warning" | "error"> = {
+  pending: "info",
+  sent: "success",
+  no_stock: "warning",
+  cancelled: "error",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -87,14 +87,14 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-const TRANSFER_STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  confirmed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  packaging_start: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  packaging_ready: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
-  partially_received: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  received: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  cancelled: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+const TRANSFER_STATUS_COLOR: Record<string, "info" | "primary" | "warning" | "success" | "error"> = {
+  pending: "info",
+  confirmed: "primary",
+  packaging_start: "warning",
+  packaging_ready: "primary",
+  partially_received: "info",
+  received: "success",
+  cancelled: "error",
 };
 
 const TRANSFER_STATUS_LABEL: Record<string, string> = {
@@ -111,41 +111,51 @@ const TRANSFER_STATUS_LABEL: Record<string, string> = {
 interface GstTotals { basic: number; tax: number; cgst: number; sgst: number; igst: number; net: number; }
 
 const GstSummaryCard = ({ totals, title = "GST Summary" }: { totals: GstTotals; title?: string }) => (
-  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-800/30">
+  <Card skin="bordered" className="p-6 bg-gradient-to-br from-primary/5 to-blue-50/50 dark:from-primary/10 dark:to-blue-900/10">
     <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100 mb-4">{title}</h3>
     <div className="space-y-1 text-sm">
-      <div className="flex justify-between py-1.5 border-b border-blue-100 dark:border-blue-800/30">
+      <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
         <span className="text-gray-600 dark:text-dark-400">Total Basic Amount</span>
         <span className="font-medium">₹ {totals.basic.toFixed(2)}</span>
       </div>
       {totals.cgst > 0 || totals.sgst > 0 ? (
         <>
-          <div className="flex justify-between py-1.5 border-b border-blue-100 dark:border-blue-800/30">
+          <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
             <span className="text-gray-600 dark:text-dark-400">CGST</span>
             <span className="font-medium">₹ {totals.cgst.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between py-1.5 border-b border-blue-100 dark:border-blue-800/30">
+          <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
             <span className="text-gray-600 dark:text-dark-400">SGST</span>
             <span className="font-medium">₹ {totals.sgst.toFixed(2)}</span>
           </div>
         </>
       ) : totals.igst > 0 ? (
-        <div className="flex justify-between py-1.5 border-b border-blue-100 dark:border-blue-800/30">
+        <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
           <span className="text-gray-600 dark:text-dark-400">IGST</span>
           <span className="font-medium">₹ {totals.igst.toFixed(2)}</span>
         </div>
       ) : null}
       <div className="flex justify-between pt-2 text-base font-bold">
         <span>Total Tax Amount</span>
-        <span className="text-blue-700 dark:text-blue-400">₹ {totals.tax.toFixed(2)}</span>
+        <span className="text-primary-700 dark:text-primary-400">₹ {totals.tax.toFixed(2)}</span>
       </div>
-      <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-blue-300 dark:border-blue-700">
+      <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/30 dark:border-primary/20">
         <span>Net Total (incl. Tax)</span>
-        <span className="text-blue-700 dark:text-blue-400">₹ {totals.net.toFixed(2)}</span>
+        <span className="text-primary-700 dark:text-primary-400">₹ {totals.net.toFixed(2)}</span>
       </div>
     </div>
-  </div>
+  </Card>
 );
+
+// ── Info Field (static info box with label/value) ────────────────────────────
+function InfoField({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-gray-50 dark:bg-dark-800 rounded-xl p-3">
+      <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
+      <div className="font-semibold text-sm text-gray-800 dark:text-dark-100">{value ?? "—"}</div>
+    </div>
+  );
+}
 
 // ── Main Detail Page Component ─────────────────────────────────────────────
 export default function B2BOrderDetailPage() {
@@ -276,226 +286,237 @@ export default function B2BOrderDetailPage() {
 
   return (
     <Page title="Order Detail">
-      <div className="transition-content w-full pb-8">
+      <div className="transition-content w-full pb-8 space-y-4">
         <div className="px-(--margin-x) space-y-4">
           {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2b-inventory/stock-transfer/send-order")}>
-              <ArrowLeftIcon className="size-4" /> Back to Orders
-            </Button>
-            <div>
-              <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">{order.order_id}</h2>
-              <p className="mt-0.5 text-sm text-gray-500 dark:text-dark-300">Order Detail</p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2b-inventory/stock-transfer/send-order")}>
+                <ArrowLeftIcon className="size-4" /> Back to Orders
+              </Button>
+              <div>
+                <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">{order.order_id}</h2>
+                <p className="mt-0.5 text-sm text-gray-500 dark:text-dark-300">Order Detail</p>
+              </div>
             </div>
+            <Badge color={ORDER_STATUS_COLOR[order.status] ?? "primary"} variant="soft" className="text-xs font-semibold whitespace-nowrap">
+              {STATUS_LABEL[order.status] || order.status}
+            </Badge>
           </div>
-          <Badge className={clsx("text-xs font-semibold", STATUS_STYLE[order.status] || "bg-gray-100")}>
-            {STATUS_LABEL[order.status] || order.status}
-          </Badge>
-        </div>
 
-        {/* Order Header */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-gray-50 rounded-xl p-3 dark:bg-dark-800">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">To Branch</div>
-              <div className="font-semibold text-sm text-gray-800 dark:text-dark-100">{order.source_branch_name}</div>
+          {/* Order Header */}
+          <Card skin="bordered" className="p-4 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <InfoField label="To Branch" value={order.source_branch_name} />
+              <InfoField label="Term" value="Credit" />
+              <InfoField label="Order Date" value={order.order_date} />
+              <InfoField label="Requested Qty" value={totalRequestedQty} />
             </div>
-            <div className="bg-gray-50 rounded-xl p-3 dark:bg-dark-800">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Term</div>
-              <div className="font-semibold text-sm text-gray-800 dark:text-dark-100">Credit</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 dark:bg-dark-800">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Order Date</div>
-              <div className="font-semibold text-sm text-gray-800 dark:text-dark-100">{order.order_date}</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 dark:bg-dark-800">
-              <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Requested Qty</div>
-              <div className="font-semibold text-sm text-gray-800 dark:text-dark-100">{totalRequestedQty}</div>
-            </div>
-          </div>
-          {order.note && (
-            <div className="mt-3 p-2.5 bg-amber-50 rounded-lg border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/30">
-              <span className="text-xs text-amber-700 dark:text-amber-400">📝 {order.note}</span>
+            {order.note && (
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/30">
+                <Badge color="warning" variant="soft" className="text-xs">
+                  <span className="font-semibold">📝 {order.note}</span>
+                </Badge>
+              </div>
+            )}
+          </Card>
+
+          {/* Pending State */}
+          {isPending && (
+            <>
+              <Card skin="bordered" className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table hoverable className="w-full text-left">
+                    <THead>
+                      <Tr>
+                        <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Item</Th>
+                        <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Variant</Th>
+                        <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Barcode</Th>
+                        <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Requested Qty</Th>
+                      </Tr>
+                    </THead>
+                    <TBody>
+                      {order.items?.map((item, idx) => (
+                        <Tr key={item.id} className="dark:border-b-dark-500 border-b border-gray-100">
+                          <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                          <Td className="bg-white dark:bg-dark-900">
+                            <Badge color="info" variant="soft" className="text-xs">{item.variant_info || "Default"}</Badge>
+                          </Td>
+                          <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
+                          <Td className="bg-white dark:bg-dark-900">
+                            <Badge color="success" variant="soft" className="text-xs font-semibold">{item.requested_quantity}</Badge>
+                          </Td>
+                        </Tr>
+                      ))}
+                    </TBody>
+                  </Table>
+                </div>
+              </Card>
+
+              <Card skin="bordered" className="p-4 border-primary/20 bg-primary/5 dark:bg-primary/10">
+                <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
+                  <span className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
+                    <InformationCircleIcon className="size-4" />
+                    Waiting for {order.source_branch_name} to verify stock & send.
+                  </span>
+                  <Button variant="outlined" className="h-7 gap-1.5 rounded-md px-3 text-xs border-error-200 text-error-500 hover:bg-error-50 dark:border-error-800/30 dark:text-error-400 dark:hover:bg-error-900/20" onClick={cancelOrder}>
+                    <XMarkIcon className="size-3.5" /> Cancel Order
+                  </Button>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* No Stock State */}
+          {order.status === "no_stock" && (
+            <Card skin="bordered" className="p-4 border-warning/30 bg-warning/5 dark:bg-warning/10">
+              <div className="flex items-center gap-2 text-sm text-warning-700 dark:text-warning-400">
+                <InformationCircleIcon className="size-4" />
+                No stock was available for any item in this order. Please place a new order later.
+              </div>
+            </Card>
+          )}
+
+          {/* Cancelled State */}
+          {order.status === "cancelled" && (
+            <Card skin="bordered" className="p-4 border-error/30 bg-error/5 dark:bg-error/10">
+              <div className="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">
+                <XMarkIcon className="size-4" />
+                This order was cancelled.
+              </div>
+            </Card>
+          )}
+
+          {/* Sent/Verified State */}
+          {order.status === "sent" && (
+            <div className="space-y-4">
+              {loadingTransfer && !transfer ? (
+                <Card skin="bordered" className="p-8">
+                  <div className="py-4 text-center text-gray-400 dark:text-dark-400">
+                    <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2" />
+                    Loading transfer...
+                  </div>
+                </Card>
+              ) : transfer ? (
+                <>
+                  <Card skin="bordered" className="p-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <TruckIcon className="size-5 text-primary" />
+                      <span className="font-semibold text-gray-700 dark:text-dark-200">Transfer {transfer.transfer_no}</span>
+                      <Badge color={TRANSFER_STATUS_COLOR[transfer.status] ?? "primary"} variant="soft" className="text-xs font-semibold whitespace-nowrap">
+                        {TRANSFER_STATUS_LABEL[transfer.status]}
+                      </Badge>
+                      {canReceive && (
+                        <span className="text-xs text-gray-500 dark:text-dark-400">
+                          {remainingCount} of {transfer.items.length} item(s) still to receive
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+
+                  <Card skin="bordered" className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <Table hoverable className="w-full text-left">
+                        <THead>
+                          <Tr>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Item</Th>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Variant</Th>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Barcode</Th>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Qty Coming</Th>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Rate (₹)</Th>
+                            <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Amount (₹)</Th>
+                            {canReceive && <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Receive</Th>}
+                          </Tr>
+                        </THead>
+                        <TBody>
+                          {transfer.items.map((item) => (
+                            <Tr key={item.id} className="dark:border-b-dark-500 border-b border-gray-100">
+                              <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-800 dark:text-dark-100">{item.from_item_name}</Td>
+                              <Td className="bg-white dark:bg-dark-900">
+                                <Badge color="info" variant="soft" className="text-xs">{item.from_variant_info || "Default"}</Badge>
+                              </Td>
+                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.from_barcode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-700 dark:text-dark-200">{item.quantity}</Td>
+                              <Td className="bg-white dark:bg-dark-900 font-mono text-gray-700 dark:text-dark-200">₹{item.rate}</Td>
+                              <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-700 dark:text-dark-200">₹{(item.quantity * item.rate).toFixed(2)}</Td>
+                              {canReceive && (
+                                <Td className="bg-white dark:bg-dark-900">
+                                  {item.is_received ? (
+                                    <Badge color="success" variant="soft" className="text-xs font-semibold inline-flex items-center gap-1">
+                                      <CheckCircleIcon className="size-3.5" /> Received
+                                    </Badge>
+                                  ) : (
+                                    <Button color="success" className="h-7 gap-1.5 rounded-md px-3 text-xs" disabled={receivingItemId === item.id} onClick={() => receiveOneItem(item.id, item.from_item_name)}>
+                                      <DocumentCheckIcon className="size-3.5" /> {receivingItemId === item.id ? "Receiving..." : "Receive"}
+                                    </Button>
+                                  )}
+                                </Td>
+                              )}
+                            </Tr>
+                          ))}
+                        </TBody>
+                      </Table>
+                    </div>
+                  </Card>
+
+                  {gst.basic > 0 && <GstSummaryCard totals={gst} />}
+
+                  <Card skin="bordered" className="p-4 bg-gray-50 dark:bg-dark-800">
+                    <div className="flex items-center gap-3 justify-end flex-wrap">
+                      {["pending", "confirmed", "packaging_start"].includes(transfer.status) && (
+                        <Button variant="outlined" className="h-9 gap-1.5 rounded-md px-4 text-sm border-error-200 text-error-500 hover:bg-error-50 dark:border-error-800/30 dark:text-error-400 dark:hover:bg-error-900/20" disabled={acting} onClick={() => doTransferAction("cancel")}>
+                          <XMarkIcon className="size-4" /> Cancel Transfer
+                        </Button>
+                      )}
+                      {transfer.status === "pending" && (
+                        <Button color="primary" className="h-9 gap-2 rounded-md px-5 text-sm font-semibold" disabled={acting} onClick={() => doTransferAction("confirm")}>
+                          {acting ? (
+                            <><span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Confirming...</>
+                          ) : (
+                            <><CheckCircleIcon className="size-4" /> Confirm Transfer</>
+                          )}
+                        </Button>
+                      )}
+                      {transfer.status === "confirmed" && (
+                        <Badge color="primary" variant="soft" className="text-sm inline-flex items-center gap-2">
+                          <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          Waiting for {order.source_branch_name} to start packaging.
+                        </Badge>
+                      )}
+                      {transfer.status === "packaging_start" && (
+                        <Badge color="warning" variant="soft" className="text-sm inline-flex items-center gap-2 font-medium">
+                          <CubeIcon className="size-4" /> {order.source_branch_name} is packaging your items...
+                        </Badge>
+                      )}
+                      {canReceive && (
+                        <Button color="success" className="h-9 gap-2 rounded-md px-5 text-sm font-semibold" disabled={acting || remainingCount === 0} onClick={() => doTransferAction("receive")}>
+                          {acting ? (
+                            <><span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Receiving...</>
+                          ) : (
+                            <><DocumentCheckIcon className="size-4" /> Receive All Remaining ({remainingCount})</>
+                          )}
+                        </Button>
+                      )}
+                      {transfer.status === "received" && (
+                        <Badge color="success" variant="soft" className="text-sm inline-flex items-center gap-2 font-semibold">
+                          <CheckCircleIcon className="size-4" /> Stock received — your inventory has been updated.
+                        </Badge>
+                      )}
+                      {transfer.status === "cancelled" && (
+                        <Badge color="error" variant="soft" className="text-sm inline-flex items-center gap-2 font-semibold">
+                          This transfer was cancelled.
+                        </Badge>
+                      )}
+                    </div>
+                  </Card>
+                </>
+              ) : (
+                <Card skin="bordered" className="p-5 text-sm text-gray-400 dark:text-dark-400">
+                  No transfer found for this order.
+                </Card>
+              )}
             </div>
           )}
-        </div>
-
-        {/* Pending State */}
-        {isPending && (
-          <>
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750">
-              <table className="w-full text-sm">
-                <thead className="bg-primary">
-                  <tr>
-                    <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">Item</th>
-                    <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">Variant</th>
-                    <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">Barcode</th>
-                    <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">Requested Qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items?.map((item, idx) => (
-                    <tr key={item.id} className={clsx("border-t border-gray-100 dark:border-dark-600", idx % 2 === 0 ? "bg-white dark:bg-dark-750" : "bg-gray-50/30 dark:bg-dark-700/30")}>
-                      <td className="px-4 py-2.5 font-semibold text-gray-800 dark:text-dark-100">{item.item_name}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge color="info" variant="soft" className="text-xs">{item.variant_info || "Default"}</Badge>
-                      </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge color="success" variant="soft" className="text-xs font-semibold">{item.requested_quantity}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3.5 text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-between gap-2 text-sm flex-wrap">
-              <span className="flex items-center gap-2">
-                <div className="size-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                Waiting for {order.source_branch_name} to verify stock & send.
-              </span>
-              <Button variant="outlined" className="h-7 gap-1.5 rounded-md px-3 text-xs border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/30 dark:text-red-400 dark:hover:bg-red-900/20" onClick={cancelOrder}>
-                <XMarkIcon className="size-3.5" /> Cancel Order
-              </Button>
-            </div>
-          </>
-        )}
-
-        {/* No Stock State */}
-        {order.status === "no_stock" && (
-          <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3.5 text-orange-700 dark:border-orange-800/30 dark:bg-orange-900/20 dark:text-orange-400 text-sm">
-            ⚠️ No stock was available for any item in this order. Please place a new order later.
-          </div>
-        )}
-
-        {/* Cancelled State */}
-        {order.status === "cancelled" && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-red-600 dark:border-red-800/30 dark:bg-red-900/20 dark:text-red-400 text-sm">
-            This order was cancelled.
-          </div>
-        )}
-
-        {/* Sent/Verified State */}
-        {order.status === "sent" && (
-          <>
-            {loadingTransfer && !transfer ? (
-              <div className="py-12 text-center text-gray-400 dark:text-dark-400">
-                <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2" />
-                Loading transfer...
-              </div>
-            ) : transfer ? (
-              <>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <TruckIcon className="size-5 text-primary" />
-                    <span className="font-semibold text-gray-700 dark:text-dark-200">Transfer {transfer.transfer_no}</span>
-                    <Badge className={clsx("text-xs font-semibold", TRANSFER_STATUS_STYLE[transfer.status])}>
-                      {TRANSFER_STATUS_LABEL[transfer.status]}
-                    </Badge>
-                    {canReceive && (
-                      <span className="text-xs text-gray-500 dark:text-dark-400">
-                        {remainingCount} of {transfer.items.length} item(s) still to receive
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-dark-800">
-                      <tr>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Item</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Variant</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Barcode</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Qty Coming</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Rate (₹)</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Amount (₹)</th>
-                        {canReceive && <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Receive</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-dark-600">
-                      {transfer.items.map((item, idx) => (
-                        <tr key={item.id} className={clsx(idx % 2 === 0 ? "bg-white dark:bg-dark-750" : "bg-gray-50/30 dark:bg-dark-700/30")}>
-                          <td className="px-4 py-2.5 font-semibold text-gray-800 dark:text-dark-100">{item.from_item_name}</td>
-                          <td className="px-4 py-2.5">
-                            <Badge color="info" variant="soft" className="text-xs">{item.from_variant_info || "Default"}</Badge>
-                          </td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-dark-300">{item.from_barcode || "—"}</td>
-                          <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-dark-200">{item.quantity}</td>
-                          <td className="px-4 py-2.5 font-mono text-gray-700 dark:text-dark-200">₹{item.rate}</td>
-                          <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-dark-200">₹{(item.quantity * item.rate).toFixed(2)}</td>
-                          {canReceive && (
-                            <td className="px-4 py-2.5">
-                              {item.is_received ? (
-                                <span className="text-emerald-600 text-xs font-semibold flex items-center gap-1 dark:text-emerald-400">
-                                  <CheckCircleIcon className="size-3.5" /> Received
-                                </span>
-                              ) : (
-                                <Button color="success" className="h-7 gap-1.5 rounded-md px-3 text-xs" disabled={receivingItemId === item.id} onClick={() => receiveOneItem(item.id, item.from_item_name)}>
-                                  <DocumentCheckIcon className="size-3.5" /> {receivingItemId === item.id ? "Receiving..." : "Receive"}
-                                </Button>
-                              )}
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {gst.basic > 0 && <GstSummaryCard totals={gst} />}
-
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-500 dark:bg-dark-800 flex items-center gap-3 justify-end flex-wrap">
-                  {["pending", "confirmed", "packaging_start"].includes(transfer.status) && (
-                    <Button variant="outlined" className="h-9 gap-1.5 rounded-md px-4 text-sm border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/30 dark:text-red-400 dark:hover:bg-red-900/20" disabled={acting} onClick={() => doTransferAction("cancel")}>
-                      <XMarkIcon className="size-4" /> Cancel Transfer
-                    </Button>
-                  )}
-                  {transfer.status === "pending" && (
-                    <Button color="primary" className="h-9 gap-2 rounded-md px-5 text-sm font-semibold" disabled={acting} onClick={() => doTransferAction("confirm")}>
-                      {acting ? (
-                        <><span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Confirming...</>
-                      ) : (
-                        <><CheckCircleIcon className="size-4" /> Confirm Transfer</>
-                      )}
-                    </Button>
-                  )}
-                  {transfer.status === "confirmed" && (
-                    <span className="text-sm text-gray-500 dark:text-dark-400 flex items-center gap-2">
-                      <div className="size-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
-                      Waiting for {order.source_branch_name} to start packaging.
-                    </span>
-                  )}
-                  {transfer.status === "packaging_start" && (
-                    <span className="text-sm text-violet-600 font-medium dark:text-violet-400 flex items-center gap-2">
-                      <CubeIcon className="size-4" /> {order.source_branch_name} is packaging your items...
-                    </span>
-                  )}
-                  {canReceive && (
-                    <Button color="success" className="h-9 gap-2 rounded-md px-5 text-sm font-semibold" disabled={acting || remainingCount === 0} onClick={() => doTransferAction("receive")}>
-                      {acting ? (
-                        <><span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Receiving...</>
-                      ) : (
-                        <><DocumentCheckIcon className="size-4" /> Receive All Remaining ({remainingCount})</>
-                      )}
-                    </Button>
-                  )}
-                  {transfer.status === "received" && (
-                    <span className="text-sm text-emerald-600 font-semibold dark:text-emerald-400 flex items-center gap-2">
-                      <CheckCircleIcon className="size-4" /> Stock received — your inventory has been updated.
-                    </span>
-                  )}
-                  {transfer.status === "cancelled" && (
-                    <span className="text-sm text-red-500 font-semibold dark:text-red-400">This transfer was cancelled.</span>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="p-5 text-sm text-gray-400 dark:text-dark-400">No transfer found for this order.</div>
-            )}
-          </>
-        )}
         </div>
       </div>
     </Page>

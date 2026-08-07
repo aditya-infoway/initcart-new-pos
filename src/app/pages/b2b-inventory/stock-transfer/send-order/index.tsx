@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Card, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -39,7 +39,7 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-const STATUS_COLOR: Record<string, string> = {
+const STATUS_COLOR: Record<string, "info" | "success" | "warning" | "error"> = {
   pending: "info",
   sent: "success",
   no_stock: "warning",
@@ -84,7 +84,7 @@ export default function B2BOrderRequestPage() {
       id: "srNo", header: "#", size: 55,
       enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<OrderListItem, unknown>) => (
-        <span className="text-gray-400 dark:text-dark-400">{row.index + 1}</span>
+        <span className="text-gray-500 dark:text-dark-400">{row.index + 1}</span>
       ),
     },
     {
@@ -141,7 +141,7 @@ export default function B2BOrderRequestPage() {
       cell: ({ getValue }: CellContext<OrderListItem, unknown>) => {
         const v = String(getValue() ?? "");
         return (
-          <Badge color={(STATUS_COLOR[v] as any) ?? "primary"} variant="soft" className="whitespace-nowrap text-xs">
+          <Badge color={STATUS_COLOR[v] ?? "primary"} variant="soft" className="whitespace-nowrap text-xs">
             {STATUS_LABEL[v] ?? v}
           </Badge>
         );
@@ -177,7 +177,7 @@ export default function B2BOrderRequestPage() {
 
   return (
     <Page title="B2B Order Request">
-      <div className="transition-content w-full pb-8">
+      <div className="transition-content w-full pb-8 space-y-4">
         {/* Header */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
@@ -199,23 +199,22 @@ export default function B2BOrderRequestPage() {
         </div>
 
         {/* Search & Filters */}
-        <div className="px-(--margin-x) flex flex-wrap gap-3 items-center mt-2">
-          <div className="relative flex-1 min-w-[250px]">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+        <div className="px-(--margin-x) flex flex-wrap gap-3 items-center">
+          <div className="flex-1 min-w-[250px]">
             <Input
               value={globalFilter ?? ""}
               onChange={e => setGlobalFilter(e.target.value)}
               placeholder="Search by Order ID..."
-              className="pl-10"
+              prefix={<MagnifyingGlassIcon className="size-4 text-gray-400" />}
+              suffix={globalFilter ? (
+                <button
+                  onClick={() => setGlobalFilter("")}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="size-4" />
+                </button>
+              ) : undefined}
             />
-            {globalFilter && (
-              <button
-                onClick={() => setGlobalFilter("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="size-4" />
-              </button>
-            )}
           </div>
           <Button
             variant="outlined"
@@ -236,14 +235,14 @@ export default function B2BOrderRequestPage() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="px-(--margin-x) mt-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
+          <div className="px-(--margin-x)">
+            <Card skin="bordered" className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Status</label>
                   <Combobox
                     value={statusFilter}
                     onChange={setStatusFilter}
+                    label="Status"
                     options={[
                       { value: "", label: "All Status" },
                       ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))
@@ -251,24 +250,24 @@ export default function B2BOrderRequestPage() {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
         {/* Table */}
-        <div className="px-(--margin-x) mt-4">
-          <div className="rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-dark-800">
+        <div className="px-(--margin-x)">
+          <Card skin="bordered" className="overflow-hidden">
+            <div className="table-wrapper min-w-full overflow-x-auto">
+              <Table hoverable className="w-full text-left">
+                <THead>
                   {table.getHeaderGroups().map(headerGroup => (
-                    <tr key={headerGroup.id}>
+                    <Tr key={headerGroup.id}>
                       {headerGroup.headers.map(header => (
-                        <th
+                        <Th
                           key={header.id}
                           className={clsx(
-                            "px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200",
-                            header.column.getCanSort() && "cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700"
+                            "dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs",
+                            header.column.getCanSort() && "cursor-pointer hover:bg-gray-200 dark:hover:bg-dark-700"
                           )}
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -281,22 +280,22 @@ export default function B2BOrderRequestPage() {
                               }[header.column.getIsSorted() as string] ?? null}
                             </div>
                           )}
-                        </th>
+                        </Th>
                       ))}
-                    </tr>
+                    </Tr>
                   ))}
-                </thead>
-                <tbody>
+                </THead>
+                <TBody>
                   {loading ? (
-                    <tr>
-                      <td colSpan={columns.length} className="py-12 text-center text-gray-400 dark:text-dark-400">
+                    <Tr>
+                      <Td colSpan={columns.length} className="py-12 text-center text-gray-400 dark:text-dark-400">
                         <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2" />
                         Loading orders...
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   ) : filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={columns.length} className="py-12 text-center text-gray-400 dark:text-dark-400">
+                    <Tr>
+                      <Td colSpan={columns.length} className="py-12 text-center text-gray-400 dark:text-dark-400">
                         <DocumentCheckIcon className="mx-auto mb-2 size-8 opacity-30" />
                         No orders found
                         <div className="mt-2">
@@ -304,33 +303,36 @@ export default function B2BOrderRequestPage() {
                             + Place New Order
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   ) : (
                     table.getRowModel().rows.map(row => (
-                      <tr
+                      <Tr
                         key={row.id}
                         className={clsx(
-                          "border-t border-gray-100 dark:border-dark-600",
-                          row.getIsSelected() && "bg-primary/5 dark:bg-primary/10"
+                          "dark:border-b-dark-500 border-b border-gray-100",
+                          row.getIsSelected() && "bg-primary-500/5 dark:bg-primary-500/10"
                         )}
                       >
                         {row.getVisibleCells().map(cell => (
-                          <td key={cell.id} className="px-4 py-2.5">
+                          <Td
+                            key={cell.id}
+                            className="bg-white dark:bg-dark-900"
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
+                          </Td>
                         ))}
-                      </tr>
+                      </Tr>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TBody>
+              </Table>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Footer Info */}
-        <div className="px-(--margin-x) mt-3 text-sm text-gray-500 dark:text-dark-400">
+        <div className="px-(--margin-x) text-sm text-gray-500 dark:text-dark-400">
           Showing {filtered.length} of {rows.length} orders
           {statusFilter && ` with status: ${STATUS_LABEL[statusFilter]}`}
         </div>
