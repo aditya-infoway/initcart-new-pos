@@ -129,7 +129,7 @@ export function BranchViewModal({ isOpen, close, branch }: BranchViewModalProps)
               <div className="px-6 pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
-                    <Badge color={branch?.status === "active" ? "success" : "error"} variant="soft" size="md">
+                    <Badge color={branch?.status === "active" ? "success" : "error"} variant="soft">
                       {(branch?.status ?? "Active").charAt(0).toUpperCase() + (branch?.status ?? "active").slice(1)}
                     </Badge>
                     <span className="text-sm text-gray-500 dark:text-dark-300">

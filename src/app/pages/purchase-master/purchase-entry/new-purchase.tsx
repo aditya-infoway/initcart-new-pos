@@ -1,7 +1,8 @@
 /**
  * New Purchase Entry page
  * Route: /purchase/purchase-entry/new
- * API endpoints (unchanged from old admin):
+ *
+ * API endpoints:
  *   GET  pos/voucher/generate/?type=PI
  *   GET  pos/account-terms-type/?terms=Cash|Bank
  *   GET  pos/account-type/?group=Supplier
@@ -9,7 +10,8 @@
  *   GET  pos/purchse-item-search/?query=...
  *   POST pos/purchase-item-tax/
  *   POST pos/purchase-create/
- *   GET  pos/user-branch/
+ *   POST pos/barcodes/generate/{variantId}/      (Superadmin only)
+ *   PUT  pos/barcodes/update/{variantId}/         (Superadmin only)
  */
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
@@ -18,11 +20,11 @@ import {
   ArrowLeftIcon, CheckCircleIcon, CubeIcon,
   CurrencyRupeeIcon, DocumentTextIcon,
   MagnifyingGlassIcon, PlusIcon, PrinterIcon,
-  TrashIcon, TruckIcon, XMarkIcon,
+  QrCodeIcon, TrashIcon, TruckIcon, XMarkIcon,
   BuildingLibraryIcon, BanknotesIcon, CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Controller, useForm } from "react-hook-form";
 
@@ -30,7 +32,14 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
-import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { Get, Post, Put, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+
+// ── Decimal-safe rounding (fixes float drift like 12.999999999) ────────────
+const round2 = (val: any): number => {
+  const n = Number(val);
+  if (isNaN(n)) return 0;
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+};
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Terms = "Credit" | "Cash" | "Bank";
@@ -48,6 +57,8 @@ interface ModalItem {
   barcode: string;
   size: string;
   color: string;
+  srno: string;
+  warrantydate: string;
 }
 
 interface AddedItem {
@@ -69,6 +80,7 @@ interface AddedItem {
   igst: number;
   netValue: number;
   taxSlab: string;
+  barcode: string;
 }
 
 interface FormValues {
@@ -85,6 +97,7 @@ interface FormValues {
   roundAmount:    string;
   // current item row
   curQty:         string;
+  curAltQty:      string;
   curPrice:       string;
   curDiscount:    string;
 }
@@ -97,6 +110,22 @@ const TERMS_OPTIONS: AccountOption[] = [
 
 const today = new Date().toISOString().split("T")[0];
 
+const mapModalItem = (r: any): ModalItem => ({
+  id:                       Number(r.id ?? 0),
+  itemId:                   Number(r.itemId ?? r.item_id ?? 0),
+  itemName:                 String(r.itemName ?? r.item_name ?? ""),
+  hsnCode:                  String(r.hsnCode ?? r.hsn_code ?? ""),
+  purchasePrice:            Number(r.purchasePrice ?? r.purchase_price ?? r.per_unit_price ?? 0),
+  unit:                     String(r.unit ?? ""),
+  unit_supports_fractional: Boolean(r.unit_supports_fractional),
+  taxSlab:                  String(r.taxSlab ?? r.tax_slab ?? "0"),
+  barcode:                  String(r.barcode ?? ""),
+  size:                     String(r.size ?? "") === "-" ? "" : String(r.size ?? ""),
+  color:                    String(r.color ?? "") === "-" ? "" : String(r.color ?? ""),
+  srno:                     String(r.srno ?? "") === "-" ? "" : String(r.srno ?? ""),
+  warrantydate:             String(r.warrantydate ?? "") === "-" ? "" : String(r.warrantydate ?? ""),
+});
+
 // ── ReadField ─────────────────────────────────────────────────────────────
 function ReadField({ label, value }: { label: string; value: string }) {
   return (
@@ -105,6 +134,181 @@ function ReadField({ label, value }: { label: string; value: string }) {
       <div className="flex h-9 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-200">
         {value || "—"}
       </div>
+    </div>
+  );
+}
+
+// ── Barcode Scanner bar (top of page, for fast item entry) ────────────────
+function BarcodeScannerBar({
+  disabled, onItemFound,
+}: {
+  disabled: boolean;
+  onItemFound: (item: ModalItem) => void;
+}) {
+  const [value, setValue]     = useState("");
+  const [scanning, setScanning] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleScan = async (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    if (disabled) {
+      toasterrormsg("Select Party Name first.");
+      setValue("");
+      inputRef.current?.focus();
+      return;
+    }
+    setScanning(true);
+    try {
+      const res  = await Get("pos/purchse-item-search/", { query: code }) as any;
+      const body = res?.data ?? res;
+      const rows: any[] = Array.isArray(body) ? body : (body?.results ?? []);
+      const match = rows.find((r: any) => String(r.barcode ?? "").toLowerCase() === code.toLowerCase());
+      if (!match) { toasterrormsg(`No item found with barcode "${code}".`); return; }
+      const item = mapModalItem(match);
+      onItemFound(item);
+      toastsuccessmsg(`Item selected: ${item.itemName}`);
+    } catch { toasterrormsg("Barcode search failed. Please try again."); }
+    finally { setValue(""); setScanning(false); inputRef.current?.focus(); }
+  };
+
+  return (
+    <div className="px-(--margin-x)">
+      <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 dark:bg-primary/10">
+        <QrCodeIcon className="size-5 shrink-0 text-primary-600 dark:text-primary-400" />
+        <div className="flex-1">
+          <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary-700 dark:text-primary-300">
+            Barcode Scanner
+            {scanning && <span className="animate-pulse text-primary-400">Searching…</span>}
+          </label>
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleScan(value); } }}
+              placeholder="Scan barcode here — keep cursor in this field"
+              disabled={scanning}
+              autoComplete="off"
+              className="h-9 flex-1 rounded-lg border border-primary/30 bg-white px-3 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-dark-800 dark:text-dark-100"
+            />
+            <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
+              disabled={scanning || !value.trim()} onClick={() => handleScan(value)}>
+              {scanning
+                ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                : <QrCodeIcon className="size-4" />}
+            </Button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-primary-500/80 dark:text-primary-300/70">
+            Keep cursor in this field and scan — item will be selected automatically.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Barcode generate/save box (Superadmin only, shown when item has no barcode) ──
+function BarcodeGenerateBox({
+  mode, value, saved, isGenerating, isSaving,
+  onModeChange, onValueChange, onGenerate, onSave,
+}: {
+  mode: "manual" | "autogenerate";
+  value: string;
+  saved: boolean;
+  isGenerating: boolean;
+  isSaving: boolean;
+  onModeChange: (m: "manual" | "autogenerate") => void;
+  onValueChange: (v: string) => void;
+  onGenerate: () => void;
+  onSave: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode === "manual" && !saved) {
+      const t = setTimeout(() => inputRef.current?.focus(), 150);
+      return () => clearTimeout(t);
+    }
+  }, [mode, saved]);
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-900/10">
+      <div className="mb-3 flex flex-wrap items-center gap-4">
+        <span className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+          <QrCodeIcon className="size-4" /> Generate Barcode
+          <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-800/40 dark:text-amber-300">Superadmin</span>
+        </span>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-dark-200">
+            <input type="radio" name="barcodeMode" checked={mode === "manual"} disabled={saved}
+              onChange={() => onModeChange("manual")} className="accent-primary" />
+            Manual
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-dark-200">
+            <input type="radio" name="barcodeMode" checked={mode === "autogenerate"} disabled={saved}
+              onChange={() => onModeChange("autogenerate")} className="accent-primary" />
+            Auto Generate
+          </label>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          ref={inputRef}
+          value={mode === "autogenerate" ? "" : value}
+          onChange={e => { if (mode === "manual") onValueChange(e.target.value); }}
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (mode === "manual" && value && !saved) onSave();
+            }
+          }}
+          disabled={mode === "autogenerate" || saved || isGenerating}
+          placeholder={mode === "autogenerate" ? "Click 'Generate' to create barcode" : "Scan or type barcode"}
+          className={clsx(
+            "h-9 flex-1 min-w-[180px] rounded-lg border px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+            mode === "autogenerate" || saved
+              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-500 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-400"
+              : "border-gray-300 bg-white dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100",
+          )}
+        />
+
+        {mode === "autogenerate" && !saved && (
+          <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
+            disabled={isGenerating} onClick={onGenerate}>
+            {isGenerating
+              ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              : <QrCodeIcon className="size-4" />}
+            Generate
+          </Button>
+        )}
+
+        {!saved && value && (
+          <Button type="button" color="success" className="h-9 gap-2 rounded-lg px-4 text-sm"
+            disabled={isSaving} onClick={onSave}>
+            {isSaving
+              ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              : <CheckCircleIcon className="size-4" />}
+            Save Barcode
+          </Button>
+        )}
+      </div>
+
+      {saved ? (
+        <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          ✓ Barcode saved successfully! Now click "Add to List".
+        </p>
+      ) : mode === "manual" && value ? (
+        <p className="mt-2 text-xs text-primary-600 dark:text-primary-400">✓ Barcode entered. Click "Save Barcode" to save.</p>
+      ) : mode === "autogenerate" && !value && !isGenerating ? (
+        <p className="mt-2 text-xs text-gray-400">Click "Generate" to create a barcode.</p>
+      ) : null}
     </div>
   );
 }
@@ -140,19 +344,7 @@ function ItemPickModal({
         rows = res?.data ?? res ?? [];
         if (!Array.isArray(rows)) rows = rows?.results ?? [];
       }
-      setItems(rows.map((r: any) => ({
-        id:                      Number(r.id ?? 0),
-        itemId:                  Number(r.itemId ?? r.item_id ?? 0),
-        itemName:                String(r.itemName ?? r.item_name ?? ""),
-        hsnCode:                 String(r.hsnCode ?? r.hsn_code ?? ""),
-        purchasePrice:           Number(r.purchasePrice ?? r.purchase_price ?? 0),
-        unit:                    String(r.unit ?? ""),
-        unit_supports_fractional: Boolean(r.unit_supports_fractional),
-        taxSlab:                 String(r.taxSlab ?? r.tax_slab ?? "0"),
-        barcode:                 String(r.barcode ?? ""),
-        size:                    String(r.size ?? ""),
-        color:                   String(r.color ?? ""),
-      })));
+      setItems(rows.map(mapModalItem));
     } catch { toasterrormsg("Failed to load items."); }
     finally  { setLoading(false); }
   }, [dq]);
@@ -198,7 +390,7 @@ function ItemPickModal({
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-gray-100 dark:bg-dark-800">
                       <tr>
-                        {["Item Name","HSN","Barcode","Size","Color","Unit","Tax%","Price",""].map(h => (
+                        {["Item Name","HSN","Barcode","Size","Color","Sr No","Unit","Tax%","Price",""].map(h => (
                           <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">{h}</th>
                         ))}
                       </tr>
@@ -209,12 +401,16 @@ function ItemPickModal({
                           className="border-t border-gray-100 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-600">
                           <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</td>
                           <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.hsnCode || "—"}</td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.barcode || "—"}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500">
+                            {item.barcode || "—"}
+                            {item.barcode && <CheckCircleIcon className="ml-1 inline size-3.5 text-emerald-500" />}
+                          </td>
                           <td className="px-4 py-2.5 text-gray-600 dark:text-dark-200">{item.size || "—"}</td>
                           <td className="px-4 py-2.5 text-gray-600 dark:text-dark-200">{item.color || "—"}</td>
+                          <td className="px-4 py-2.5 text-gray-600 dark:text-dark-200">{item.srno || "—"}</td>
                           <td className="px-4 py-2.5 text-gray-600 dark:text-dark-200">{item.unit}</td>
                           <td className="px-4 py-2.5"><Badge color="warning" variant="soft" className="text-xs">{item.taxSlab}%</Badge></td>
-                          <td className="px-4 py-2.5 tabular-nums font-medium text-gray-700 dark:text-dark-200">₹{Number(item.purchasePrice).toFixed(2)}</td>
+                          <td className="px-4 py-2.5 tabular-nums font-medium text-gray-700 dark:text-dark-200">₹{round2(item.purchasePrice).toFixed(2)}</td>
                           <td className="px-4 py-2.5">
                             <Button color="primary" className="h-7 rounded-md px-3 text-xs"
                               onClick={() => { onPick(item); onClose(); }}>
@@ -242,14 +438,25 @@ function ItemPickModal({
 export default function NewPurchasePage() {
   const navigate = useNavigate();
 
+  // role-based access — barcode generation box is Superadmin-only
+  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+
   // accounts
   const [suppliers, setSuppliers]       = useState<AccountOption[]>([]);
   const [cashAccounts, setCashAccounts] = useState<AccountOption[]>([]);
   const [bankAccounts, setBankAccounts] = useState<AccountOption[]>([]);
 
-  // current item row (selected from modal)
-  const [curItem, setCurItem]   = useState<ModalItem | null>(null);
+  // current item row (selected from modal or barcode scan)
+  const [curItem, setCurItem]     = useState<ModalItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // barcode workflow state for curItem
+  const [existingBarcode, setExistingBarcode]     = useState("");
+  const [barcodeMode, setBarcodeMode]             = useState<"manual" | "autogenerate">("manual");
+  const [barcodeValue, setBarcodeValue]           = useState("");
+  const [barcodeSaved, setBarcodeSaved]           = useState(false);
+  const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
+  const [isSavingBarcode, setIsSavingBarcode]         = useState(false);
 
   // added items
   const [addedItems, setAddedItems] = useState<AddedItem[]>([]);
@@ -262,7 +469,7 @@ export default function NewPurchasePage() {
         date: today, terms: null, account: null, partyName: null,
         purchaseBillNo: "", billNo: "", dueDate: "", narration: "",
         freightCharge: "", otherExpense: "", roundAmount: "",
-        curQty: "", curPrice: "", curDiscount: "",
+        curQty: "", curAltQty: "", curPrice: "", curDiscount: "",
       },
       mode: "onTouched",
     });
@@ -271,10 +478,14 @@ export default function NewPurchasePage() {
   const curQty     = watch("curQty");
   const curPrice   = watch("curPrice");
   const curDisc    = watch("curDiscount");
-  const freight    = Number(watch("freightCharge") || 0);
-  const other      = Number(watch("otherExpense")  || 0);
-  const roundAmt   = Number(watch("roundAmount")   || 0);
+  const freight    = round2(watch("freightCharge") || 0);
+  const other      = round2(watch("otherExpense")  || 0);
+  const roundAmt   = round2(watch("roundAmount")   || 0);
   const termsLabel = termsVal?.label ?? "";
+  const partyVal   = watch("partyName");
+
+  // needs a saved barcode before this item can be added (superadmin, no existing barcode)
+  const barcodePending = isSuperAdmin && !!curItem && !existingBarcode && !barcodeSaved;
 
   // load data on mount
   useEffect(() => {
@@ -314,30 +525,84 @@ export default function NewPurchasePage() {
   const accountOptions = termsLabel === "Cash" ? cashAccounts
     : termsLabel === "Bank" ? bankAccounts : [];
 
-  // live calculation for current row
-  const liveBasic  = (Number(curQty) || 0) * (Number(curPrice) || 0);
-  const liveDisc   = liveBasic * (Number(curDisc) || 0) / 100;
-  const liveNet    = liveBasic - liveDisc;
+  // live calculation for current row (decimal-safe)
+  const liveBasic = round2((Number(curQty) || 0) * (Number(curPrice) || 0));
+  const liveDisc  = round2(liveBasic * (Number(curDisc) || 0) / 100);
+  const liveNet   = round2(liveBasic - liveDisc);
 
-  // totals
+  // totals (decimal-safe)
   const totals = useMemo(() => ({
-    totalBasic:    addedItems.reduce((s, i) => s + i.basicAmount, 0),
-    totalDiscount: addedItems.reduce((s, i) => s + i.discountAmount, 0),
-    totalTax:      addedItems.reduce((s, i) => s + i.taxAmount, 0),
-    totalNet:      addedItems.reduce((s, i) => s + i.netValue, 0),
-    totalCgst:     addedItems.reduce((s, i) => s + i.cgst, 0),
-    totalSgst:     addedItems.reduce((s, i) => s + i.sgst, 0),
-    totalIgst:     addedItems.reduce((s, i) => s + i.igst, 0),
+    totalBasic:    round2(addedItems.reduce((s, i) => s + i.basicAmount, 0)),
+    totalDiscount: round2(addedItems.reduce((s, i) => s + i.discountAmount, 0)),
+    totalTax:      round2(addedItems.reduce((s, i) => s + i.taxAmount, 0)),
+    totalNet:      round2(addedItems.reduce((s, i) => s + i.netValue, 0)),
+    totalCgst:     round2(addedItems.reduce((s, i) => s + i.cgst, 0)),
+    totalSgst:     round2(addedItems.reduce((s, i) => s + i.sgst, 0)),
+    totalIgst:     round2(addedItems.reduce((s, i) => s + i.igst, 0)),
   }), [addedItems]);
 
-  const grandTotal = totals.totalNet + freight + other + roundAmt;
+  const grandTotal = round2(totals.totalNet + freight + other + roundAmt);
 
-  // pick item from modal
+  // reset the item-entry row + barcode workflow state
+  const resetCurrentRow = () => {
+    setCurItem(null);
+    setValue("curQty", ""); setValue("curAltQty", ""); setValue("curPrice", ""); setValue("curDiscount", "");
+    setExistingBarcode(""); setBarcodeValue(""); setBarcodeMode("manual"); setBarcodeSaved(false);
+  };
+
+  // pick item — from modal or barcode scanner
   const handlePickItem = (item: ModalItem) => {
     setCurItem(item);
     setValue("curPrice",    String(item.purchasePrice));
     setValue("curQty",      "");
+    setValue("curAltQty",   "");
     setValue("curDiscount", "");
+
+    const hasBarcode = !!item.barcode && item.barcode.trim() !== "";
+    setExistingBarcode(hasBarcode ? item.barcode : "");
+    setBarcodeValue(hasBarcode ? item.barcode : "");
+    setBarcodeMode("manual");
+    setBarcodeSaved(false);
+  };
+
+  // barcode scan needs a party selected first, same rule as manual add
+  const handleScannedItem = (item: ModalItem) => {
+    if (!partyVal) { toasterrormsg("Select Party Name first."); return; }
+    handlePickItem(item);
+  };
+
+  // generate barcode (does NOT save)
+  const handleGenerateBarcode = async () => {
+    if (!curItem) { toasterrormsg("Select an item first."); return; }
+    if (existingBarcode) { toasterrormsg("This item already has a barcode."); return; }
+    setIsGeneratingBarcode(true);
+    try {
+      const res  = await Post(`pos/barcodes/generate/${curItem.id}/`, {}) as any;
+      const body = res?.data ?? res;
+      if (body?.success && body?.barcode) {
+        setBarcodeValue(body.barcode);
+        toastsuccessmsg('Barcode generated successfully. Click "Save Barcode" to save.');
+      } else {
+        toasterrormsg("Failed to generate barcode.");
+      }
+    } catch { toasterrormsg("Failed to generate barcode."); }
+    finally { setIsGeneratingBarcode(false); }
+  };
+
+  // save barcode to backend
+  const handleSaveBarcode = async () => {
+    if (!curItem) { toasterrormsg("Select an item first."); return; }
+    if (!barcodeValue) { toasterrormsg("Please generate or enter a barcode first."); return; }
+    if (existingBarcode) { toasterrormsg("This item already has a barcode."); return; }
+    setIsSavingBarcode(true);
+    try {
+      await Put(`pos/barcodes/update/${curItem.id}/`, { barcode: barcodeValue });
+      setBarcodeSaved(true);
+      setExistingBarcode(barcodeValue);
+      toastsuccessmsg('Barcode saved successfully! Now click "Add to List".');
+    } catch (e: any) {
+      toasterrormsg(e?.response?.data?.message ?? "Failed to save barcode.");
+    } finally { setIsSavingBarcode(false); }
   };
 
   // add item row
@@ -345,10 +610,18 @@ export default function NewPurchasePage() {
     const party = watch("partyName");
     if (!party)   { toasterrormsg("Select Party Name first."); return; }
     if (!curItem) { toasterrormsg("Select an item first."); return; }
-    const qty  = Number(curQty);
+    const qty   = Number(curQty);
     const price = Number(curPrice);
-    if (!qty || qty <= 0)   { toasterrormsg("Enter a valid quantity."); return; }
+    if (!qty || qty <= 0)     { toasterrormsg("Enter a valid quantity."); return; }
     if (!price || price <= 0) { toasterrormsg("Enter a valid price."); return; }
+
+    // role-based rule: Superadmin must generate + save a barcode before an unbarcoded item can be added
+    if (isSuperAdmin && !existingBarcode) {
+      if (!barcodeValue)  { toasterrormsg("Please generate or enter a barcode first."); return; }
+      if (!barcodeSaved)  { toasterrormsg('Please save the barcode first by clicking "Save Barcode".'); return; }
+    }
+
+    const finalBarcode = barcodeValue || existingBarcode || "";
 
     try {
       const res = await Post("pos/purchase-item-tax/", {
@@ -360,28 +633,28 @@ export default function NewPurchasePage() {
       }) as any;
       const d = res?.data ?? res;
       setAddedItems(prev => [...prev, {
-        uid:            uidCounter,
-        itemId:         curItem.itemId,
-        variantId:      curItem.id,
-        itemName:       curItem.itemName,
-        hsnCode:        curItem.hsnCode,
-        quantity:       qty,
-        altQuantity:    0,
-        price,
-        unit:           curItem.unit,
-        discountPercent: Number(curDisc || 0),
-        basicAmount:    Number(d.basic_amount ?? liveBasic),
-        discountAmount: Number(d.discount_amount ?? liveDisc),
-        taxAmount:      Number(d.total_tax ?? 0),
-        cgst:           Number(d.cgst ?? 0),
-        sgst:           Number(d.sgst ?? 0),
-        igst:           Number(d.igst ?? 0),
-        netValue:       Number(d.net_amount ?? liveNet),
-        taxSlab:        String(d.tax_percent ?? curItem.taxSlab),
+        uid:             uidCounter,
+        itemId:          curItem.itemId,
+        variantId:       curItem.id,
+        itemName:        curItem.itemName,
+        hsnCode:         curItem.hsnCode,
+        quantity:        round2(qty),
+        altQuantity:     round2(watch("curAltQty") || 0),
+        price:           round2(price),
+        unit:            curItem.unit,
+        discountPercent: round2(curDisc || 0),
+        basicAmount:     round2(d.basic_amount ?? liveBasic),
+        discountAmount:  round2(d.discount_amount ?? liveDisc),
+        taxAmount:       round2(d.total_tax ?? 0),
+        cgst:            round2(d.cgst ?? 0),
+        sgst:            round2(d.sgst ?? 0),
+        igst:            round2(d.igst ?? 0),
+        netValue:        round2(d.net_amount ?? liveNet),
+        taxSlab:         String(d.tax_percent ?? curItem.taxSlab),
+        barcode:         finalBarcode,
       }]);
       setUidCounter(p => p + 1);
-      setCurItem(null);
-      setValue("curQty", ""); setValue("curPrice", ""); setValue("curDiscount", "");
+      resetCurrentRow();
     } catch (e: any) {
       toasterrormsg(e?.response?.data?.message ?? "Tax calculation failed.");
     }
@@ -527,6 +800,9 @@ export default function NewPurchasePage() {
             </div>
           </div>
 
+          {/* ── Barcode Scanner ──────────────────────────────────────── */}
+          <BarcodeScannerBar disabled={!partyVal} onItemFound={handleScannedItem} />
+
           {/* ── Item Entry ───────────────────────────────────────────── */}
           <div className="px-(--margin-x)">
             <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-dark-500 dark:bg-dark-750">
@@ -549,21 +825,27 @@ export default function NewPurchasePage() {
                         HSN: {curItem.hsnCode || "—"} · Unit: {curItem.unit} · Tax: {curItem.taxSlab}%
                         {curItem.size ? ` · Size: ${curItem.size}` : ""}
                         {curItem.color ? ` · Color: ${curItem.color}` : ""}
+                        {curItem.srno ? ` · Sr No: ${curItem.srno}` : ""}
+                        {existingBarcode ? ` · Barcode: ${existingBarcode}` : ""}
                       </p>
                     </div>
                     <Badge color="warning" variant="soft" className="text-xs">{curItem.taxSlab}% GST</Badge>
+                    {curItem.unit_supports_fractional && (
+                      <Badge color="info" variant="soft" className="text-xs">Fractional Unit</Badge>
+                    )}
                     <Button type="button" isIcon variant="flat" className="size-6 rounded-full text-gray-400 hover:text-error-600"
-                      onClick={() => { setCurItem(null); setValue("curQty",""); setValue("curPrice",""); setValue("curDiscount",""); }}>
+                      onClick={resetCurrentRow}>
                       <XMarkIcon className="size-3.5" />
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-400 dark:border-dark-500 dark:text-dark-400">
                     <CubeIcon className="size-5 opacity-40" />
-                    Click "Select Item" above to choose an item
+                    Click "Select Item" above or scan a barcode to choose an item
                   </div>
                 )}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 items-end">
                   <Input {...register("curPrice")} label="Price ₹" type="number" step="0.01" min="0"
                     prefix={<CurrencyRupeeIcon className="size-4" />}
                     classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
@@ -574,6 +856,8 @@ export default function NewPurchasePage() {
                     <input {...register("curQty")} type="number" step="0.001" min="0" disabled={!curItem} placeholder="0"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600" />
                   </div>
+                  <Input {...register("curAltQty")} label="Alt Qty" type="number" step="0.001" min="0" placeholder="0"
+                    classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
                   <Input {...register("curDiscount")} label="Discount %" type="number" step="0.01" min="0" max="100" placeholder="0"
                     classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
                   <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-dark-500 dark:bg-dark-800">
@@ -584,10 +868,41 @@ export default function NewPurchasePage() {
                     {liveDisc > 0 && <p className="text-xs text-gray-400">After disc: ₹{liveNet.toFixed(2)}</p>}
                   </div>
                   <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-5 text-sm"
-                    onClick={handleAddItem} disabled={!curItem}>
+                    onClick={handleAddItem} disabled={!curItem || barcodePending}>
                     <PlusIcon className="size-4" /> Add to List
                   </Button>
                 </div>
+
+                {/* Fractional-unit per-unit price breakdown */}
+                {curItem?.unit_supports_fractional && Number(curPrice) > 0 && (
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 dark:border-sky-800/60 dark:bg-sky-900/10">
+                    <p className="text-xs text-sky-700 dark:text-sky-300">
+                      <span className="font-semibold">Per Unit Price:</span>{" "}
+                      ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {curItem.unit}
+                    </p>
+                    {Number(curQty) > 0 && (
+                      <p className="mt-1 text-xs text-sky-600 dark:text-sky-400">
+                        {curQty} {curItem.unit} × ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ={" "}
+                        <span className="font-bold">₹{liveBasic.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Superadmin-only barcode generate/save box */}
+                {isSuperAdmin && curItem && !existingBarcode && (
+                  <BarcodeGenerateBox
+                    mode={barcodeMode}
+                    value={barcodeValue}
+                    saved={barcodeSaved}
+                    isGenerating={isGeneratingBarcode}
+                    isSaving={isSavingBarcode}
+                    onModeChange={m => { setBarcodeMode(m); setBarcodeValue(""); setBarcodeSaved(false); }}
+                    onValueChange={setBarcodeValue}
+                    onGenerate={handleGenerateBarcode}
+                    onSave={handleSaveBarcode}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -614,14 +929,14 @@ export default function NewPurchasePage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-primary">
                     <tr>
-                      {["#","Item Name","HSN","Qty","Price","Unit","Tax%","Disc%","Basic","Tax Amt","Net Amt",""].map(h => (
+                      {["#","Item Name","HSN","Barcode","Qty","Alt Qty","Price","Unit","Tax%","Disc%","Basic","Tax Amt","Net Amt",""].map(h => (
                         <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {addedItems.length === 0 ? (
-                      <tr><td colSpan={12} className="py-14 text-center">
+                      <tr><td colSpan={14} className="py-14 text-center">
                         <CubeIcon className="mx-auto mb-3 size-10 text-gray-200 dark:text-dark-600" />
                         <p className="text-sm text-gray-400">No items added yet</p>
                         <p className="mt-1 text-xs text-gray-300">Select an item above and click "Add to List"</p>
@@ -634,7 +949,9 @@ export default function NewPurchasePage() {
                           <p className="text-xs text-gray-400">{item.unit}</p>
                         </td>
                         <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.hsnCode || "—"}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.barcode || "—"}</td>
                         <td className="px-4 py-2.5 font-semibold tabular-nums">{item.quantity}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-gray-500">{item.altQuantity || "—"}</td>
                         <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{item.price.toFixed(2)}</td>
                         <td className="px-4 py-2.5 text-gray-500">{item.unit}</td>
                         <td className="px-4 py-2.5"><Badge color="warning" variant="soft" className="text-xs">{item.taxSlab}%</Badge></td>
@@ -654,7 +971,7 @@ export default function NewPurchasePage() {
                   {addedItems.length > 0 && (
                     <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-dark-800">
                       <tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                        <td colSpan={8} className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Totals</td>
+                        <td colSpan={10} className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Totals</td>
                         <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{totals.totalBasic.toFixed(2)}</td>
                         <td className="px-4 py-2.5 font-bold tabular-nums text-amber-600">₹{totals.totalTax.toFixed(2)}</td>
                         <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{totals.totalNet.toFixed(2)}</td>
@@ -694,7 +1011,7 @@ export default function NewPurchasePage() {
                 {[
                   { label: "Total Basic",    value: totals.totalBasic.toFixed(2)    },
                   { label: "Total Discount", value: totals.totalDiscount.toFixed(2) },
-                  { label: "Taxable Value",  value: (totals.totalBasic - totals.totalDiscount).toFixed(2) },
+                  { label: "Taxable Value",  value: round2(totals.totalBasic - totals.totalDiscount).toFixed(2) },
                   ...(totals.totalCgst > 0 ? [
                     { label: "CGST", value: totals.totalCgst.toFixed(2) },
                     { label: "SGST", value: totals.totalSgst.toFixed(2) },
@@ -728,7 +1045,7 @@ export default function NewPurchasePage() {
         <div className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-center gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-dark-500 dark:bg-dark-700/95">
           <Button type="button" variant="outlined"
             className="h-9 gap-2 rounded-lg px-5 text-sm text-error-600 border-error-300 hover:bg-error-50 dark:border-error-700 dark:hover:bg-error-900/20"
-            onClick={() => { setAddedItems([]); setCurItem(null); }}>
+            onClick={() => { setAddedItems([]); resetCurrentRow(); }}>
             <TrashIcon className="size-4" /> Clear All
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"

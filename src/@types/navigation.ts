@@ -8,4 +8,6 @@ export interface NavigationTree {
   transKey?: string;
   icon?: string;
   childs?: NavigationTree[];
+  superAdminOnly?: boolean; 
+  branchOnly?: boolean; 
 }
