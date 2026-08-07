@@ -19,7 +19,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input, Radio } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";

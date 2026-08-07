@@ -1,6 +1,6 @@
 /**
  * Sales Return Form
- * Route: /pos/sales/sales-return-report/new
+ * Route: /sales/sales-return-report/new
  * APIs:
  *   GET  pos/sales-return-voucher/
  *   GET  pos/sales-bill-search/?type=sales&query=
@@ -26,7 +26,7 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Listbox } from "@/components/shared/form/StyledListbox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import {
   BillReturnItem, BillSummary, calcReturnTotals, mapBillReturnItem,
@@ -421,7 +421,7 @@ export default function NewSalesReturnPage() {
       if (body?.stock_alerts?.length) body.stock_alerts.forEach((msg: string) => toasterrormsg(msg));
       toastsuccessmsg(`Sales Return ${body?.return_no ?? ""} created successfully.`);
       clearForm();
-      setTimeout(() => navigate("/pos/sales/sales-return-report"), 1200);
+      setTimeout(() => navigate("/sales/sales-return-report"), 1200);
     } catch (e: any) {
       const d = e?.response?.data;
       const msg = d?.error ?? d?.message ?? d?.detail ?? "Failed to save sales return.";
@@ -439,7 +439,7 @@ export default function NewSalesReturnPage() {
           <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
             <div className="flex items-center gap-3">
               <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-                onClick={() => navigate("/pos/sales/sales-return-report")}>
+                onClick={() => navigate("/sales/sales-return-report")}>
                 <ArrowLeftIcon className="size-4" /> Back
               </Button>
               <div>
@@ -705,7 +705,7 @@ export default function NewSalesReturnPage() {
             <TrashIcon className="size-4" /> Clear All
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-            onClick={() => navigate("/pos/sales/sales-return-report")}>
+            onClick={() => navigate("/sales/sales-return-report")}>
             <ArrowLeftIcon className="size-4" /> List
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"

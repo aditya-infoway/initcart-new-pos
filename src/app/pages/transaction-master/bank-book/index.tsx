@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -409,7 +409,7 @@ export default function BankBookPage() {
                 <DatePicker
                   label="From Date"
                   value={dateFrom}
-                  onChange={v => setDateFrom(v || "")}
+                  onChange={(v: any) => setDateFrom(v || "")}
                   maxDate={dateTo || undefined}
                 />
 
@@ -417,7 +417,7 @@ export default function BankBookPage() {
                 <DatePicker
                   label="To Date"
                   value={dateTo}
-                  onChange={v => setDateTo(v || "")}
+                  onChange={(v: any) => setDateTo(v || "")}
                   minDate={dateFrom || undefined}
                 />
 

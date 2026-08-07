@@ -1,6 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { DatePicker } from "@/components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { useCreateCompanyFormContext } from "../CreateCompanyFormContext";
 import { financialYearSchema, FinancialYearType } from "../schema";
 import { StepActions } from "../components/StepActions";

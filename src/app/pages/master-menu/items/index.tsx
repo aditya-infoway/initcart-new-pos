@@ -169,10 +169,8 @@ export default function ItemsListPage() {
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // detect superadmin from localStorage
-  const isSuperAdmin = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("user") ?? "{}").role === "superadmin"; }
-    catch { return false; }
+const isSuperAdmin = useMemo(() => {
+    return localStorage.getItem("role") === "superadmin";
   }, []);
   const TABS = isSuperAdmin ? TABS_SUPERADMIN : TABS_BRANCH;
 
@@ -325,7 +323,7 @@ export default function ItemsListPage() {
           {canEditDelete(row.original) && (
             <>
               <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
-                onClick={() => navigate(`/pos/master-menu/add-items/${row.original.id}/edit`)}>
+                onClick={() => navigate(`/master-menu/add-items/${row.original.id}/edit`)}>
                 <PencilSquareIcon className="size-3.5 text-primary-600" />
               </Button>
               <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
@@ -378,7 +376,7 @@ export default function ItemsListPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/pos/master-menu/add-items/new")}>
+              onClick={() => navigate("/master-menu/add-items/new")}>
               <PlusIcon className="size-4" /><span>Add Item</span>
             </Button>
           </div>

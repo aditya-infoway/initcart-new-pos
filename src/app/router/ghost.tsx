@@ -3,7 +3,7 @@ import GhostGuard from "@/middleware/GhostGuard";
 
 const ghostRoutes: RouteObject = {
   id: "ghost",
-  path: "pos",
+  path: "",
   Component: GhostGuard,
   children: [
     {

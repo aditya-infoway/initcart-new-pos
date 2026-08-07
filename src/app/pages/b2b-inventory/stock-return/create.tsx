@@ -12,7 +12,7 @@ import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
-import { DatePicker } from "components/shared/form/Datepicker";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -425,7 +425,7 @@ export default function CreateB2BStockReturnPage() {
       }) as any;
       if (res?.data?.success) {
         toastsuccessmsg(res.data.message || "Return created successfully");
-        navigate("/pos/b2b-inventory/stock-return");
+        navigate("/b2b-inventory/stock-return");
       } else {
         toasterrormsg(res?.data?.message || "Failed to create return");
       }
@@ -450,7 +450,7 @@ export default function CreateB2BStockReturnPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/pos/b2b-inventory/stock-return")}>
+              onClick={() => navigate("/b2b-inventory/stock-return")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -480,7 +480,7 @@ export default function CreateB2BStockReturnPage() {
               <DatePicker
                 label="Return Date"
                 value={returnDate}
-                onChange={v => setReturnDate(v || new Date().toISOString().split("T")[0])}
+                onChange={(v: any) => setReturnDate(v || new Date().toISOString().split("T")[0])}
               />
               <ReadField label="Return No."  value={returnNo} />
               <ReadField label="To Branch"   value={toBranch} />

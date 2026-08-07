@@ -9,6 +9,7 @@ import {
   CurrencyRupeeIcon,
   DevicePhoneMobileIcon,
   DocumentTextIcon,
+  EnvelopeIcon,
   GlobeAltIcon,
   IdentificationIcon,
   MapPinIcon,
@@ -17,6 +18,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Controller, useForm } from "react-hook-form";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Country, State, City } from "country-state-city";
 
 import { Button, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
@@ -41,6 +43,11 @@ export function AccountDrawer({ isOpen, close, account, onSaved }: AccountDrawer
   const isEdit = Boolean(account && account.id > 0);
   const [saving, setSaving] = useState(false);
 
+  // ── Country / State / City dropdown data ──
+  const [countries, setCountries] = useState<{ id: string; label: string }[]>([]);
+  const [states, setStates] = useState<{ id: string; label: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; label: string }[]>([]);
+
   const defaultValues = useMemo(() => buildAccountFormValues(account), [account]);
 
   const {
@@ -48,12 +55,67 @@ export function AccountDrawer({ isOpen, close, account, onSaved }: AccountDrawer
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<AccountFormValues>({ defaultValues, mode: "onTouched" });
 
+  const watchedCountry = watch("country");
+  const watchedState = watch("state");
+
+  // Saare countries ek baar load karo (component mount pe)
   useEffect(() => {
-    if (isOpen) reset(buildAccountFormValues(account));
+    setCountries(
+      Country.getAllCountries().map((c) => ({ id: c.isoCode, label: c.name })),
+    );
+  }, []);
+
+  // Drawer khulte hi form reset karo, aur agar edit mode hai to
+  // uske saved country/state ke hisaab se states/cities dropdown bhi bhar do
+  useEffect(() => {
+    if (!isOpen) return;
+    reset(buildAccountFormValues(account));
+
+    if (account?.country) {
+      setStates(
+        State.getStatesOfCountry(account.country).map((s) => ({ id: s.isoCode, label: s.name })),
+      );
+    } else {
+      setStates([]);
+    }
+
+    if (account?.country && account?.state) {
+      setCities(
+        City.getCitiesOfState(account.country, account.state).map((c) => ({ id: c.name, label: c.name })),
+      );
+    } else {
+      setCities([]);
+    }
   }, [account, isOpen, reset]);
+
+  // Country badalne pe: state/city reset karo, naye states load karo
+  const handleCountryChange = (countryCode: string) => {
+    setValue("country", countryCode, { shouldValidate: true });
+    setValue("state", "");
+    setValue("city", "");
+    setStates(
+      countryCode
+        ? State.getStatesOfCountry(countryCode).map((s) => ({ id: s.isoCode, label: s.name }))
+        : [],
+    );
+    setCities([]);
+  };
+
+  // State badalne pe: city reset karo, nayi cities load karo
+  const handleStateChange = (stateCode: string) => {
+    setValue("state", stateCode, { shouldValidate: true });
+    setValue("city", "");
+    setCities(
+      watchedCountry && stateCode
+        ? City.getCitiesOfState(watchedCountry, stateCode).map((c) => ({ id: c.name, label: c.name }))
+        : [],
+    );
+  };
 
   const handleClose = () => {
     reset();
@@ -159,7 +221,12 @@ export function AccountDrawer({ isOpen, close, account, onSaved }: AccountDrawer
                         data={GROUP_OPTIONS}
                         placeholder="Select Group *"
                         value={GROUP_OPTIONS.find((o) => o.id === value) ?? null}
-                        onChange={(item: any) => onChange(item?.id ?? "")}
+                        onChange={(item: any) => {
+                          const selectedGroup = item?.id ?? "";
+                          onChange(selectedGroup);
+                          if (selectedGroup === "Customer") setValue("drcr", "Dr");
+                          else if (selectedGroup === "Supplier") setValue("drcr", "Cr");
+                        }}
                         label={<>Group <span className="text-red-500">*</span></>}
                         displayField="label"
                         error={(errors.group as any)?.message}
@@ -237,28 +304,55 @@ export function AccountDrawer({ isOpen, close, account, onSaved }: AccountDrawer
                   </div>
                 </div>
 
+                {/* Country / State / City — cascading dropdowns */}
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <Input
-                    {...register("country")}
-                    prefix={<GlobeAltIcon className="size-4" />}
-                    placeholder="Select Country"
-                    label="Country"
+                  <Controller
+                    control={control}
+                    name="country"
+                    render={({ field: { value } }) => (
+                      <Listbox
+                        data={countries}
+                        placeholder="Select Country"
+                        value={countries.find((c) => c.id === value) ?? null}
+                        onChange={(item: any) => handleCountryChange(item?.id ?? "")}
+                        label="Country"
+                        displayField="label"
+                      />
+                    )}
                   />
-                  <Input
-                    {...register("state")}
-                    prefix={<MapPinIcon className="size-4" />}
-                    placeholder="Select State"
-                    label="State"
+                  <Controller
+                    control={control}
+                    name="state"
+                    render={({ field: { value } }) => (
+                      <Listbox
+                        data={states}
+                        placeholder="Select State"
+                        value={states.find((s) => s.id === value) ?? null}
+                        onChange={(item: any) => handleStateChange(item?.id ?? "")}
+                        label="State"
+                        displayField="label"
+                        disabled={!watchedCountry}
+                      />
+                    )}
                   />
-                  <Input
-                    {...register("city")}
-                    prefix={<MapPinIcon className="size-4" />}
-                    placeholder="Select City"
-                    label="City"
+                  <Controller
+                    control={control}
+                    name="city"
+                    render={({ field: { value, onChange } }) => (
+                      <Listbox
+                        data={cities}
+                        placeholder="Select City"
+                        value={cities.find((c) => c.id === value) ?? null}
+                        onChange={(item: any) => onChange(item?.id ?? "")}
+                        label="City"
+                        displayField="label"
+                        disabled={!watchedState}
+                      />
+                    )}
                   />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <Input
                     {...register("pincode", {
                       pattern: { value: /^\d{6}$/, message: "Enter valid 6-digit pincode" },
@@ -276,6 +370,16 @@ export function AccountDrawer({ isOpen, close, account, onSaved }: AccountDrawer
                     placeholder="10-digit mobile"
                     label="Mobile"
                     error={errors.mobile?.message}
+                  />
+                  <Input
+                    {...register("email", {
+                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter valid email" },
+                    })}
+                    prefix={<EnvelopeIcon className="size-4" />}
+                    placeholder="customer@example.com"
+                    label="Email"
+                    type="email"
+                    error={errors.email?.message}
                   />
                 </div>
               </div>

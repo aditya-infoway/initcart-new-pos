@@ -38,7 +38,7 @@ function clearSessionAndRedirect() {
   localStorage.removeItem("refresh");
   localStorage.removeItem("email");
   localStorage.removeItem("role");
-  window.location.href = "/pos/login";
+  window.location.href = "/login";
 }
 
 function handleUnauthorized(error: unknown) {

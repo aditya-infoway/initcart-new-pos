@@ -20,6 +20,7 @@ export interface Account {
   currentDrcr: string;
 }
 
+// NAYA
 export interface AccountFormValues {
   accountName: string;
   group: string;
@@ -29,6 +30,7 @@ export interface AccountFormValues {
   country: string;
   state: string;
   city: string;
+  email: string;
   pincode: string;
   mobile: string;
   gstNo: string;
@@ -74,6 +76,7 @@ export function mapApiAccount(raw: Record<string, any>): Account {
   };
 }
 
+// NAYA
 export function buildAccountFormValues(account: Account | null): AccountFormValues {
   return {
     accountName: account?.accountName ?? "",
@@ -84,6 +87,7 @@ export function buildAccountFormValues(account: Account | null): AccountFormValu
     country: account?.country ?? "",
     state: account?.state ?? "",
     city: account?.city ?? "",
+    email: account?.email ?? "",
     pincode: account?.pincode ?? "",
     mobile: account?.mobile ?? "",
     gstNo: account?.gstNo ?? "",
@@ -91,6 +95,7 @@ export function buildAccountFormValues(account: Account | null): AccountFormValu
   };
 }
 
+// NAYA
 export function buildAccountPayload(values: AccountFormValues): Record<string, any> {
   return {
     account_name: values.accountName,
@@ -101,6 +106,7 @@ export function buildAccountPayload(values: AccountFormValues): Record<string, a
     country: values.country,
     state: values.state,
     city: values.city,
+    email: values.email,
     pincode: values.pincode,
     mobile: values.mobile,
     gst_no: values.gstNo,

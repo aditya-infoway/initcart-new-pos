@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 // Local Imports
 import { Button, Card, Checkbox, Input, InputErrorMsg } from "@/components/ui";
 import { useAuthContext } from "@/app/contexts/auth/context";
-import { APP_LOGO, HOME_PATH } from "@/constants/app";
+import { APP_LOGO, APP_LOGIN_BANNER, HOME_PATH } from "@/constants/app";
 import { AuthFormValues, schema } from "./schema";
 import { Page } from "@/components/shared/Page";
 
@@ -109,7 +109,7 @@ export default function SignIn() {
             {/* Right Side - Image */}
             <div className="relative hidden lg:flex items-center justify-center">
               <img
-                src="/images/login.png"
+                src={APP_LOGIN_BANNER}
                 alt="Login Banner"
                 className="absolute inset-0 w-full h-full object-cover"
               />

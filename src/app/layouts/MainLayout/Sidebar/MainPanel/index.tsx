@@ -59,7 +59,7 @@ export function MainPanel({
           <Item
             id={settings.id}
             component={Link}
-            to="/pos/settings/appearance"
+            to="/settings/appearance"
             title="Settings"
             isActive={activeSegmentPath === settings.path}
             icon={settings.icon}
