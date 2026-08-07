@@ -6,9 +6,10 @@ import {
   ArrowPathIcon, MagnifyingGlassIcon, PrinterIcon,
   QrCodeIcon, XMarkIcon, CheckIcon, CheckCircleIcon,
   ClockIcon, SparklesIcon, CursorArrowRaysIcon,
+  PencilIcon, LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState, useMemo } from "react";
 import Barcode from "react-barcode";
 
 import { Page } from "@/components/shared/Page";
@@ -45,6 +46,7 @@ interface GeneratedVariant {
   barcode: string;
   unit: string;
   hsn_code: string;
+  entry_type: string;
 }
 
 interface PaginationInfo {
@@ -327,7 +329,18 @@ function PrintModal({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ItemBarcodesPage() {
+    // ── role-based access ──
+  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+
+  // Superadmin: company + manual dono edit kar sakta hai.
+  // Normal branch: sirf manual entry_type wale items edit kar sakta hai.
+  const canEditBarcode = (entryType: string | undefined): boolean => {
+    if (isSuperAdmin) return true;
+    return (entryType || "manual") === "manual";
+  };
+
   const [tab, setTab] = useState<"pending" | "generated">("pending");
+
 
   // pending state
   const [pending, setPending] = useState<PendingVariant[]>([]);
@@ -357,7 +370,12 @@ export default function ItemBarcodesPage() {
   // print modal
   const [printItems, setPrintItems] = useState<PrintItem[]>([]);
   const [showPrint, setShowPrint] = useState(false);
+  
 
+    // ── inline barcode edit (generated tab) ──
+  const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
+  const [editBarcodeValue, setEditBarcodeValue] = useState("");
+  const [updatingBarcode, setUpdatingBarcode] = useState(false);
   // debounce
   useEffect(() => { const t = setTimeout(() => setDebouncedPS(pendingSearch), 500); return () => clearTimeout(t); }, [pendingSearch]);
   useEffect(() => { const t = setTimeout(() => setDebouncedGS(generatedSearch), 500); return () => clearTimeout(t); }, [generatedSearch]);
@@ -474,8 +492,7 @@ export default function ItemBarcodesPage() {
     } catch { toasterrormsg("Bulk generate failed"); }
     finally { setBulkLoading(false); }
   };
-
-  // ── Update stock ───────────────────────────────────────────────────────────
+// ── Update stock ───────────────────────────────────────────────────────────
   const handleUpdateStock = async (variantId: number) => {
     const val = stockInputs.get(variantId);
     if (!val) { toasterrormsg("Enter stock quantity"); return; }
@@ -489,6 +506,39 @@ export default function ItemBarcodesPage() {
       }
     } catch { toasterrormsg("Stock update failed"); }
     finally { setStockSaving(prev => { const s = new Set(prev); s.delete(variantId); return s; }); }
+  };
+
+  // ── Update barcode (generated tab, role-restricted) ──────────────────────
+  const startEditBarcode = (v: GeneratedVariant) => {
+    setEditingVariantId(v.variant_id);
+    setEditBarcodeValue(v.barcode);
+  };
+
+  const cancelEditBarcode = () => {
+    setEditingVariantId(null);
+    setEditBarcodeValue("");
+  };
+
+  const handleUpdateBarcode = async (variantId: number) => {
+    const newBarcode = editBarcodeValue.trim();
+    if (!newBarcode || newBarcode.length < 3) {
+      toasterrormsg("Please enter a valid barcode (min 3 characters)");
+      return;
+    }
+    setUpdatingBarcode(true);
+    try {
+      const res = await Put(`pos/barcodes/update/${variantId}/`, { barcode: newBarcode }) as any;
+      const body = res?.data ?? res;
+      if (body.success) {
+        setGenerated(prev => prev.map(v => v.variant_id === variantId ? { ...v, barcode: body.new_barcode } : v));
+        toastsuccessmsg(`Barcode updated to: ${body.new_barcode}`);
+        cancelEditBarcode();
+      }
+    } catch (e: any) {
+      toasterrormsg(e?.response?.data?.message ?? "Failed to update barcode");
+    } finally {
+      setUpdatingBarcode(false);
+    }
   };
 
   // ── Print qty helper ────────────────────────────────────────────────────────
@@ -796,9 +846,10 @@ export default function ItemBarcodesPage() {
                           <input type="checkbox" checked={allSelected} onChange={toggleAll}
                             className="size-4 cursor-pointer accent-primary rounded" />
                         </Th>
-                        <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase w-10">#</Th>
+                        <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">SR No.</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Item Name</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Variant</Th>
+                        <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Type</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">MRP</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">S.Price</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Stock</Th>
@@ -806,12 +857,13 @@ export default function ItemBarcodesPage() {
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Copies</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Preview</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase text-center">Print</Th>
+                        <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase text-center">Update</Th>
                       </Tr>
                     </THead>
                     <TBody>
-                      {generated.length === 0 ? (
+{generated.length === 0 ? (
                         <Tr>
-                          <Td colSpan={11} className="py-14 text-center text-gray-400 dark:text-dark-400">
+                          <Td colSpan={13} className="py-14 text-center text-gray-400 dark:text-dark-400">
                             <QrCodeIcon className="mx-auto mb-2 size-10 text-gray-200 dark:text-dark-600" />
                             {generatedPage.count === 0 ? "No barcodes yet — generate from Pending tab." : "No results"}
                           </Td>
@@ -832,12 +884,17 @@ export default function ItemBarcodesPage() {
                             <Td className="bg-white dark:bg-dark-700 font-semibold text-gray-800 dark:text-dark-100 whitespace-nowrap">
                               {v.item_name}
                             </Td>
-                            <Td className="bg-white dark:bg-dark-700">
+<Td className="bg-white dark:bg-dark-700">
                               <div className="flex gap-1 flex-wrap">
                                 {v.size && <Badge color="neutral" variant="soft" className="text-xs">{v.size}</Badge>}
                                 {v.color && <Badge color="neutral" variant="soft" className="text-xs">{v.color}</Badge>}
                                 {!v.size && !v.color && <span className="text-gray-300 dark:text-dark-600 text-xs">—</span>}
                               </div>
+                            </Td>
+                            <Td className="bg-white dark:bg-dark-700">
+                              <Badge color={v.entry_type === "company" ? "info" : "success"} variant="soft" className="text-xs capitalize">
+                                {v.entry_type || "manual"}
+                              </Badge>
                             </Td>
                             <Td className="bg-white dark:bg-dark-700 font-medium text-gray-700 dark:text-dark-200">₹{v.mrp}</Td>
                             <Td className="bg-white dark:bg-dark-700 text-gray-600 dark:text-dark-300">₹{v.sales_price}</Td>
@@ -869,6 +926,40 @@ export default function ItemBarcodesPage() {
                                 <PrinterIcon className="size-3.5" />
                                 {qty > 1 ? `×${qty}` : "Print"}
                               </Button>
+                            </Td>
+                            <Td className="bg-white dark:bg-dark-700 text-center">
+                              {editingVariantId === v.variant_id ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Input
+                                    autoFocus
+                                    value={editBarcodeValue}
+                                    onChange={e => setEditBarcodeValue(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") handleUpdateBarcode(v.variant_id);
+                                      if (e.key === "Escape") cancelEditBarcode();
+                                    }}
+                                    placeholder="New barcode"
+                                    classNames={{ input: "h-7 w-28 text-xs font-mono" }}
+                                  />
+                                  <Button isIcon variant="flat" className="size-7 rounded-full bg-success-100 hover:bg-success-200 dark:bg-success-900/20"
+                                    disabled={updatingBarcode} onClick={() => handleUpdateBarcode(v.variant_id)}>
+                                    {updatingBarcode ? <span className="size-3.5 animate-spin rounded-full border-2 border-success-600 border-t-transparent" /> : <CheckIcon className="size-3.5 text-success-600" />}
+                                  </Button>
+                                  <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+                                    onClick={cancelEditBarcode}>
+                                    <XMarkIcon className="size-3.5 text-error-600" />
+                                  </Button>
+                                </div>
+                              ) : canEditBarcode(v.entry_type) ? (
+                                <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-primary/10"
+                                  title="Edit barcode" onClick={() => startEditBarcode(v)}>
+                                  <PencilIcon className="size-3.5 text-primary-600" />
+                                </Button>
+                              ) : (
+                                <span className="inline-flex" title="Company items cannot be edited by branch users">
+                                  <LockClosedIcon className="size-3.5 text-gray-400" />
+                                </span>
+                              )}
                             </Td>
                           </Tr>
                         );

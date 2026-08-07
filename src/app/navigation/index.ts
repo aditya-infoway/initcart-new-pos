@@ -1,3 +1,4 @@
+import { NavigationTree } from "@/@types/navigation";
 import { posDashboard }          from "./segments/posDashboard";
 import { posMasterMenu }         from "./segments/posMasterMenu";
 import { posOrderManagement }    from "./segments/posOrderManagement";
@@ -10,17 +11,35 @@ import { posReporting }          from "./segments/posReporting";
 import { posAccounting }         from "./segments/posAccounting";
 import { posLogout }             from "./segments/posLogout";
 
-// ── POS Branch Panel Navigation ────────────────────────────────────────────
-export const navigation = [
-  posDashboard,         // Dashboard
-  posMasterMenu,        // Master
-  posOrderManagement,   // Order Management
-  posPurchaseMaster,    // Purchase Master
-  posSalesMaster,       // Sales Master
-  posStockMaster,       // Stock Master
-  posB2BInventory,      // B2B Inventory
-  posTransactionMaster, // Transaction Master
-  posReporting,         // Reporting
-  posAccounting,        // Accounting
-  posLogout,            // Logout
-];
+const isSuperAdmin = () => localStorage.getItem("role") === "superadmin";
+
+
+function filterNavigationByRole(items: NavigationTree[]): NavigationTree[] {
+  const superAdmin = isSuperAdmin();
+  return items
+    .filter((item) => {
+      if (item.superAdminOnly && !superAdmin) return false;  
+    if (item.branchOnly && superAdmin) return false;       
+      return true;
+    })
+    .map((item) =>
+      item.childs
+        ? { ...item, childs: filterNavigationByRole(item.childs) }
+        : item
+    );
+}
+
+const rawNavigation = [
+  posDashboard,        
+  posMasterMenu,        
+  posOrderManagement,  
+   posPurchaseMaster,    
+  posSalesMaster,
+  posStockMaster,  
+  posB2BInventory,      
+  posTransactionMaster, 
+  posReporting,        
+  posAccounting,     
+  posLogout,      
+];export const getNavigation = (): NavigationTree[] => filterNavigationByRole(rawNavigation);
+    export const navigation = getNavigation();

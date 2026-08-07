@@ -6,6 +6,7 @@ export const posB2BInventory: NavigationTree = {
   path: "/b2b-inventory",
   title: "B2B Inventory",
   icon: "posB2BInventory",
+  branchOnly: true,
   childs: [
     { id: "posB2BInventory.stockReturn", type: "item", path: "/b2b-inventory/stock-return", title: "Stock Return", icon: "posB2BInventory.stockReturn" },
     { 

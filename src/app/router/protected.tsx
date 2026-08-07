@@ -305,9 +305,26 @@ const protectedRoutes: RouteObject = {
                 { index: true, element: <Navigate to="/b2b-inventory/stock-transfer/send-order" replace /> },
                 {
                   path: "send-order",
-                  lazy: async () => ({
-                    Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order")).default,
-                  }),
+                  children: [
+                    {
+                      index: true,
+                      lazy: async () => ({
+                        Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order")).default,
+                      }),
+                    },
+                    {
+                      path: "create",
+                      lazy: async () => ({
+                        Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order/create")).default,
+                      }),
+                    },
+                    {
+                      path: "detail/:id",
+                      lazy: async () => ({
+                        Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order/detail")).default,
+                      }),
+                    },
+                  ],
                 },
                 {
                   path: "received-orders",

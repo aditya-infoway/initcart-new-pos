@@ -4,14 +4,14 @@ import {
 import {
   ArrowLeftIcon, CheckCircleIcon, CubeIcon,
   MagnifyingGlassIcon, PlusIcon, TrashIcon, XMarkIcon,
-  DocumentCheckIcon, BuildingOfficeIcon, InformationCircleIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Card, Input, Table, THead, TBody, Tr, Th, Td, Textarea } from "@/components/ui";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
@@ -101,23 +101,50 @@ function calcGstSplitInclusive(
 // ── Transfer Chain Trail Component ───────────────────────────────────────────
 function TransferChainTrail({ chain, compact = false }: { chain: TransferHop[]; compact?: boolean }) {
   if (!chain || chain.length === 0) {
-    return <span className="text-xs text-gray-400 italic">Chain info unavailable</span>;
+    return <Badge color="neutral" variant="soft" className="text-[10px] italic">Chain info unavailable</Badge>;
   }
   return (
     <div className={`flex items-center flex-wrap gap-1 ${compact ? "text-[10px]" : "text-xs"}`}>
       {chain.map((hop, idx) => (
-        <span key={idx} className="inline-flex items-center gap-1 bg-white border border-primary/20 rounded-lg px-2 py-1 dark:bg-dark-700 dark:border-dark-600">
-          <BuildingOfficeIcon className={`text-primary/60 ${compact ? 'size-2' : 'size-2.5'}`} />
-          <span className="font-semibold text-gray-700 dark:text-dark-300 whitespace-nowrap">{hop.from_branch_name}</span>
-        </span>
+        <Badge key={idx} color="primary" variant="soft" className={clsx("inline-flex items-center gap-1", compact && "text-[10px]")}>
+          <BuildingOfficeIcon className={clsx("text-primary/60", compact ? "size-2" : "size-2.5")} />
+          <span className="font-semibold whitespace-nowrap">{hop.from_branch_name}</span>
+        </Badge>
       ))}
       <span className="text-primary/60">→</span>
-      <span className="inline-flex items-center gap-1 bg-success/10 border border-success/20 rounded-lg px-2 py-1">
-        <BuildingOfficeIcon className={`text-success ${compact ? 'size-2' : 'size-2.5'}`} />
-        <span className="font-semibold text-success-700 dark:text-success-400 whitespace-nowrap">
+      <Badge color="success" variant="soft" className={clsx("inline-flex items-center gap-1", compact && "text-[10px]")}>
+        <BuildingOfficeIcon className={clsx("text-success", compact ? "size-2" : "size-2.5")} />
+        <span className="font-semibold whitespace-nowrap">
           {chain[chain.length - 1].to_branch_name}
         </span>
-      </span>
+      </Badge>
+    </div>
+  );
+}
+
+// ── Display-only field (read-only styled box) ──────────────────────────────
+function ReadField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">{label}</label>
+      <div className="flex h-9 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-200">
+        {value || "—"}
+      </div>
+    </div>
+  );
+}
+
+// ── Section header helper ─────────────────────────────────────────────────
+function SectionHeader({
+  icon: Icon,
+  title,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-semibold text-primary-600 dark:text-primary-400">
+      <Icon className="size-4" /> {title}
     </div>
   );
 }
@@ -161,8 +188,8 @@ function ItemPickModal({
     finally { setLoading(false); }
   }, [dq]);
 
-  useEffect(() => { if (isOpen) { setQuery(""); load(1); } }, [isOpen]);
-  useEffect(() => { if (isOpen) load(1); }, [dq]);
+  useEffect(() => { if (isOpen) { setQuery(""); load(1); } }, [isOpen, load]);
+  useEffect(() => { if (isOpen) load(1); }, [dq, load]);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -203,53 +230,51 @@ function ItemPickModal({
                 ) : items.length === 0 ? (
                   <div className="py-16 text-center text-sm text-gray-400 dark:text-dark-400">No eligible B2B items available.</div>
                 ) : (
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-gray-100 dark:bg-dark-800">
-                      <tr>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Action</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Item Name</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Variant</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Barcode</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Origin Trail</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">GST</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Remaining Qty</th>
-                        <th className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map(item => {
-                        const already = addedItems.find(a => a.eligibleItemId === item.id);
-                        const remaining = item.quantity - (already?.quantity ?? 0);
-                        const disabled = remaining <= 0;
-                        return (
-                          <tr key={item.id}
-                            className={clsx(
-                              "border-t border-gray-100 dark:border-dark-600",
-                              disabled ? "opacity-40" : "hover:bg-gray-50 dark:hover:bg-dark-600",
-                            )}>
-                            <td className="px-4 py-2.5">
-                              <Button color="primary" className="h-7 rounded-md px-3 text-xs"
-                                disabled={disabled}
-                                onClick={() => { if (!disabled) { onPick(item); onClose(); } }}>
-                                Select
-                              </Button>
-                            </td>
-                            <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</td>
-                            <td className="px-4 py-2.5 text-gray-600 dark:text-dark-200">{item.variant_info || "Default"}</td>
-                            <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.barcode || "—"}</td>
-                            <td className="px-4 py-2.5"><TransferChainTrail chain={item.transfer_chain} compact /></td>
-                            <td className="px-4 py-2.5 text-center"><Badge color="info" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge></td>
-                            <td className="px-4 py-2.5 text-center font-semibold text-gray-700 dark:text-dark-200">{remaining}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">₹{(item.rate ?? 0).toFixed(2)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="min-w-full overflow-x-auto">
+                    <Table hoverable className="w-full text-left">
+                      <THead>
+                        <Tr>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Action</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Item Name</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Variant</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Barcode</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Origin Trail</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">GST</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Remaining Qty</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Rate</Th>
+                        </Tr>
+                      </THead>
+                      <TBody>
+                        {items.map(item => {
+                          const already = addedItems.find(a => a.eligibleItemId === item.id);
+                          const remaining = item.quantity - (already?.quantity ?? 0);
+                          const disabled = remaining <= 0;
+                          return (
+                            <Tr key={item.id} className={clsx("dark:border-b-dark-500 border-b border-gray-100", disabled && "opacity-40")}>
+                              <Td className="bg-white dark:bg-dark-900">
+                                <Button color="primary" className="h-7 rounded-md px-3 text-xs"
+                                  disabled={disabled}
+                                  onClick={() => { if (!disabled) { onPick(item); onClose(); } }}>
+                                  Select
+                                </Button>
+                              </Td>
+                              <Td className="bg-white dark:bg-dark-900 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                              <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{item.variant_info || "Default"}</Td>
+                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900"><TransferChainTrail chain={item.transfer_chain} compact /></Td>
+                              <Td className="bg-white dark:bg-dark-900 text-center"><Badge color="info" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge></Td>
+                              <Td className="bg-white dark:bg-dark-900 text-center font-semibold text-gray-700 dark:text-dark-200">{remaining}</Td>
+                              <Td className="bg-white dark:bg-dark-900 tabular-nums text-gray-700 dark:text-dark-200">₹{(item.rate ?? 0).toFixed(2)}</Td>
+                            </Tr>
+                          );
+                        })}
+                      </TBody>
+                    </Table>
+                  </div>
                 )}
               </div>
               {total > 15 && (
-                <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 dark:border-dark-500 text-sm text-gray-500">
+                <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 dark:border-dark-500 text-sm text-gray-500 dark:text-dark-400">
                   <span>{total} items</span>
                   <div className="flex gap-2">
                     <Button variant="outlined" className="h-7 px-3 text-xs" disabled={page <= 1} onClick={() => load(page - 1)}>Prev</Button>
@@ -265,18 +290,6 @@ function ItemPickModal({
         </div>
       </Dialog>
     </Transition>
-  );
-}
-
-// ── Display-only field (read-only styled box) ──────────────────────────────
-function ReadField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">{label}</label>
-      <div className="flex h-9 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-200">
-        {value || "—"}
-      </div>
-    </div>
   );
 }
 
@@ -442,9 +455,11 @@ export default function CreateB2BStockReturnPage() {
     setCur(EMPTY_CUR);
   };
 
+  const itemsColSpan = 9;
+
   return (
     <Page title="New B2B Stock Return">
-      <div className="transition-content w-full pb-8">
+      <div className="transition-content w-full pb-8 space-y-4">
 
         {/* ── Toolbar ───────────────────────────────────────────────── */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
@@ -473,9 +488,9 @@ export default function CreateB2BStockReturnPage() {
         </div>
 
         {/* ── Return header fields ──────────────────────────────────── */}
-        <div className="px-(--margin-x) mt-3">
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750 space-y-4">
-            <h4 className="text-sm font-semibold text-primary-600 dark:text-primary-400">Return Details</h4>
+        <div className="px-(--margin-x)">
+          <Card skin="bordered" className="p-4 space-y-4">
+            <SectionHeader icon={CheckCircleIcon} title="Return Details" />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <DatePicker
                 label="Return Date"
@@ -485,40 +500,36 @@ export default function CreateB2BStockReturnPage() {
               <ReadField label="Return No."  value={returnNo} />
               <ReadField label="To Branch"   value={toBranch} />
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Note (Optional)</label>
-                <input
+                <Textarea
+                  label="Note (Optional)"
                   value={note}
                   onChange={e => setNote(e.target.value)}
                   placeholder="Reason for return…"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100"
+                  rows={2}
                 />
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* ── Item entry row ────────────────────────────────────────── */}
-        <div className="px-(--margin-x) mt-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750 space-y-4">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-primary-600 dark:text-primary-400">
-              <CubeIcon className="size-4" /> Item Entry
-            </h4>
+        <div className="px-(--margin-x)">
+          <Card skin="bordered" className="p-4 space-y-4">
+            <SectionHeader icon={CubeIcon} title="Item Entry" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-9 items-end">
-            <Button color="primary" variant="soft" className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={() => setModalOpen(true)}>
-              <MagnifyingGlassIcon className="size-4" /> Select Item
-            </Button>
-            <ReadField label="Item Name" value={cur.item_name} />
-            <ReadField label="Variant" value={cur.variant_info} />
-            <ReadField label="HSN" value={cur.hsnCode} />
-            <ReadField label="GST" value={cur.taxSlab} />
-            <ReadField label="Rate ₹" value={cur.rate ? cur.rate.toFixed(2) : ""} />
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">
-                  Qty <span className="text-xs font-normal text-gray-400">(max {cur.maxQty})</span>
-              </label>
-                <input
+              <Button color="primary" variant="soft" className="h-9 gap-2 rounded-md px-3 text-sm"
+                onClick={() => setModalOpen(true)}>
+                <MagnifyingGlassIcon className="size-4" /> Select Item
+              </Button>
+              <ReadField label="Item Name" value={cur.item_name} />
+              <ReadField label="Variant" value={cur.variant_info} />
+              <ReadField label="HSN" value={cur.hsnCode} />
+              <ReadField label="GST" value={cur.taxSlab} />
+              <ReadField label="Rate ₹" value={cur.rate ? cur.rate.toFixed(2) : ""} />
+              <div>
+                <Input
                   type="number" min={0} max={cur.maxQty}
+                  label={<>Qty <span className="text-xs font-normal text-gray-400">(max {cur.maxQty})</span></>}
                   value={cur.quantity}
                   disabled={!cur.eligibleItemId}
                   onChange={e => {
@@ -526,10 +537,9 @@ export default function CreateB2BStockReturnPage() {
                     if (v === "") { setCur(p => ({ ...p, quantity: "" })); return; }
                     setCur(p => ({ ...p, quantity: String(Math.max(0, Math.min(Number(v), p.maxQty))) }));
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
                 />
-            </div>
-            <ReadField label="Amount ₹" value={cur.eligibleItemId ? (Number(cur.quantity || 0) * cur.rate).toFixed(2) : ""} />
+              </div>
+              <ReadField label="Amount ₹" value={cur.eligibleItemId ? (Number(cur.quantity || 0) * cur.rate).toFixed(2) : ""} />
               <Button color="primary" className="h-9 gap-2 rounded-md px-3 text-sm"
                 disabled={!cur.eligibleItemId}
                 onClick={handleAddItem}>
@@ -543,81 +553,82 @@ export default function CreateB2BStockReturnPage() {
                 {" "}· Branch: <span className="font-semibold text-gray-600 dark:text-dark-200">{cur.from_branch_name}</span>
               </p>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* ── Added items table ─────────────────────────────────────── */}
-        <div className="px-(--margin-x) mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750">
-          <div className="overflow-x-auto max-h-80">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-primary">
-                <tr>
-                  {["#","Item","Variant","HSN","GST","Qty","Rate","Amount",""].map(h => (
-                    <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">{h}</th>
+        <div className="px-(--margin-x)">
+          <Card skin="bordered" className="overflow-hidden">
+            <div className="overflow-x-auto max-h-80">
+              <Table hoverable className="w-full text-left">
+                <THead>
+                  <Tr>
+                    {["#","Item","Variant","HSN","GST","Qty","Rate","Amount",""].map(h => (
+                      <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">{h}</Th>
+                    ))}
+                  </Tr>
+                </THead>
+                <TBody>
+                  {addedItems.length === 0 ? (
+                    <Tr>
+                      <Td colSpan={itemsColSpan} className="py-12 text-center text-sm text-gray-400 dark:text-dark-400">
+                        <CubeIcon className="mx-auto mb-2 size-8 opacity-30" />
+                        No items added yet — click "Select Item" to get started
+                      </Td>
+                    </Tr>
+                  ) : addedItems.map((item, idx) => (
+                    <Tr key={item.uid} className="dark:border-b-dark-500 border-b border-gray-100">
+                      <Td className="bg-white dark:bg-dark-900 text-gray-400 dark:text-dark-400">{idx + 1}</Td>
+                      <Td className="bg-white dark:bg-dark-900 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                      <Td className="bg-white dark:bg-dark-900">
+                        <Badge color="info" variant="soft" className="text-xs">{item.variant_info}</Badge>
+                      </Td>
+                      <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</Td>
+                      <Td className="bg-white dark:bg-dark-900">
+                        <Badge color="info" variant="soft" className="text-xs">{item.taxSlab}</Badge>
+                      </Td>
+                      <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-700 dark:text-dark-200">{item.quantity}</Td>
+                      <Td className="bg-white dark:bg-dark-900 tabular-nums text-gray-700 dark:text-dark-200">₹{item.rate.toFixed(2)}</Td>
+                      <Td className="bg-white dark:bg-dark-900 font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                        ₹{(item.quantity * item.rate).toFixed(2)}
+                      </Td>
+                      <Td className="bg-white dark:bg-dark-900">
+                        <Button isIcon variant="flat" className="size-7 rounded-full text-error-600"
+                          onClick={() => removeAddedItem(item.uid)}>
+                          <TrashIcon className="size-3.5" />
+                        </Button>
+                      </Td>
+                    </Tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {addedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-sm text-gray-400 dark:text-dark-400">
-                      <CubeIcon className="mx-auto mb-2 size-8 opacity-30" />
-                      No items added yet — click "Select Item" to get started
-                    </td>
-                  </tr>
-                ) : addedItems.map((item, idx) => (
-                  <tr key={item.uid}
-                    className="border-t border-gray-100 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-600">
-                    <td className="px-4 py-2.5 text-gray-400 dark:text-dark-400">{idx + 1}</td>
-                    <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge color="info" variant="soft" className="text-xs">{item.variant_info}</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge color="info" variant="soft" className="text-xs">{item.taxSlab}</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-dark-200">{item.quantity}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">₹{item.rate.toFixed(2)}</td>
-                    <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">
-                      ₹{(item.quantity * item.rate).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Button isIcon variant="flat" className="size-7 rounded-full text-error-600"
-                        onClick={() => removeAddedItem(item.uid)}>
-                        <TrashIcon className="size-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              {addedItems.length > 0 && (
-                <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-dark-800">
-                  <tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                    <td colSpan={5} className="px-4 py-2.5 text-xs font-bold uppercase text-gray-600 dark:text-dark-200">Total</td>
-                    <td className="px-4 py-2.5 font-bold text-gray-700 dark:text-dark-200">{totals.totalQty}</td>
-                    <td />
-                    <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{totals.totalAmount.toFixed(2)}</td>
-                    <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+                </TBody>
+                {addedItems.length > 0 && (
+                  <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-dark-800">
+                    <tr className="border-t-2 border-gray-200 dark:border-dark-500">
+                      <td colSpan={5} className="px-4 py-2.5 text-xs font-bold uppercase text-gray-600 dark:text-dark-200">Total</td>
+                      <td className="px-4 py-2.5 font-bold text-gray-700 dark:text-dark-200">{totals.totalQty}</td>
+                      <td />
+                      <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{totals.totalAmount.toFixed(2)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </Table>
+            </div>
+          </Card>
         </div>
 
         {/* Info banner */}
-        <div className="px-(--margin-x) mt-4">
+        <div className="px-(--margin-x)">
           {addedItems.length > 0 ? (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary-700 dark:bg-primary/10 dark:text-primary-300">
+            <Card skin="bordered" className="p-4 border-primary/20 bg-primary/5 dark:bg-primary/10 text-sm text-primary-700 dark:text-primary-300">
               <span className="font-semibold">{addedItems.length}</span> items · Total Qty:{" "}
               <span className="font-semibold">{totals.totalQty}</span> · Amount:{" "}
               <span className="font-semibold">₹{totals.totalAmount.toFixed(2)}</span>
-            </div>
+            </Card>
           ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-800/30 dark:bg-amber-900/20">
+            <Card skin="bordered" className="p-4 border-warning/30 bg-warning/5 dark:bg-warning/10 text-sm text-warning-700 dark:text-warning-400">
               No items added yet. Click "Select Item", set quantity, then click "Add".
-            </div>
+            </Card>
           )}
         </div>
 

@@ -5,7 +5,7 @@ import { useLocation } from "react-router";
 // Local Imports
 import { useBreakpointsContext } from "@/app/contexts/breakpoint/context";
 import { useSidebarContext } from "@/app/contexts/sidebar/context";
-import { navigation } from "@/app/navigation";
+import { getNavigation } from "@/app/navigation";
 import { useDidUpdate } from "@/hooks";
 import { isRouteActive } from "@/utils/isRouteActive";
 import { MainPanel } from "./MainPanel";
@@ -30,14 +30,17 @@ function isSegmentActive(item: NavigationTree, pathname: string): boolean {
   return false;
 }
 
-function findActiveSegmentPath(pathname: string): SegmentPath {
-  return navigation.find((item) => isSegmentActive(item, pathname))?.path;
+function findActiveSegmentPath(nav: NavigationTree[], pathname: string): SegmentPath {
+  return nav.find((item) => isSegmentActive(item, pathname))?.path;
 }
 
 export function Sidebar() {
   const { pathname } = useLocation();
   const { name, lgAndDown } = useBreakpointsContext();
   const { isExpanded, close } = useSidebarContext();
+
+  // ✅ Har render pe fresh compute — role-based filtering ab stale nahi hoga
+  const navigation = useMemo(() => getNavigation(), []);
 
   const initialSegment = useMemo(
     () => navigation.find((item) => isSegmentActive(item, pathname)),
@@ -51,10 +54,10 @@ export function Sidebar() {
 
   const currentSegment = useMemo(() => {
     return navigation.find((item) => item.path === activeSegmentPath);
-  }, [activeSegmentPath]);
+  }, [navigation, activeSegmentPath]);
 
   useDidUpdate(() => {
-    const activePath = findActiveSegmentPath(pathname);
+    const activePath = findActiveSegmentPath(navigation, pathname);
     // Only update when a definitive match is found.
     // If no match (e.g. transition to a sub-route not yet indexed),
     // keep the current segment so the panel stays open.
