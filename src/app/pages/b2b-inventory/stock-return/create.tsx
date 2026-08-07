@@ -444,7 +444,7 @@ export default function CreateB2BStockReturnPage() {
 
   return (
     <Page title="New B2B Stock Return">
-      <div className="transition-content w-full pb-8">
+      <div className="transition-content w-full pb-8 space-y-4">
 
         {/* ── Toolbar ───────────────────────────────────────────────── */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">

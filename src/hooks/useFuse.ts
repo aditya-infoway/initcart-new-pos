@@ -43,33 +43,35 @@ interface UseFuseResult<T> {
 }
 
 export function useFuse<T>(
-  list: T[],
+  list: T[] | null | undefined,
   options: UseFuseOptions<T>,
 ): UseFuseResult<T> {
   const [query, setQuery] = useState<string>("");
   const deferredQuery = useDeferredValue(query);
+
+  const normalizedList = list ?? [];
 
   // Extract custom options from Fuse options
   const { limit = 10, matchAllOnEmptyQuery = false, ...fuseOptions } = options;
 
   // Memoize the Fuse instance for performance
   const fuse = useMemo(
-    () => new Fuse<T>(list, fuseOptions),
-    [list, fuseOptions],
+    () => new Fuse<T>(normalizedList, fuseOptions),
+    [normalizedList, fuseOptions],
   );
 
   // Memoize the search results whenever the query or options change
   const result = useMemo<FuseResult<T>[]>(() => {
     if (!deferredQuery.trim() && matchAllOnEmptyQuery) {
       // Return all items up to the specified limit if the query is empty and matchAllOnEmptyQuery is true
-      return list
+      return normalizedList
         .slice(0, limit)
         .map((item, index) => ({ item, refIndex: index }));
     }
 
     // Perform a fuzzy search using the deferred query
     return fuse.search(deferredQuery.trim(), { limit });
-  }, [fuse, limit, matchAllOnEmptyQuery, deferredQuery, list]);
+  }, [fuse, limit, matchAllOnEmptyQuery, deferredQuery, normalizedList]);
 
   const loading = deferredQuery !== query;
 
