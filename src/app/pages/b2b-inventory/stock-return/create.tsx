@@ -260,7 +260,7 @@ function ItemPickModal({
                               </Td>
                               <Td className="bg-white dark:bg-dark-900 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
                               <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{item.variant_info || "Default"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
                               <Td className="bg-white dark:bg-dark-900"><TransferChainTrail chain={item.transfer_chain} compact /></Td>
                               <Td className="bg-white dark:bg-dark-900 text-center"><Badge color="info" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge></Td>
                               <Td className="bg-white dark:bg-dark-900 text-center font-semibold text-gray-700 dark:text-dark-200">{remaining}</Td>
@@ -583,7 +583,7 @@ export default function CreateB2BStockReturnPage() {
                       <Td className="bg-white dark:bg-dark-900">
                         <Badge color="info" variant="soft" className="text-xs">{item.variant_info}</Badge>
                       </Td>
-                      <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</Td>
+                      <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</Td>
                       <Td className="bg-white dark:bg-dark-900">
                         <Badge color="info" variant="soft" className="text-xs">{item.taxSlab}</Badge>
                       </Td>

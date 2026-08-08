@@ -192,7 +192,7 @@ export default function SalesReturnPage() {
       cell: ({ getValue, table }: CellContext<SalesReturnRecord, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
         return (
-          <span className="whitespace-nowrap font-mono text-xs font-medium text-primary-600 dark:text-primary-400">
+          <span className="whitespace-nowrap  text-xs font-medium text-primary-600 dark:text-primary-400">
             <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
         );

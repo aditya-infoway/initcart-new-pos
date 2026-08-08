@@ -108,7 +108,7 @@ function DetailModal({ bill, onClose }: { bill: SalesBill | null; onClose: () =>
                       <Tr key={l.id ?? i} className="dark:border-b-dark-500 border-b border-gray-200">
                         <Td className="bg-white dark:bg-dark-700 text-gray-400">{i + 1}</Td>
                         <Td className="bg-white dark:bg-dark-700 font-medium text-gray-800 dark:text-dark-100">{l.itemName}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-mono text-xs text-gray-500">{l.hsn}</Td>
+                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{l.hsn}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-center font-semibold text-gray-800 dark:text-dark-100">{l.qty}</Td>
                         <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-gray-800 dark:text-dark-100">₹{l.salePrice.toFixed(2)}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-gray-500">{l.per}</Td>

@@ -116,13 +116,13 @@ export default function StockReturnDetailPage() {
     {
       id: "barcode", accessorKey: "barcode", header: "Barcode",
       cell: ({ getValue }: CellContext<ReturnItem, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
       ),
     },
     {
       id: "hsnCode", accessorKey: "hsnCode", header: "HSN",
       cell: ({ getValue }: CellContext<ReturnItem, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
       ),
     },
     {

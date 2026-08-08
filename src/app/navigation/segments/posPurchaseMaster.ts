@@ -11,5 +11,6 @@ export const posPurchaseMaster: NavigationTree = {
     { id: "posPurchaseMaster.purchaseReturn",      type: "item", path: "/purchase/purchase-return",       title: "Purchase Return",       icon: "posPurchaseMaster.purchaseReturn" },
     { id: "posPurchaseMaster.createOrder",         type: "item", path: "/purchase/create-order",          title: "Create Order",          icon: "posPurchaseMaster.createOrder" },
     { id: "posPurchaseMaster.purchaseOrderVerify", type: "item", path: "/purchase/purchase-order-verify", title: "Purchase Order Verify", icon: "posPurchaseMaster.purchaseOrderVerify" },
+    { id: "posPurchaseMaster.b2bPurchaseVerification", type: "item", path: "/purchase/b2b-purchase-verification", title: "B2B Purchase Verification", icon: "posPurchaseMaster.b2bPurchaseVerification" },
   ],
 };

@@ -342,7 +342,7 @@ export default function B2BOrderDetailPage() {
                           <Td className="bg-white dark:bg-dark-900">
                             <Badge color="info" variant="soft" className="text-xs">{item.variant_info || "Default"}</Badge>
                           </Td>
-                          <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
+                          <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
                           <Td className="bg-white dark:bg-dark-900">
                             <Badge color="success" variant="soft" className="text-xs font-semibold">{item.requested_quantity}</Badge>
                           </Td>
@@ -435,9 +435,9 @@ export default function B2BOrderDetailPage() {
                               <Td className="bg-white dark:bg-dark-900">
                                 <Badge color="info" variant="soft" className="text-xs">{item.from_variant_info || "Default"}</Badge>
                               </Td>
-                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.from_barcode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.from_barcode || "—"}</Td>
                               <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-700 dark:text-dark-200">{item.quantity}</Td>
-                              <Td className="bg-white dark:bg-dark-900 font-mono text-gray-700 dark:text-dark-200">₹{item.rate}</Td>
+                              <Td className="bg-white dark:bg-dark-900  text-gray-700 dark:text-dark-200">₹{item.rate}</Td>
                               <Td className="bg-white dark:bg-dark-900 font-semibold text-gray-700 dark:text-dark-200">₹{(item.quantity * item.rate).toFixed(2)}</Td>
                               {canReceive && (
                                 <Td className="bg-white dark:bg-dark-900">

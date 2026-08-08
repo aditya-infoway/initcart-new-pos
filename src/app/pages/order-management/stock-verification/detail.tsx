@@ -509,7 +509,7 @@ export default function StockVerificationDetailPage() {
                       <td className="px-4 py-3 text-gray-600 dark:text-dark-200">{it.size}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-dark-200">{it.color}</td>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-[11px] text-gray-500 dark:text-dark-300">
+                        <span className=" text-[11px] text-gray-500 dark:text-dark-300">
                           {it.barcode || "—"}
                         </span>
                       </td>

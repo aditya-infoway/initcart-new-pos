@@ -72,13 +72,13 @@ export default function OrderDetailPage() {
     {
       id: "barcode", accessorKey: "barcode", header: "Barcode",
       cell: ({ getValue }: CellContext<OrderItem, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
       ),
     },
     {
       id: "hsn", accessorKey: "hsn", header: "HSN",
       cell: ({ getValue }: CellContext<OrderItem, unknown>) => (
-        <span className="font-mono text-xs text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>
+        <span className=" text-xs text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>
       ),
     },
     {

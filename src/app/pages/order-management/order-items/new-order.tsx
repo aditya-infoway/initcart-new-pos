@@ -219,7 +219,7 @@ function ItemSelectorModal({
                             </td>
                             <td className="px-3 py-2.5 text-gray-500 dark:text-dark-300 text-xs">{item.size}</td>
                             <td className="px-3 py-2.5 text-gray-500 dark:text-dark-300 text-xs">{item.color}</td>
-                            <td className="px-3 py-2.5 font-mono text-[11px] text-gray-500 dark:text-dark-300">{item.barcode || "—"}</td>
+                            <td className="px-3 py-2.5  text-[11px] text-gray-500 dark:text-dark-300">{item.barcode || "—"}</td>
                             <td className="px-3 py-2.5 text-gray-600 dark:text-dark-200 text-xs">{item.hsn || "—"}</td>
                             <td className="px-3 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                               {item.gstPercent ? `${item.gstPercent}%` : "—"}
@@ -422,7 +422,7 @@ export default function NewOrderPage() {
                   <td className="px-3 py-3 text-gray-500 dark:text-dark-300 text-xs">{item.size}</td>
                   <td className="px-3 py-3 text-gray-500 dark:text-dark-300 text-xs">{item.color}</td>
                   <td className="px-3 py-3">
-                    <div className="inline-flex items-center gap-1 font-mono text-[11px] text-gray-500 dark:text-dark-300">
+                    <div className="inline-flex items-center gap-1  text-[11px] text-gray-500 dark:text-dark-300">
                       <QrCodeIcon className="size-3.5 opacity-60" /> {item.barcode || "—"}
                     </div>
                   </td>
@@ -628,7 +628,7 @@ export default function NewOrderPage() {
                       <span>Color: <span className="font-medium text-gray-700 dark:text-dark-100">{selectedItem.color}</span></span>
                       <span>HSN: <span className="font-medium text-gray-700 dark:text-dark-100">{selectedItem.hsn || "—"}</span></span>
                       <span>GST: <span className="font-medium text-amber-600">{selectedItem.gstPercent ? `${selectedItem.gstPercent}%` : "—"}</span></span>
-                      <span>Barcode: <span className="font-mono font-medium text-gray-700 dark:text-dark-100">{selectedItem.barcode || "—"}</span></span>
+                      <span>Barcode: <span className=" font-medium text-gray-700 dark:text-dark-100">{selectedItem.barcode || "—"}</span></span>
                       <span>Available: <span className="font-semibold text-emerald-600">{selectedItem.stock} in stock</span></span>
                     </div>
                   </div>

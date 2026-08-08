@@ -158,7 +158,7 @@ function ItemsModal({ record, onClose }: { record: PurchaseRecord | null; onClos
                       <Tr key={i} className="border-b border-gray-200 dark:border-b-dark-500">
                         <Td className="bg-white dark:bg-dark-700 text-gray-400">{i + 1}</Td>
                         <Td className="bg-white dark:bg-dark-700 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-mono text-xs text-gray-500">{item.hsnCode}</Td>
+                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{item.hsnCode}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-center font-semibold tabular-nums text-gray-800 dark:text-dark-100">{item.qty}</Td>
                         <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-gray-800 dark:text-dark-100">₹{Number(item.price).toFixed(2)}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-gray-500">{item.unit}</Td>
@@ -319,7 +319,7 @@ export default function PurchaseRegisterPage() {
         const q = ensureString(table.getState().globalFilter);
         const v = String(getValue() ?? "");
         return (
-          <span className="font-mono text-xs text-gray-600 dark:text-dark-200 whitespace-nowrap">
+          <span className=" text-xs text-gray-600 dark:text-dark-200 whitespace-nowrap">
             <Highlight query={q}>{v || "—"}</Highlight>
           </span>
         );

@@ -245,8 +245,8 @@ function ItemPickModal({
                               </Td>
                               <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{variant.size || "—"}</Td>
                               <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{variant.color || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{variant.barcode || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{variant.hsnCode || item.hsnCode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{variant.barcode || "—"}</Td>
+                              <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{variant.hsnCode || item.hsnCode || "—"}</Td>
                               <Td className="bg-white dark:bg-dark-900 text-center">
                                 <Badge color="info" variant="soft" className="text-xs">{variant.taxSlab || item.taxSlab || "0%"}</Badge>
                               </Td>
@@ -613,8 +613,8 @@ export default function CreateB2BOrderPage() {
                       </Td>
                       <Td className="bg-white dark:bg-dark-900 text-xs text-gray-500 dark:text-dark-300">{item.size || "—"}</Td>
                       <Td className="bg-white dark:bg-dark-900 text-xs text-gray-500 dark:text-dark-300">{item.color || "—"}</Td>
-                      <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
-                      <Td className="bg-white dark:bg-dark-900 font-mono text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</Td>
+                      <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.barcode || "—"}</Td>
+                      <Td className="bg-white dark:bg-dark-900  text-xs text-gray-500 dark:text-dark-300">{item.hsnCode || "—"}</Td>
                       <Td className="bg-white dark:bg-dark-900">
                         <Badge color="info" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge>
                       </Td>

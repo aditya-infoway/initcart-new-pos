@@ -116,7 +116,7 @@ export default function StockReportPage() {
     {
       id: "hsn", accessorKey: "hsn", header: "HSN",
       cell: ({ getValue }: CellContext<StockItem, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "—")}</span>
       ),
     },
     {

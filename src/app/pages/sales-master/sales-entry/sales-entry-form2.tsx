@@ -28,7 +28,7 @@ import {
 } from "@headlessui/react";
 import { Fragment } from "react";
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
@@ -36,6 +36,7 @@ import { Listbox } from "@/components/shared/form/StyledListbox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Button, Card, Input, Table, THead, TBody, Th, Tr, Td, Textarea, Badge } from "@/components/ui";
 import { Get, Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
+import { useBranchLocationCheck } from "@/hooks/useBranchLocationCheck";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -116,8 +117,9 @@ interface SaleItem {
   unit_name: string;
   taxSlab: string;
   current_stock: number;
+  categoryId: number | null;
+  categoryName: string;
 }
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -230,7 +232,7 @@ const ReferralCodeInput: React.FC<{ value: string; onChange: (val: string) => vo
   useEffect(() => {
     const fetchToggle = async () => {
       try {
-        const r = await Get("pos-profit-settings/");
+        const r = await Get("pos/pos-profit-settings/");
         setToggleStatus(r.data);
       } catch {
         // Silent fail
@@ -415,13 +417,7 @@ const ReferralCodeInput: React.FC<{ value: string; onChange: (val: string) => vo
         </p>
       )}
 
-      {modeInfo && (
-        <div className={clsx("p-2 rounded-lg border text-xs font-medium", modeInfo.bg, modeInfo.border, modeInfo.color)}>
-          <span className="flex items-center gap-1">
-            <InformationCircleIcon className="size-3" /> {modeInfo.label}
-          </span>
-        </div>
-      )}
+
     </div>
   );
 };
@@ -441,6 +437,8 @@ const ReceiptComponent = ({ savedSaleId, showReceiptModal, handleCloseReceipt }:
         .finally(() => setLoading(false));
     }
   }, [savedSaleId, showReceiptModal]);
+
+  
 
   const handlePrint = () => {
     const content = document.getElementById("receipt-print")?.innerHTML;
@@ -722,13 +720,13 @@ const CartItemRow = ({
           className="size-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition dark:bg-dark-700 dark:text-dark-300">
           <MinusIcon className="size-3" />
         </button>
-        <Input
-          type="number"
-          value={item.quantity}
-          onChange={e => onQtyChange(item.id, Math.max(1, Number(e.target.value) || 1))}
-          className="w-9 text-center text-xs font-bold"
-          min={1}
-        />
+<Input
+  type="number"
+  value={item.quantity}
+  onChange={e => onQtyChange(item.id, Math.max(1, Number(e.target.value) || 1))}
+  className="w-12 text-center text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+  min={1}
+/>
         <button type="button" onClick={() => onQtyChange(item.id, item.quantity + 1)}
           className="size-5 rounded-full bg-primary hover:bg-primary/700 flex items-center justify-center text-white transition">
           <PlusIcon className="size-3" />
@@ -738,26 +736,27 @@ const CartItemRow = ({
       {/* Price */}
       <div className="flex items-center gap-1 flex-1">
         <span className="text-[9px] text-gray-400 shrink-0">₹</span>
-        <Input
-          type="number"
-          value={item.price}
-          onChange={e => onPriceChange(item.id, Number(e.target.value) || 0)}
-          className="text-xs"
-          placeholder="Price"
-        />
+
+<Input
+  type="number"
+  value={item.price}
+  onChange={e => onPriceChange(item.id, Number(e.target.value) || 0)}
+  className="text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+  placeholder="Price"
+/>
       </div>
 
       {/* Discount % */}
       <div className="flex items-center gap-1">
-        <Input
-          type="number"
-          value={item.discountPercent}
-          onChange={e => onDiscountChange(item.id, Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-          className="w-10 text-xs text-center"
-          placeholder="0"
-          min={0}
-          max={100}
-        />
+<Input
+  type="number"
+  value={item.discountPercent}
+  onChange={e => onDiscountChange(item.id, Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+  className="w-12 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+  placeholder="0"
+  min={0}
+  max={100}
+/>
         <span className="text-[9px] text-gray-400">%</span>
       </div>
     </div>
@@ -790,6 +789,7 @@ const CartItemRow = ({
 
 export default function SalesEntryForm2() {
   const navigate = useNavigate();
+    const { checkLocation, isLoading: locationLoading } = useBranchLocationCheck();
 
   const [addedItems, setAddedItems] = useState<CartItem[]>([]);
   const [idCounter, setIdCounter] = useState(1);
@@ -800,6 +800,19 @@ export default function SalesEntryForm2() {
   const [searchTerm, setSearchTerm] = useState("");
   const [branchType, setBranchType] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+// ── Category filter ──
+  const [categoryOptions, setCategoryOptions] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<{ id: string; label: string } | null>(null);
+
+  // ── Grid view: lazy loading (infinite scroll) ──
+  const GRID_PAGE_SIZE = 24;
+  const [visibleGridCount, setVisibleGridCount] = useState(GRID_PAGE_SIZE);
+  const gridSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // ── List view: pagination ──
+  const LIST_PAGE_SIZE = 15;
+  const [listPage, setListPage] = useState(1);
 
   const [barcodeValue, setBarcodeValue] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -910,7 +923,7 @@ export default function SalesEntryForm2() {
       const r = await Get(`pos/sale-search-item/?query=${encodeURIComponent(b)}`);
       if (r.data?.length > 0) {
         const match = r.data.find((i: any) => i.barcode && i.barcode.toLowerCase() === b.toLowerCase());
-        if (match) {
+if (match) {
           await addItemToCart({
             id: match.id, itemId: match.itemId, itemName: match.itemName, hsnCode: match.hsnCode || "",
             salesPrice: match.salesPrice || 0, perUnitPrice: match.per_unit_price || match.salesPrice || 0,
@@ -918,6 +931,8 @@ export default function SalesEntryForm2() {
             unit_name: match.unit_name || match.unit, taxSlab: match.taxSlab || "0",
             current_stock: match.current_stock || 0, barcode: match.barcode || "",
             size: match.size || "-", color: match.color || "-", srno: match.srno || "-", warrantydate: match.warrantydate || "-",
+            categoryId: match.category_id ?? null,
+            categoryName: match.category_name || "",
           });
         } else { toasterrormsg(`No item with barcode "${b}"`); }
       } else { toasterrormsg(`No item found`); }
@@ -941,7 +956,7 @@ export default function SalesEntryForm2() {
     const fetch = async () => {
       try {
         const r = await Get("pos/sale-search-item/");
-        const mapped = r.data.map((item: any) => ({
+const mapped = r.data.map((item: any) => ({
           id: item.id, itemId: item.itemId, itemName: item.itemName,
           hsnCode: item.hsnCode, salesPrice: item.salesPrice || 0,
           perUnitPrice: item.per_unit_price || item.salesPrice,
@@ -950,13 +965,49 @@ export default function SalesEntryForm2() {
           current_stock: item.current_stock || 0, size: item.size || "-",
           color: item.color || "-", srno: item.srno || "-",
           warrantydate: item.warrantydate || "-", barcode: item.barcode || "",
+          categoryId: item.category_id ?? null,
+          categoryName: item.category_name || "",
         }));
         setItemsData(mapped); setFilteredItems(mapped);
         if (mapped.length === 0) toastsuccessmsg("No items in stock");
+
+        // Unique categories nikaal ke dropdown options banao
+        const uniqueCats = Array.from(
+          new Map(
+            mapped
+              .filter((m: any) => m.categoryId)
+              .map((m: any) => [String(m.categoryId), { id: String(m.categoryId), label: m.categoryName }]),
+          ).values(),
+        ) as { id: string; label: string }[];
+        setCategoryOptions([{ id: "", label: "All Categories" }, ...uniqueCats]);
       } catch { toasterrormsg("Failed to load items"); }
     };
     fetch();
   }, [branchType]);
+
+  // ── Grid lazy-load: neeche scroll hote hi aur items dikhao ──
+  const handleGridSentinel = useCallback((node: HTMLDivElement | null) => {
+    gridSentinelRef.current = node;
+  }, []);
+  useEffect(() => {
+  setSelectedCustomerId(customerName || 0);
+}, [customerName]);
+
+  useEffect(() => {
+    if (viewMode !== "grid") return;
+    const el = gridSentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleGridCount(prev => Math.min(prev + GRID_PAGE_SIZE, filteredItems.length));
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [viewMode, filteredItems.length]);
 
   useEffect(() => {
     Get("pos/customers/").then(r => { setCustomers(r.data); }).catch(() => {});
@@ -1001,16 +1052,27 @@ export default function SalesEntryForm2() {
     }
   }, [account, accounts]);
 
-  // ── search filter ──
+// ── search + category filter ──
   useEffect(() => {
-    if (!searchTerm) { setFilteredItems(itemsData); return; }
-    const t = searchTerm.toLowerCase();
-    setFilteredItems(itemsData.filter(i =>
-      i.itemName?.toLowerCase().includes(t) || i.hsnCode?.toLowerCase().includes(t) ||
-      (i.barcode && i.barcode.toLowerCase().includes(t)) ||
-      (i.size && i.size.toLowerCase().includes(t)) || (i.color && i.color.toLowerCase().includes(t))
-    ));
-  }, [searchTerm, itemsData]);
+    let result = itemsData;
+
+    if (selectedCategory?.id) {
+      result = result.filter(i => String(i.categoryId) === selectedCategory.id);
+    }
+
+    if (searchTerm) {
+      const t = searchTerm.toLowerCase();
+      result = result.filter(i =>
+        i.itemName?.toLowerCase().includes(t) || i.hsnCode?.toLowerCase().includes(t) ||
+        (i.barcode && i.barcode.toLowerCase().includes(t)) ||
+        (i.size && i.size.toLowerCase().includes(t)) || (i.color && i.color.toLowerCase().includes(t))
+      );
+    }
+
+    setFilteredItems(result);
+    setVisibleGridCount(GRID_PAGE_SIZE);   // filter badalte hi lazy-load reset
+    setListPage(1);                        // filter badalte hi pagination reset
+  }, [searchTerm, itemsData, selectedCategory]);
 
   // ── totals ──
   const calculateTotals = (items: CartItem[]) => ({
@@ -1063,6 +1125,9 @@ export default function SalesEntryForm2() {
   const handleFinish = async () => {
     if (isSubmitting) return;
 
+    const locationOk = await checkLocation();
+    if (!locationOk) return;
+
     const err = validateCart();
     if (err) { toasterrormsg(err); return; }
 
@@ -1082,8 +1147,11 @@ export default function SalesEntryForm2() {
   };
 
   // ── PRINT: save + show receipt ──
-  const handlePrint = async () => {
+const handlePrint = async () => {
     if (isSubmitting) return;
+
+    const locationOk = await checkLocation();
+    if (!locationOk) return;
 
     const err = validateCart();
     if (err) { toasterrormsg(err); return; }
@@ -1182,38 +1250,48 @@ export default function SalesEntryForm2() {
                 </div>
               </div>
 
-              {/* Barcode */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <QrCodeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-primary size-4" />
-                  {scanning && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  )}
-                  <Input
-                    ref={barcodeRef}
-                    value={barcodeValue}
-                    onChange={e => setBarcodeValue(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleBarcodeSearch(barcodeValue); } }}
-                    placeholder="Scan barcode here (Enter to confirm)"
-className="pl-9 h-10"
-                    disabled={scanning}
-                  />
+{/* Barcode + Category filter — 50/50 split */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <QrCodeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-primary size-4" />
+                    {scanning && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    )}
+                    <Input
+                      ref={barcodeRef}
+                      value={barcodeValue}
+                      onChange={e => setBarcodeValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleBarcodeSearch(barcodeValue); } }}
+                      placeholder="Scan barcode here (Enter to confirm)"
+                      className="pl-9 h-10"
+                      disabled={scanning}
+                    />
+                  </div>
+                  <Button
+                    onClick={() => handleBarcodeSearch(barcodeValue)}
+                    disabled={scanning || !barcodeValue.trim()}
+                    color="primary"
+                  >
+                    <QrCodeIcon className="size-4" /> Scan
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => handleBarcodeSearch(barcodeValue)}
-                  disabled={scanning || !barcodeValue.trim()}
-                  color="primary"
-                >
-                  <QrCodeIcon className="size-4" /> Scan
-                </Button>
+
+                <Listbox
+                  data={categoryOptions}
+                  displayField="label"
+                  placeholder="Filter by Category"
+                  value={selectedCategory ?? categoryOptions[0] ?? null}
+                  onChange={(item: any) => setSelectedCategory(item?.id ? item : null)}
+                />
               </div>
             </div>
 
             {/* Grid / List */}
             <div className="flex-1 overflow-y-auto p-4">
-              {viewMode === "grid" ? (
+{viewMode === "grid" ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {filteredItems.map((item, i) => (
+                  {filteredItems.slice(0, visibleGridCount).map((item, i) => (
                     <ProductCard key={i} item={item} onAdd={addItemToCart} branchType={branchType} />
                   ))}
                   {filteredItems.length === 0 && (
@@ -1223,9 +1301,15 @@ className="pl-9 h-10"
                       <p className="text-xs text-gray-400 dark:text-dark-400 mt-1">Try adjusting your search</p>
                     </div>
                   )}
+                  {/* Lazy-load sentinel — jab yeh screen pe aaye, aur items load ho jaate hain */}
+                  {visibleGridCount < filteredItems.length && (
+                    <div ref={handleGridSentinel} className="col-span-full flex items-center justify-center py-6">
+                      <span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* LIST VIEW */
+/* LIST VIEW */
                 <Card className="overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table hoverable className="w-full text-sm">
@@ -1239,7 +1323,7 @@ className="pl-9 h-10"
                         </Tr>
                       </THead>
                       <TBody>
-                        {filteredItems.map((item, idx) => (
+                        {filteredItems.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE).map((item, idx) => (
                           <Tr key={idx} className={clsx("border-b border-gray-100 hover:bg-primary/[0.03] transition dark:border-dark-700", item.current_stock <= 0 && "opacity-40")}>
                             <Td className="px-3 py-3 font-semibold text-gray-800 dark:text-dark-100 border-r border-gray-100 dark:border-dark-700 max-w-[200px] truncate">{item.itemName}</Td>
                             <Td className="px-3 py-3 text-xs text-gray-500 border-r border-gray-100 dark:border-dark-700">{item.hsnCode}</Td>
@@ -1249,7 +1333,7 @@ className="pl-9 h-10"
                             ))}
                             <Td className="px-3 py-3 text-xs text-gray-500 border-r border-gray-100 dark:border-dark-700">{item.unit_name}</Td>
                             <Td className="px-3 py-3 text-right font-bold text-primary border-r border-gray-100 dark:border-dark-700">₹{Number(item.salesPrice).toFixed(2)}</Td>
-                            <Td className="px-3 py-3 text-center text-xs text-info-600 font-semibold border-r border-gray-100 dark:border-dark-700">{item.taxSlab}%</Td>
+                            <Td className="px-3 py-3 text-center text-xs text-info-600 font-semibold border-r border-gray-100 dark:border-dark-700">{item.taxSlab}</Td>
                             <Td className="px-3 py-3 text-center border-r border-gray-100 dark:border-dark-700">
                               <Badge
                                 color={item.current_stock > 5 ? "success" : item.current_stock > 0 ? "warning" : "error"}
@@ -1271,12 +1355,28 @@ className="pl-9 h-10"
                             </Td>
                           </Tr>
                         ))}
-                        {filteredItems.length === 0 && (
+{filteredItems.length === 0 && (
                           <Tr><Td colSpan={10} className="text-center py-10 text-gray-400 dark:text-dark-500">No items found</Td></Tr>
                         )}
                       </TBody>
                     </Table>
                   </div>
+
+                  {/* Pagination controls */}
+                  {filteredItems.length > LIST_PAGE_SIZE && (
+                    <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2.5 dark:border-dark-700">
+                      <span className="text-xs text-gray-500 dark:text-dark-300">
+                        Showing {(listPage - 1) * LIST_PAGE_SIZE + 1}–{Math.min(listPage * LIST_PAGE_SIZE, filteredItems.length)} of {filteredItems.length}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button variant="outlined" className="h-7 px-3 text-xs" disabled={listPage <= 1}
+                          onClick={() => setListPage(p => p - 1)}>Prev</Button>
+                        <Button variant="outlined" className="h-7 px-3 text-xs"
+                          disabled={listPage >= Math.ceil(filteredItems.length / LIST_PAGE_SIZE)}
+                          onClick={() => setListPage(p => p + 1)}>Next</Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               )}
             </div>
@@ -1490,9 +1590,9 @@ className="pl-9 h-10"
 
             {/* Fixed Action Bar */}
             <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-4 grid grid-cols-2 gap-3 dark:bg-dark-800/95 dark:border-dark-700 lg:left-auto lg:right-0 lg:w-[450px] xl:w-[500px] 2xl:w-[550px] lg:border-l lg:border-gray-200 lg:dark:border-dark-700">
-              <Button
+<Button
                 onClick={handleFinish}
-                disabled={isSubmitting}
+                disabled={isSubmitting || locationLoading}
                 className="flex items-center justify-center gap-2"
               >
                 {submitAction === "save" ? (

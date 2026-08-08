@@ -72,7 +72,7 @@ export default function LedgerDetailPage() {
     {
       id: "voucherNo", accessorKey: "voucherNo", header: "Voucher No.",
       cell: ({ getValue }: CellContext<LedgerEntry, unknown>) => (
-        <span className="font-mono text-xs font-medium text-primary-600 dark:text-primary-400">
+        <span className=" text-xs font-medium text-primary-600 dark:text-primary-400">
           {String(getValue() ?? "—") || "—"}
         </span>
       ),
