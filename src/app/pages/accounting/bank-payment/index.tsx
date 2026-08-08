@@ -234,7 +234,7 @@ function BillSearchModal({
                         <tr key={b.id} className="border-t border-gray-100 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-600">
                           <td className="whitespace-nowrap px-4 py-2.5 font-medium text-primary-600 dark:text-primary-400">{b.billNo}</td>
                           <td className="px-4 py-2.5 text-gray-700 dark:text-dark-200">{b.partyName}</td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-dark-300">{b.originalBillNo ?? "—"}</td>
+                          <td className="px-4 py-2.5  text-xs text-gray-500 dark:text-dark-300">{b.originalBillNo ?? "—"}</td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-gray-600 dark:text-dark-200">{formatDateDDMMYYYY(b.date)}</td>
                           <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">₹{b.grandTotal.toFixed(2)}</td>
                           <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-emerald-600 dark:text-emerald-400">₹{b.paidAmount.toFixed(2)}</td>
@@ -744,7 +744,7 @@ export default function BankPaymentPage() {
       cell: ({ getValue, table }: CellContext<BankPaymentRow, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
         return (
-          <span className="whitespace-nowrap font-medium text-primary-600 dark:text-primary-400 font-mono text-xs">
+          <span className="whitespace-nowrap font-medium text-primary-600 dark:text-primary-400  text-xs">
             <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
         );
@@ -789,7 +789,7 @@ export default function BankPaymentPage() {
     {
       id: "chequeNo", accessorKey: "chequeNo", header: "Cheque No",
       cell: ({ getValue }: CellContext<BankPaymentRow, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">
+        <span className=" text-xs text-gray-500 dark:text-dark-300">
           {String(getValue() ?? "") || "—"}
         </span>
       ),

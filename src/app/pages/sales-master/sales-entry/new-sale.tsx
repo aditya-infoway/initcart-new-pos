@@ -570,7 +570,7 @@ export default function NewSalePage() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-dark-300">
                   <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">{selectedItem.unit ?? "Default"}</span>
-                  <span>Barcode: <span className="font-mono text-gray-800 dark:text-dark-100">{selectedItem.barcode}</span></span>
+                  <span>Barcode: <span className=" text-gray-800 dark:text-dark-100">{selectedItem.barcode}</span></span>
                   <span>Stock: <span className="font-semibold text-emerald-600">{selectedItem.stock}</span></span>
                 </div>
               </div>
@@ -686,7 +686,7 @@ export default function NewSalePage() {
                     <Tr key={l.id} className="border-b border-gray-100 transition-colors hover:bg-primary/[0.03] dark:border-dark-700 dark:hover:bg-primary/10">
                       <Td className="px-3 py-3 text-gray-400">{i + 1}</Td>
                       <Td className="px-3 py-3 font-medium text-gray-800 dark:text-dark-100">{l.itemName}</Td>
-                      <Td className="px-3 py-3 font-mono text-xs text-gray-500">{l.hsn}</Td>
+                      <Td className="px-3 py-3  text-xs text-gray-500">{l.hsn}</Td>
                       <Td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           <button onClick={() => updateCartQty(l, l.qty - 1)}

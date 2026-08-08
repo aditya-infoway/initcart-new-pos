@@ -300,6 +300,18 @@ userMaster: UsersIcon,
   "posB2BInventory.stockTransfer": ArrowsRightLeftIcon,
   "posB2BInventory.stockTransfer.sendOrder": DocumentPlusIcon,
   "posB2BInventory.stockTransfer.receivedOrders": ClipboardDocumentCheckIcon,
+  // NEW: Stock Return Management submenu
+  "posB2BInventory.stockReturnManagement": TruckIcon,
+  "posB2BInventory.stockReturnManagement.list": ClipboardDocumentListIcon,
+  "posB2BInventory.stockReturnManagement.create": DocumentPlusIcon,
+  // NEW: B2B Stock Return Management submenu
+  "posB2BInventory.b2bStockReturnManagement": ReceiptRefundIcon,
+  "posB2BInventory.b2bStockReturnManagement.list": ClipboardDocumentListIcon,
+  "posB2BInventory.b2bStockReturnManagement.create": DocumentPlusIcon,
+  // NEW: SchemeOffer submenu
+  "posB2BInventory.schemeOffer": MegaphoneIcon,
+  "posB2BInventory.schemeOffer.list": ClipboardDocumentListIcon,
+  "posB2BInventory.schemeOffer.create": DocumentPlusIcon,
 
   // Transaction Master
   posTransactionMaster: ArrowsRightLeftIcon,

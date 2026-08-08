@@ -131,7 +131,7 @@ export function ItemSelectorModal({ open, onClose, onSelect }: Props) {
                         </td>
                         <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</td>
                         <td className="px-3 py-2.5 text-gray-500">{item.hsn}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{item.barcode}</td>
+                        <td className="px-3 py-2.5  text-xs text-gray-500">{item.barcode}</td>
                         <td className="px-3 py-2.5 text-gray-500">{item.size}</td>
                         <td className="px-3 py-2.5 text-gray-500">{item.color}</td>
                         <td className="px-3 py-2.5 font-semibold text-gray-800 dark:text-dark-100">₹{item.salesPrice}</td>

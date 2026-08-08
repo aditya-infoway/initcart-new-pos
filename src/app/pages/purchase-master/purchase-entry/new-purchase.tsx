@@ -195,7 +195,7 @@ function BarcodeScannerBar({
               placeholder="Scan barcode here — keep cursor in this field"
               disabled={scanning}
               autoComplete="off"
-              className="h-9 flex-1 rounded-lg border border-primary/30 bg-white px-3 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-dark-800 dark:text-dark-100"
+              className="h-9 flex-1 rounded-lg border border-primary/30 bg-white px-3  text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-dark-800 dark:text-dark-100"
             />
             <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
               disabled={scanning || !value.trim()} onClick={() => handleScan(value)}>
@@ -272,7 +272,7 @@ function BarcodeGenerateBox({
           disabled={mode === "autogenerate" || saved || isGenerating}
           placeholder={mode === "autogenerate" ? "Click 'Generate' to create barcode" : "Scan or type barcode"}
           className={clsx(
-            "h-9 flex-1 min-w-[180px] rounded-lg border px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+            "h-9 flex-1 min-w-[180px] rounded-lg border px-3  text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
             mode === "autogenerate" || saved
               ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-500 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-400"
               : "border-gray-300 bg-white dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100",
@@ -400,8 +400,8 @@ function ItemPickModal({
                         <tr key={`${item.itemId}-${item.id}`}
                           className="border-t border-gray-100 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-600">
                           <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.hsnCode || "—"}</td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500">
+                          <td className="px-4 py-2.5  text-xs text-gray-500">{item.hsnCode || "—"}</td>
+                          <td className="px-4 py-2.5  text-xs text-gray-500">
                             {item.barcode || "—"}
                             {item.barcode && <CheckCircleIcon className="ml-1 inline size-3.5 text-emerald-500" />}
                           </td>
@@ -729,7 +729,7 @@ export default function NewPurchasePage() {
             <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 dark:bg-primary/10">
               <DocumentTextIcon className="size-4 text-primary-600 dark:text-primary-400" />
               <span className="text-xs text-gray-500 dark:text-dark-300">Bill No:</span>
-              <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">{watch("billNo") || "Auto"}</span>
+              <span className=" text-sm font-semibold text-primary-600 dark:text-primary-400">{watch("billNo") || "Auto"}</span>
             </div>
           </div>
 
@@ -948,8 +948,8 @@ export default function NewPurchasePage() {
                           <p className="font-medium text-gray-800 dark:text-dark-100">{item.itemName}</p>
                           <p className="text-xs text-gray-400">{item.unit}</p>
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.hsnCode || "—"}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.barcode || "—"}</td>
+                        <td className="px-4 py-2.5  text-xs text-gray-500">{item.hsnCode || "—"}</td>
+                        <td className="px-4 py-2.5  text-xs text-gray-500">{item.barcode || "—"}</td>
                         <td className="px-4 py-2.5 font-semibold tabular-nums">{item.quantity}</td>
                         <td className="px-4 py-2.5 tabular-nums text-gray-500">{item.altQuantity || "—"}</td>
                         <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{item.price.toFixed(2)}</td>

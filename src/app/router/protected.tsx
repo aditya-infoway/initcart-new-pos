@@ -328,8 +328,65 @@ const protectedRoutes: RouteObject = {
                 },
                 {
                   path: "received-orders",
+                  children: [
+                    {
+                      index: true,
+                      lazy: async () => ({
+                        Component: (await import("@/app/pages/b2b-inventory/stock-transfer/received-orders/index")).default,
+                      }),
+                    },
+                    {
+                      path: "detail/:id",
+                      lazy: async () => ({
+                        Component: (await import("@/app/pages/b2b-inventory/stock-transfer/received-orders/detail")).default,
+                      }),
+                    },
+                  ],
+                },
+              ],
+            },
+
+            // ── NEW: Stock Return Management ──────────────────────────────
+            {
+              path: "stock-return-management",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/b2b-inventory/stock-return-management/index")).default,
+              }),
+            },
+
+            // ── NEW: B2B Stock Return Management ──────────────────────────
+            {
+              path: "b2b-stock-return-management",
+              children: [
+                {
+                  index: true,
                   lazy: async () => ({
-                    Component: (await import("@/app/pages/b2b-inventory/stock-transfer/received-orders")).default,
+                    Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/index")).default,
+                  }),
+                },
+                {
+                  path: "create",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/create")).default,
+                  }),
+                },
+              ],
+            },
+
+            // ── NEW: SchemeOffer ──────────────────────────────────────────
+            {
+              path: "scheme-offer",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/scheme-offer/index")).default,
+                  }),
+                },
+                {
+                  path: "create",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/scheme-offer/create")).default,
                   }),
                 },
               ],

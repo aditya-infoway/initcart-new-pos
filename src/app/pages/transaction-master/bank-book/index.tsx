@@ -247,7 +247,7 @@ export default function BankBookPage() {
       cell: ({ getValue, table }: CellContext<BankEntry, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
         return (
-          <span className="whitespace-nowrap font-mono text-xs font-semibold text-primary-600 dark:text-primary-400">
+          <span className="whitespace-nowrap  text-xs font-semibold text-primary-600 dark:text-primary-400">
             <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
         );
@@ -294,7 +294,7 @@ export default function BankBookPage() {
       cell: ({ getValue }: CellContext<BankEntry, unknown>) => {
         const v = String(getValue() ?? "");
         return (
-          <span className="font-mono text-xs text-gray-500 dark:text-dark-300">
+          <span className=" text-xs text-gray-500 dark:text-dark-300">
             {v || "—"}
           </span>
         );

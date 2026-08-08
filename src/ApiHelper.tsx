@@ -70,6 +70,15 @@ export const Get = (fileName: string, data: unknown = {}, useHeader = false) =>
 export const Put = (fileName: string, data: unknown, useHeader = false) =>
   execute(axios.put(endpoint(fileName), data, requestConfig(useHeader)));
 
+/** GET without clearing session on 401/403/404 — use for pages that should show empty state instead of logging out. */
+export async function safeGet<T = unknown>(
+  path: string,
+  params: Record<string, unknown> = {},
+): Promise<T> {
+  const res = await axios.get(endpoint(path), { params, ...requestConfig() });
+  return res.data as T;
+}
+
 export const formatDateDDMMYYYY = (value: string | null | undefined): string => {
   if (!value) return "—";
   const date = new Date(value);

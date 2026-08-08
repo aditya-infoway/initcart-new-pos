@@ -779,14 +779,14 @@ export default function ItemBarcodesPage() {
                                 <Input type="text" placeholder="Manual (optional)"
                                   value={manualVal} maxLength={50}
                                   onChange={e => setManualInputs(prev => new Map(prev).set(v.variant_id, e.target.value.replace(/[^a-zA-Z0-9]/g, "")))}
-                                  classNames={{ input: "h-7 w-36 text-xs font-mono" }} />
+                                  classNames={{ input: "h-7 w-36 text-xs " }} />
                               ) : <span className="text-gray-300 dark:text-dark-600 text-xs">—</span>}
                             </Td>
                             <Td className="bg-white dark:bg-dark-700">
                               {gened ? (
                                 <div>
                                   <Barcode value={gened} width={1.2} height={28} fontSize={8} margin={2} displayValue />
-                                  <p className="text-[10px] text-gray-400 dark:text-dark-400 font-mono mt-0.5">{gened}</p>
+                                  <p className="text-[10px] text-gray-400 dark:text-dark-400  mt-0.5">{gened}</p>
                                 </div>
                               ) : (
                                 <span className="text-xs italic text-warning-500">Not generated</span>
@@ -903,7 +903,7 @@ export default function ItemBarcodesPage() {
                                 {v.current_stock > 0 ? `✓ ${v.current_stock}` : "Out"}
                               </Badge>
                             </Td>
-                            <Td className="bg-white dark:bg-dark-700 font-mono text-xs text-gray-700 dark:text-dark-200 whitespace-nowrap">
+                            <Td className="bg-white dark:bg-dark-700  text-xs text-gray-700 dark:text-dark-200 whitespace-nowrap">
                               {v.barcode}
                             </Td>
                             <Td className="bg-white dark:bg-dark-700">
@@ -939,7 +939,7 @@ export default function ItemBarcodesPage() {
                                       if (e.key === "Escape") cancelEditBarcode();
                                     }}
                                     placeholder="New barcode"
-                                    classNames={{ input: "h-7 w-28 text-xs font-mono" }}
+                                    classNames={{ input: "h-7 w-28 text-xs " }}
                                   />
                                   <Button isIcon variant="flat" className="size-7 rounded-full bg-success-100 hover:bg-success-200 dark:bg-success-900/20"
                                     disabled={updatingBarcode} onClick={() => handleUpdateBarcode(v.variant_id)}>

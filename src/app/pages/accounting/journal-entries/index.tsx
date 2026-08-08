@@ -560,7 +560,7 @@ export default function JournalEntriesPage() {
         if (!row.original.isFirst) return null;
         const q = ensureString(table.getState().globalFilter);
         return (
-          <span className="whitespace-nowrap font-mono text-xs font-medium text-primary-600 dark:text-primary-400">
+          <span className="whitespace-nowrap  text-xs font-medium text-primary-600 dark:text-primary-400">
             <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
         );

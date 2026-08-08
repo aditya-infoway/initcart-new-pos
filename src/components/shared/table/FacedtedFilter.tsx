@@ -182,7 +182,7 @@ function ComboboxFilter({
                         {item[labelField as string]}
                       </span>
                     </div>
-                    <span className="font-mono text-xs">
+                    <span className=" text-xs">
                       {facets?.get(item[valueField as string])}
                     </span>
                   </div>

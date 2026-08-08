@@ -210,7 +210,7 @@ export default function PurchaseReturnPage() {
       id: "returnNo", accessorKey: "returnNo", header: "Return No",
       cell: ({ getValue, table }: CellContext<PurchaseReturn, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
-        return <span className="whitespace-nowrap font-medium text-primary-600 dark:text-primary-400 font-mono text-xs"><Highlight query={q}>{String(getValue() ?? "—")}</Highlight></span>;
+        return <span className="whitespace-nowrap font-medium text-primary-600 dark:text-primary-400  text-xs"><Highlight query={q}>{String(getValue() ?? "—")}</Highlight></span>;
       },
     },
     {

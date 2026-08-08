@@ -442,7 +442,7 @@ export default function StockVerifyItemsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="font-mono text-[12px] font-medium text-gray-600 dark:text-dark-200 tracking-wider">
+                        <span className=" text-[12px] font-medium text-gray-600 dark:text-dark-200 tracking-wider">
                           {it.barcode || "—"}
                         </span>
                       </td>

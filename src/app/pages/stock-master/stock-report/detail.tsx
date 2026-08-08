@@ -124,7 +124,7 @@ export default function StockDetailPage() {
     {
       id: "reference", accessorKey: "reference", header: "Reference",
       cell: ({ getValue }: CellContext<StockHistoryEntry, unknown>) => (
-        <span className="font-mono text-xs text-primary-600 dark:text-primary-400">
+        <span className=" text-xs text-primary-600 dark:text-primary-400">
           {String(getValue() ?? "—") || "—"}
         </span>
       ),

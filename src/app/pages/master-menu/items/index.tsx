@@ -302,7 +302,7 @@ const isSuperAdmin = useMemo(() => {
     {
       id: "hsnCode", accessorKey: "hsnCode", header: "HSN",
       cell: ({ getValue }: CellContext<ItemRow, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "") || "—"}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "") || "—"}</span>
       ),
     },
     {

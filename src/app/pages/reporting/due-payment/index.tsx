@@ -238,7 +238,7 @@ export default function DuePaymentPage() {
       cell: ({ getValue }: CellContext<DueBill, unknown>) => {
         const v = getValue();
         return (
-          <span className="font-mono text-xs text-gray-500 dark:text-dark-300">
+          <span className=" text-xs text-gray-500 dark:text-dark-300">
             {v ? String(v) : "—"}
           </span>
         );

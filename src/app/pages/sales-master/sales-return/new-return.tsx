@@ -214,7 +214,7 @@ function BillSummaryPanel({ summary }: { summary: BillSummary }) {
                         : e.entry_type === "Return" ? "bg-amber-50 dark:bg-amber-900/10" : "",
                     )}>
                       <td className="px-3 py-2 text-gray-600 dark:text-dark-200">{formatDateDDMMYYYY(e.date)}</td>
-                      <td className="px-3 py-2 font-mono text-emerald-700 dark:text-emerald-400">{e.voucher_no}</td>
+                      <td className="px-3 py-2  text-emerald-700 dark:text-emerald-400">{e.voucher_no}</td>
                       <td className="px-3 py-2">
                         <Badge
                           color={e.entry_type === "Sale" ? "success" : e.entry_type === "Return" ? "warning" : "info"}
@@ -450,7 +450,7 @@ export default function NewSalesReturnPage() {
             <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 dark:bg-primary/10">
               <DocumentTextIcon className="size-4 text-primary-600 dark:text-primary-400" />
               <span className="text-xs text-gray-500 dark:text-dark-300">Return No:</span>
-              <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">{returnNo}</span>
+              <span className=" text-sm font-semibold text-primary-600 dark:text-primary-400">{returnNo}</span>
             </div>
           </div>
 
@@ -638,7 +638,7 @@ export default function NewSalesReturnPage() {
                               className="accent-primary size-4 rounded" />
                           </td>
                           <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</td>
-                          <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{item.hsn_code || "—"}</td>
+                          <td className="px-4 py-2.5  text-xs text-gray-500">{item.hsn_code || "—"}</td>
                           <td className="px-4 py-2.5 text-center tabular-nums text-gray-600 dark:text-dark-200">{item.original_quantity}</td>
                           <td className="px-4 py-2.5 text-center tabular-nums text-amber-600 dark:text-amber-400">{item.already_returned}</td>
                           <td className="px-4 py-2.5 text-center">

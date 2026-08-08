@@ -151,8 +151,8 @@ function ItemsModal({ record, onClose }: { record: PurchaseRecord | null; onClos
                       <Tr key={i} className="border-b border-gray-100 dark:border-dark-600">
                         <Td className="bg-white dark:bg-dark-700 text-gray-400">{i + 1}</Td>
                         <Td className="bg-white dark:bg-dark-700 font-medium text-gray-800 dark:text-dark-100">{item.itemName || "—"}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-mono text-xs text-gray-500">{item.hsnCode || "—"}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-mono text-xs text-gray-500">{item.barcode || "—"}</Td>
+                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{item.hsnCode || "—"}</Td>
+                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{item.barcode || "—"}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-center font-semibold tabular-nums">{item.qty}</Td>
                         <Td className="bg-white dark:bg-dark-700 text-center tabular-nums text-gray-500">{Number(item.altQty) > 0 ? item.altQty : "—"}</Td>
                         <Td className="bg-white dark:bg-dark-700 tabular-nums">₹{round2(item.price).toFixed(2)}</Td>
@@ -319,7 +319,7 @@ export default function PurchaseEntryPage() {
       id: "purchaseBillNo", accessorKey: "purchaseBillNo", header: "Purchase Bill No",
       cell: ({ getValue, table }: CellContext<PurchaseRecord, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
-        return <span className="font-mono text-xs text-gray-600 dark:text-dark-200 whitespace-nowrap"><Highlight query={q}>{String(getValue() ?? "") || "—"}</Highlight></span>;
+        return <span className=" text-xs text-gray-600 dark:text-dark-200 whitespace-nowrap"><Highlight query={q}>{String(getValue() ?? "") || "—"}</Highlight></span>;
       },
     },
     {

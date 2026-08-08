@@ -497,7 +497,7 @@ export default function WebsiteItemDetailPage() {
     },
     { id: "barcode", accessorKey: "barcode", header: "Barcode",
       cell: ({ getValue }: CellContext<Variant, unknown>) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "") || "—"}</span>
+        <span className=" text-xs text-gray-500 dark:text-dark-300">{String(getValue() ?? "") || "—"}</span>
       ),
     },
   ];
