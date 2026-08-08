@@ -33,6 +33,7 @@ import { Badge, Button, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, Put, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { useBranchLocationCheck } from "@/hooks/useBranchLocationCheck";
 
 // ── Decimal-safe rounding (fixes float drift like 12.999999999) ────────────
 const round2 = (val: any): number => {
@@ -139,6 +140,7 @@ function ReadField({ label, value }: { label: string; value: string }) {
 }
 
 // ── Barcode Scanner bar (top of page, for fast item entry) ────────────────
+// ── Barcode Scanner bar (top of page, for fast item entry) ────────────────
 function BarcodeScannerBar({
   disabled, onItemFound,
 }: {
@@ -178,36 +180,29 @@ function BarcodeScannerBar({
   };
 
   return (
-    <div className="px-(--margin-x)">
-      <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 dark:bg-primary/10">
-        <QrCodeIcon className="size-5 shrink-0 text-primary-600 dark:text-primary-400" />
-        <div className="flex-1">
-          <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary-700 dark:text-primary-300">
-            Barcode Scanner
-            {scanning && <span className="animate-pulse text-primary-400">Searching…</span>}
-          </label>
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleScan(value); } }}
-              placeholder="Scan barcode here — keep cursor in this field"
-              disabled={scanning}
-              autoComplete="off"
-              className="h-9 flex-1 rounded-lg border border-primary/30 bg-white px-3  text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-dark-800 dark:text-dark-100"
-            />
-            <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-4 text-sm"
-              disabled={scanning || !value.trim()} onClick={() => handleScan(value)}>
-              {scanning
-                ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                : <QrCodeIcon className="size-4" />}
-            </Button>
-          </div>
-          <p className="mt-1.5 text-[11px] text-primary-500/80 dark:text-primary-300/70">
-            Keep cursor in this field and scan — item will be selected automatically.
-          </p>
+    <div className="flex items-center gap-1.5">
+     
+      <div className="flex-1">
+
+        <div className="flex gap-1.5">
+<input
+  ref={inputRef}
+  value={value}
+  onChange={e => setValue(e.target.value)}
+  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleScan(value); } }}
+  placeholder="Scan barcode here — keep cursor in this field"
+  disabled={scanning}  // ← SIRF SCANNING KE WAQT DISABLE HO
+  autoComplete="off"
+  className="h-7 flex-1 rounded border border-primary/30 bg-white px-2.5 font-mono text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:bg-dark-800 dark:text-dark-100"
+/>
+          <Button type="button" color="primary" className="h-7 gap-1 rounded px-2.5 text-xs"
+            disabled={scanning || !value.trim() || disabled} onClick={() => handleScan(value)}>
+            {scanning
+              ? <span className="size-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              : <QrCodeIcon className="size-3.5" />}
+          </Button>
         </div>
+
       </div>
     </div>
   );
@@ -440,6 +435,7 @@ export default function NewPurchasePage() {
 
   // role-based access — barcode generation box is Superadmin-only
   const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+  const { checkLocation, isLoading: locationLoading } = useBranchLocationCheck()
 
   // accounts
   const [suppliers, setSuppliers]       = useState<AccountOption[]>([]);
@@ -661,9 +657,13 @@ export default function NewPurchasePage() {
   };
 
   // submit
-  const onSubmit = async (values: FormValues) => {
-    if (addedItems.length === 0) { toasterrormsg("Add at least one item."); return; }
-    setSaving(true);
+const onSubmit = async (values: FormValues) => {
+  if (addedItems.length === 0) { toasterrormsg("Add at least one item."); return; }
+
+  const locationOk = await checkLocation();
+  if (!locationOk) return;
+
+  setSaving(true);
     try {
       const payload: any = {
         billNo:            values.billNo,
@@ -800,110 +800,196 @@ export default function NewPurchasePage() {
             </div>
           </div>
 
-          {/* ── Barcode Scanner ──────────────────────────────────────── */}
-          <BarcodeScannerBar disabled={!partyVal} onItemFound={handleScannedItem} />
 
           {/* ── Item Entry ───────────────────────────────────────────── */}
           <div className="px-(--margin-x)">
             <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-dark-500 dark:bg-dark-750">
-              <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 dark:border-dark-600">
-                <div className="flex items-center gap-2">
-                  <CubeIcon className="size-4 text-primary-500" />
-                  <h4 className="text-sm font-semibold text-primary-600 dark:text-primary-400">Item Entry</h4>
-                </div>
-                <Button type="button" color="primary" variant="soft" className="h-8 gap-2 rounded-lg px-3 text-xs"
-                  onClick={() => setModalOpen(true)}>
-                  <MagnifyingGlassIcon className="size-3.5" /> Select Item
-                </Button>
-              </div>
-              <div className="p-5 space-y-4">
-                {curItem ? (
-                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 dark:bg-primary/10">
-                    <div className="flex-1 space-y-0.5">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-dark-100">{curItem.itemName}</p>
-                      <p className="text-xs text-gray-500 dark:text-dark-300">
-                        HSN: {curItem.hsnCode || "—"} · Unit: {curItem.unit} · Tax: {curItem.taxSlab}%
-                        {curItem.size ? ` · Size: ${curItem.size}` : ""}
-                        {curItem.color ? ` · Color: ${curItem.color}` : ""}
-                        {curItem.srno ? ` · Sr No: ${curItem.srno}` : ""}
-                        {existingBarcode ? ` · Barcode: ${existingBarcode}` : ""}
-                      </p>
-                    </div>
-                    <Badge color="warning" variant="soft" className="text-xs">{curItem.taxSlab}% GST</Badge>
-                    {curItem.unit_supports_fractional && (
-                      <Badge color="info" variant="soft" className="text-xs">Fractional Unit</Badge>
-                    )}
-                    <Button type="button" isIcon variant="flat" className="size-6 rounded-full text-gray-400 hover:text-error-600"
-                      onClick={resetCurrentRow}>
-                      <XMarkIcon className="size-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-400 dark:border-dark-500 dark:text-dark-400">
-                    <CubeIcon className="size-5 opacity-40" />
-                    Click "Select Item" above or scan a barcode to choose an item
-                  </div>
-                )}
+<div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-2 dark:border-dark-600">
+  <div className="flex items-center gap-2 shrink-0">
+    <CubeIcon className="size-4 text-primary-500" />
+    <h4 className="text-sm font-semibold text-primary-600 dark:text-primary-400">Item Entry</h4>
+  </div>
+  <div className="flex items-center gap-3">
+    <div className="max-w-[300px] min-w-[200px]">
+      <BarcodeScannerBar disabled={!partyVal} onItemFound={handleScannedItem} />
+    </div>
+    <Button type="button" color="primary" variant="soft" className="h-8 gap-2 rounded-lg px-3 text-xs shrink-0"
+      onClick={() => setModalOpen(true)}>
+      <MagnifyingGlassIcon className="size-3.5" /> Select Item
+    </Button>
+  </div>
+</div>
+<div className="p-5 space-y-4">
+  {/* Item Details - Only when item is selected */}
+  {curItem && (
+    <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Item Name */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Item</label>
+        <input
+          value={curItem.itemName}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* Barcode */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Barcode</label>
+        <input
+          value={existingBarcode || "—"}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm font-mono text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* HSN */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">HSN</label>
+        <input
+          value={curItem.hsnCode || "—"}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* Unit */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Unit</label>
+        <input
+          value={curItem.unit}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* Tax */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Tax</label>
+        <input
+          value={`${curItem.taxSlab}`}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* Details (Size / Color / Sr No) */}
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Details</label>
+        <input
+          value={[curItem.size, curItem.color, curItem.srno].filter(Boolean).join(" · ") || "—"}
+          disabled
+          className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+        />
+      </div>
+      
+      {/* Close Button - Absolute positioned */}
+      <Button type="button" isIcon variant="flat" className="absolute -top-1 -right-1 size-6 rounded-full text-gray-400 hover:text-error-600"
+        onClick={resetCurrentRow}>
+        <XMarkIcon className="size-4" />
+      </Button>
+    </div>
+  )}
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 items-end">
-                  <Input {...register("curPrice")} label="Price ₹" type="number" step="0.01" min="0"
-                    prefix={<CurrencyRupeeIcon className="size-4" />}
-                    classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">
-                      Quantity <span className="text-red-500">*</span>
-                    </label>
-                    <input {...register("curQty")} type="number" step="0.001" min="0" disabled={!curItem} placeholder="0"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600" />
-                  </div>
-                  <Input {...register("curAltQty")} label="Alt Qty" type="number" step="0.001" min="0" placeholder="0"
-                    classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
-                  <Input {...register("curDiscount")} label="Discount %" type="number" step="0.01" min="0" max="100" placeholder="0"
-                    classNames={{ input: "h-9 text-sm" }} disabled={!curItem} />
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-dark-500 dark:bg-dark-800">
-                    <p className="text-xs text-gray-400 dark:text-dark-400">Basic Amount</p>
-                    <p className="mt-0.5 text-base font-bold text-primary-600 dark:text-primary-400">
-                      ₹{liveBasic > 0 ? liveBasic.toFixed(2) : "0.00"}
-                    </p>
-                    {liveDisc > 0 && <p className="text-xs text-gray-400">After disc: ₹{liveNet.toFixed(2)}</p>}
-                  </div>
-                  <Button type="button" color="primary" className="h-9 gap-2 rounded-lg px-5 text-sm"
-                    onClick={handleAddItem} disabled={!curItem || barcodePending}>
-                    <PlusIcon className="size-4" /> Add to List
-                  </Button>
-                </div>
+  {/* Input Fields - Always visible */}
+  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">
+        Price ₹
+      </label>
+      <input
+        {...register("curPrice")}
+        type="number" step="0.01" min="0"
+        disabled={!curItem}
+        placeholder="0.00"
+        className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+      />
+    </div>
+    
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">
+        Qty <span className="text-red-500">*</span>
+      </label>
+      <input
+        {...register("curQty")}
+        type="number" step="0.001" min="0"
+        disabled={!curItem}
+        placeholder="0"
+        className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+      />
+    </div>
+    
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">
+        Alt Qty
+      </label>
+      <input
+        {...register("curAltQty")}
+        type="number" step="0.001" min="0"
+        disabled={!curItem}
+        placeholder="0"
+        className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+      />
+    </div>
+    
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">
+        Disc %
+      </label>
+      <input
+        {...register("curDiscount")}
+        type="number" step="0.01" min="0" max="100"
+        disabled={!curItem}
+        placeholder="0"
+        className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+      />
+    </div>
+    
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-500 dark:bg-dark-800">
+      <p className="text-xs text-gray-400 dark:text-dark-400">Basic Amount</p>
+      <p className="text-sm font-bold text-primary-600 dark:text-primary-400">
+        ₹{liveBasic > 0 ? liveBasic.toFixed(2) : "0.00"}
+      </p>
+      {liveDisc > 0 && <p className="text-xs text-gray-400">₹{liveNet.toFixed(2)}</p>}
+    </div>
+    
+    <Button type="button" color="primary" className="h-9 w-9 gap-0 rounded-lg px-0 text-sm"
+      onClick={handleAddItem} disabled={!curItem || barcodePending}>
+      <PlusIcon className="size-5" />
+    </Button>
+  </div>
 
-                {/* Fractional-unit per-unit price breakdown */}
-                {curItem?.unit_supports_fractional && Number(curPrice) > 0 && (
-                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 dark:border-sky-800/60 dark:bg-sky-900/10">
-                    <p className="text-xs text-sky-700 dark:text-sky-300">
-                      <span className="font-semibold">Per Unit Price:</span>{" "}
-                      ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {curItem.unit}
-                    </p>
-                    {Number(curQty) > 0 && (
-                      <p className="mt-1 text-xs text-sky-600 dark:text-sky-400">
-                        {curQty} {curItem.unit} × ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ={" "}
-                        <span className="font-bold">₹{liveBasic.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      </p>
-                    )}
-                  </div>
-                )}
+  {/* Fractional-unit per-unit price breakdown */}
+  {curItem?.unit_supports_fractional && Number(curPrice) > 0 && (
+    <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 dark:border-sky-800/60 dark:bg-sky-900/10">
+      <p className="text-sm text-sky-700 dark:text-sky-300">
+        <span className="font-semibold">Per Unit Price:</span>{" "}
+        ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {curItem.unit}
+      </p>
+      {Number(curQty) > 0 && (
+        <p className="mt-1 text-sm text-sky-600 dark:text-sky-400">
+          {curQty} {curItem.unit} × ₹{Number(curPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ={" "}
+          <span className="font-bold">₹{liveBasic.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </p>
+      )}
+    </div>
+  )}
 
-                {/* Superadmin-only barcode generate/save box */}
-                {isSuperAdmin && curItem && !existingBarcode && (
-                  <BarcodeGenerateBox
-                    mode={barcodeMode}
-                    value={barcodeValue}
-                    saved={barcodeSaved}
-                    isGenerating={isGeneratingBarcode}
-                    isSaving={isSavingBarcode}
-                    onModeChange={m => { setBarcodeMode(m); setBarcodeValue(""); setBarcodeSaved(false); }}
-                    onValueChange={setBarcodeValue}
-                    onGenerate={handleGenerateBarcode}
-                    onSave={handleSaveBarcode}
-                  />
-                )}
-              </div>
+  {/* Superadmin-only barcode generate/save box */}
+  {isSuperAdmin && curItem && !existingBarcode && (
+    <BarcodeGenerateBox
+      mode={barcodeMode}
+      value={barcodeValue}
+      saved={barcodeSaved}
+      isGenerating={isGeneratingBarcode}
+      isSaving={isSavingBarcode}
+      onModeChange={m => { setBarcodeMode(m); setBarcodeValue(""); setBarcodeSaved(false); }}
+      onValueChange={setBarcodeValue}
+      onGenerate={handleGenerateBarcode}
+      onSave={handleSaveBarcode}
+    />
+  )}
+</div>
             </div>
           </div>
 
@@ -1057,7 +1143,7 @@ export default function NewPurchasePage() {
             <ArrowLeftIcon className="size-4" /> Cancel
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"
-            disabled={saving || addedItems.length === 0}>
+            disabled={saving || addedItems.length === 0 || locationLoading}>
             {saving
               ? <><span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Saving…</>
               : <><CheckCircleIcon className="size-4" />Save Purchase</>}

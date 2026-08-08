@@ -13,6 +13,7 @@ import {
   PrinterIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
+   XMarkIcon, 
 } from "@heroicons/react/24/outline";
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
@@ -531,138 +532,176 @@ export default function NewSalePage() {
           </div>
         </Card>
 
-        {/* ── Barcode Scanner ───────────────────────────────────────────────── */}
-        <Card className="p-5">
-          <SectionHeader icon={QrCodeIcon} title="Barcode Scanner" color="text-indigo-600 dark:text-indigo-400" />
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Input
-                ref={barcodeRef}
-                value={barcodeInput}
-                onChange={e => setBarcodeInput(e.target.value)}
-                onKeyDown={handleBarcodeEnter}
-                placeholder="Scan barcode here — cursor must be here to scan"
-                prefix={<QrCodeIcon className="size-4" />}
-                disabled={barcodeScanning}
-              />
-            </div>
-            <Button color="primary" className="h-10 shrink-0 px-4"
-              onClick={() => handleBarcodeSearch(barcodeInput)}
-              disabled={barcodeScanning || !barcodeInput.trim()}>
-              {barcodeScanning ? "Searching..." : "Search"}
-            </Button>
+
+{/* ── Item Entry ────────────────────────────────────────────────────── */}
+<Card className="p-5">
+  <div className="flex items-center gap-2 border-b border-gray-200 pb-3 dark:border-dark-600">
+    <ShoppingCartIcon className="size-4 text-primary-500" />
+    <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">Item Entry</span>
+       <div className="ml-auto flex items-center  gap-3">
+      <div className="max-w-[300px] min-w-[200px]">
+        <div className="flex items-center gap-1.5">
+          <div className="flex-1 relative">
+            <QrCodeIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-primary-400" />
+            <input
+              ref={barcodeRef}
+              value={barcodeInput}
+              onChange={e => setBarcodeInput(e.target.value)}
+              onKeyDown={handleBarcodeEnter}
+              placeholder="Scan barcode here — keep cursor in this field"
+              disabled={barcodeScanning}
+              className="h-7 w-full rounded-lg border border-primary/30 bg-white pl-8 pr-2.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+            />
           </div>
-          <p className="mt-1.5 text-xs text-gray-400 dark:text-dark-400">
-            ✓ Keep cursor in this field and scan — item will be selected automatically
-          </p>
-        </Card>
+          <Button type="button" color="primary" className="h-7 gap-0.5 rounded px-2 text-xs shrink-0"
+            onClick={() => handleBarcodeSearch(barcodeInput)}
+            disabled={barcodeScanning || !barcodeInput.trim()}>
+            {barcodeScanning ? (
+              <span className="size-2.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <QrCodeIcon className="size-3" />
+            )}
+          </Button>
+        </div>
+      </div>
+      <Button type="button" color="primary" variant="soft" className="h-8 gap-2 rounded-lg px-3 text-xs shrink-0"
+        onClick={() => setItemModal(true)}>
+        <MagnifyingGlassIcon className="size-3.5" /> Select Item
+      </Button>
+    </div>
+  </div>
 
-        {/* ── Item Entry ────────────────────────────────────────────────────── */}
-        <Card className="p-5">
-          <SectionHeader icon={ShoppingCartIcon} title="Item Entry" />
+  <div className="mt-4 space-y-4">
+    {/* Item Details - Only when item is selected */}
+    {selectedItem && (
+      <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Item</label>
+          <input
+            value={selectedItem.itemName}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Barcode</label>
+          <input
+            value={selectedItem.barcode || "—"}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm font-mono text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">HSN</label>
+          <input
+            value={selectedItem.hsn || "—"}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Unit</label>
+          <input
+            value={selectedItem.unit || "—"}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Tax</label>
+          <input
+            value={`${selectedItem.taxPercent || 0}%`}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Stock</label>
+          <input
+            value={selectedItem.stock}
+            disabled
+            className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+          />
+        </div>
+        
+        <Button type="button" isIcon variant="flat" className="absolute -top-1 -right-1 size-6 rounded-full text-gray-400 hover:text-error-600"
+          onClick={() => { setSelectedItem(null); setQty(1); setPrice(0); setDiscPercent(0); }}>
+          <XMarkIcon className="size-4" />
+        </Button>
+      </div>
+    )}
 
-          {selectedItem && (
-            <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Selected Item</p>
-                  <p className="text-base font-semibold text-gray-900 dark:text-dark-100">{selectedItem.itemName}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-dark-300">
-                  <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">{selectedItem.unit ?? "Default"}</span>
-                  <span>Barcode: <span className=" text-gray-800 dark:text-dark-100">{selectedItem.barcode}</span></span>
-                  <span>Stock: <span className="font-semibold text-emerald-600">{selectedItem.stock}</span></span>
-                </div>
-              </div>
-            </div>
-          )}
+    {/* Input Fields - Always visible */}
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Price ₹</label>
+        <input
+          type="number" step="0.01" min="0"
+          value={price}
+          onChange={e => setPrice(Number(e.target.value))}
+          disabled={!selectedItem}
+          placeholder="0.00"
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+        />
+      </div>
+      
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Qty <span className="text-red-500">*</span></label>
+        <input
+          type="number" step="1" min="1"
+          value={qty}
+          onChange={e => setQty(Number(e.target.value))}
+          disabled={!selectedItem}
+          placeholder="0"
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+        />
+      </div>
+      
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-gray-700 dark:text-dark-200">Disc %</label>
+        <input
+          type="number" step="0.01" min="0" max="100"
+          value={discPercent}
+          onChange={e => setDiscPercent(Number(e.target.value))}
+          disabled={!selectedItem}
+          placeholder="0"
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100 dark:disabled:bg-dark-600"
+        />
+      </div>
+      
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-dark-500 dark:bg-dark-800">
+        <p className="text-xs text-gray-400 dark:text-dark-400">Net Value</p>
+        <p className="text-sm font-bold text-primary-600 dark:text-primary-400">
+          ₹{currentNetValue}
+        </p>
+      </div>
+      
+      <Button type="button" color="primary" className="h-9 w-9 gap-0 rounded-lg px-0 text-sm"
+        onClick={handleAdd} disabled={!selectedItem}>
+        <PlusIcon className="size-5" />
+      </Button>
+    </div>
 
-          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div>
-                <FieldLabel>Item</FieldLabel>
-                <Button color="primary" className="h-11 w-full gap-2 rounded-xl px-4 text-sm"
-                  onClick={() => setItemModal(true)}>
-                  <MagnifyingGlassIcon className="size-4" /> Select Item
-                </Button>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <FieldLabel>HSN Code</FieldLabel>
-                  <ReadField value={selectedItem?.hsn} />
-                </div>
-                <div>
-                  <FieldLabel>Unit</FieldLabel>
-                  <ReadField value={selectedItem?.unit} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <FieldLabel>Qty</FieldLabel>
-                <Input
-                  type="number"
-                  min={1}
-                  value={qty}
-                  onChange={e => setQty(Number(e.target.value))}
-                  classNames={{ input: "text-center font-semibold" }}
-                />
-              </div>
-              <div>
-                <FieldLabel>Price</FieldLabel>
-                <Input
-                  type="number"
-                  min={0}
-                  value={price}
-                  onChange={e => setPrice(Number(e.target.value))}
-                  prefix={<CurrencyRupeeIcon className="size-4" />}
-                />
-              </div>
-              <div>
-                <FieldLabel>Disc%</FieldLabel>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={discPercent}
-                  onChange={e => setDiscPercent(Number(e.target.value))}
-                  suffix={<span className="text-xs text-gray-400">%</span>}
-                />
-              </div>
-              <div>
-                <FieldLabel>Tax%</FieldLabel>
-                <ReadField
-                  value={<span className="font-semibold text-amber-600">{selectedItem?.taxPercent ?? 0}%</span>}
-                />
-              </div>
-              <div className="sm:col-span-2 lg:col-auto">
-                <FieldLabel>Net Value</FieldLabel>
-                <ReadField
-                  value={<span className="font-bold text-primary">₹{currentNetValue}</span>}
-                />
-              </div>
-              <div className="sm:col-span-2 lg:col-auto">
-                <FieldLabel>&nbsp;</FieldLabel>
-                <Button color="primary" className="h-11 w-full gap-2 rounded-xl px-4 text-sm font-semibold"
-                  onClick={handleAdd} disabled={!selectedItem}>
-                  <PlusIcon className="size-4" /> Add Item
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {selectedItem?.unitSupportsFractional && qty > 0 && price > 0 && (
-            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-primary">
-              <span className="font-semibold">Per Unit Price:</span>{" "}
-              ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {selectedItem.unit}
-              {" · "}
-              {qty} {selectedItem.unit} × ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-              {" = "}
-              <span className="font-bold">₹{(qty * price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-          )}
-        </Card>
+    {/* Fractional-unit per-unit price breakdown */}
+    {selectedItem?.unitSupportsFractional && qty > 0 && price > 0 && (
+      <div className="rounded-lg border border-sky-200 bg-sky-50 p-2 dark:border-sky-800/60 dark:bg-sky-900/10">
+        <p className="text-sm text-sky-700 dark:text-sky-300">
+          <span className="font-semibold">Per Unit Price:</span>{" "}
+          ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} per {selectedItem.unit}
+        </p>
+        <p className="mt-0.5 text-sm text-sky-600 dark:text-sky-400">
+          {qty} {selectedItem.unit} × ₹{price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ={" "}
+          <span className="font-bold">₹{(qty * price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </p>
+      </div>
+    )}
+  </div>
+</Card>
 
         {/* ── Cart Table ────────────────────────────────────────────────────── */}
         {cart.length > 0 && (
