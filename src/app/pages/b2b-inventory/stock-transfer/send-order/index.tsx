@@ -46,6 +46,11 @@ const STATUS_COLOR: Record<string, "info" | "success" | "warning" | "error"> = {
   cancelled: "error",
 };
 
+const STATUS_OPTIONS = [
+  { value: "", label: "All Status" },
+  ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })),
+];
+
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function B2BOrderRequestPage() {
   const navigate = useNavigate();
@@ -56,7 +61,7 @@ export default function B2BOrderRequestPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilterObj, setStatusFilterObj] = useState<{ value: string; label: string } | null>(STATUS_OPTIONS[0]);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -75,9 +80,9 @@ export default function B2BOrderRequestPage() {
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const filtered = useMemo(() => {
-    if (!statusFilter) return rows;
-    return rows.filter(r => r.status === statusFilter);
-  }, [rows, statusFilter]);
+    if (!statusFilterObj?.value) return rows;
+    return rows.filter(r => r.status === statusFilterObj.value);
+  }, [rows, statusFilterObj]);
 
   const columns = useMemo<ColumnDef<OrderListItem>[]>(() => [
     {
@@ -223,8 +228,8 @@ export default function B2BOrderRequestPage() {
           >
             <FunnelIcon className="size-4" /> Filters
           </Button>
-          {statusFilter && (
-            <Button variant="outlined" className="gap-2 text-error-600 border-error-200 hover:bg-error-50" onClick={() => setStatusFilter("")}>
+          {statusFilterObj?.value && (
+            <Button variant="outlined" className="gap-2 text-error-600 border-error-200 hover:bg-error-50" onClick={() => setStatusFilterObj(STATUS_OPTIONS[0])}>
               <XMarkIcon className="size-4" /> Clear Filters
             </Button>
           )}
@@ -233,26 +238,25 @@ export default function B2BOrderRequestPage() {
           </Button>
         </div>
 
-        {/* Filter Panel */}
+        {/* Filter Panel
         {showFilters && (
           <div className="px-(--margin-x)">
             <Card skin="bordered" className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <Combobox
-                    value={statusFilter}
-                    onChange={setStatusFilter}
+                    data={STATUS_OPTIONS}
+                    displayField="label"
+                    searchFields={["label"]}
                     label="Status"
-                    options={[
-                      { value: "", label: "All Status" },
-                      ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))
-                    ]}
+                    value={statusFilterObj}
+                    onChange={(item: { value: string; label: string } | null) => setStatusFilterObj(item ?? STATUS_OPTIONS[0])}
                   />
                 </div>
               </div>
             </Card>
           </div>
-        )}
+        )} */}
 
         {/* Table */}
         <div className="px-(--margin-x)">
@@ -334,7 +338,7 @@ export default function B2BOrderRequestPage() {
         {/* Footer Info */}
         <div className="px-(--margin-x) text-sm text-gray-500 dark:text-dark-400">
           Showing {filtered.length} of {rows.length} orders
-          {statusFilter && ` with status: ${STATUS_LABEL[statusFilter]}`}
+          {statusFilterObj?.value && ` with status: ${STATUS_LABEL[statusFilterObj.value]}`}
         </div>
       </div>
     </Page>

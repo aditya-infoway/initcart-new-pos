@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Avatar, Button } from "@/components/ui";
 import { APP_FAVICON, APP_NAME, ColorType } from "@/constants/app";
 import { Get } from "@/ApiHelper";
+import { resolveProfileDisplay } from "@/utils/authMeProfile";
 import { useAuthContext } from "@/app/contexts/auth/context";
 import { GHOST_ENTRY_PATH } from "@/constants/app";
 
@@ -26,19 +27,25 @@ import { GHOST_ENTRY_PATH } from "@/constants/app";
 export function Profile() {
   const { logout } = useAuthContext();
   const navigate = useNavigate();
-  const [adminName, setAdminName] = useState("Superadmin");
+  const [adminName, setAdminName] = useState("Branch");
   const [adminEmail, setAdminEmail] = useState("");
   const [profileImage, setProfileImage] = useState("");
 
   useEffect(() => {
-    Get("banners/admin-profile/", {}, false)
-      .then((res: any) => {
-        const d = res?.data ?? res;
-        if (d?.name) setAdminName(d.name);
-        if (d?.email) setAdminEmail(d.email);
-        if (d?.profile_image) setProfileImage(d.profile_image);
-      })
-      .catch(() => {});
+    const loadProfile = () => {
+      Get("pos/auth/me/", {}, false)
+        .then((res: any) => {
+          const { displayName, email, profileImage: image } = resolveProfileDisplay(res?.data ?? res);
+          setAdminName(displayName || "Branch");
+          setAdminEmail(email);
+          setProfileImage(image);
+        })
+        .catch(() => {});
+    };
+
+    loadProfile();
+    window.addEventListener("profile-updated", loadProfile);
+    return () => window.removeEventListener("profile-updated", loadProfile);
   }, []);
 
   const handleLogout = async () => {
