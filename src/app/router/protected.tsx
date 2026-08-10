@@ -428,6 +428,23 @@ const protectedRoutes: RouteObject = {
                 },
               ],
             },
+            {
+              path: "b2b-purchase-verification",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/purchase-master/b2b-purchase-verification")).default,
+                  }),
+                },
+                {
+                  path: "detail/:id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/purchase-master/b2b-purchase-verification/detail")).default,
+                  }),
+                },
+              ],
+            },
           ],
         },
 
@@ -458,6 +475,29 @@ const protectedRoutes: RouteObject = {
               lazy: async () => ({
                 Component: (await import("@/app/pages/sales-master/sales-entry/sales-entry-form2")).default,
               }),
+            },
+            {
+              path: "b2b-sales",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/sales-master/b2b-sales/index")).default,
+                  }),
+                },
+                {
+                  path: "create",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/sales-master/b2b-sales/create")).default,
+                  }),
+                },
+                {
+                  path: "detail/:id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/sales-master/b2b-sales/detail")).default,
+                  }),
+                },
+              ],
             },
             {
               path: "sales-return-report",
