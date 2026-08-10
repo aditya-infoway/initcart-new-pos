@@ -233,7 +233,7 @@ export default function B2BOrderRequestPage() {
           </Button>
         </div>
 
-        {/* Filter Panel */}
+        {/* Filter Panel
         {showFilters && (
           <div className="px-(--margin-x)">
             <Card skin="bordered" className="p-4">
@@ -252,7 +252,7 @@ export default function B2BOrderRequestPage() {
               </div>
             </Card>
           </div>
-        )}
+        )} */}
 
         {/* Table */}
         <div className="px-(--margin-x)">

@@ -364,12 +364,12 @@ const protectedRoutes: RouteObject = {
                     Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/index")).default,
                   }),
                 },
-                {
-                  path: "create",
-                  lazy: async () => ({
-                    Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/create")).default,
-                  }),
-                },
+                // {
+                //   path: "create",
+                //   lazy: async () => ({
+                //     Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/create")).default,
+                //   }),
+                // },
               ],
             },
 
