@@ -81,13 +81,13 @@ const InputInner = forwardRef(
         {label && (
           <label
             htmlFor={inputId}
-            className={clsx("input-label", classNames.label)}
+            className={clsx("input-label dark:text-dark-200", classNames.label)}
             {...labelProps}
           >
-            <span className={clsx("input-label", classNames.labelText)}>
+            <span className={clsx("input-label dark:text-dark-200", classNames.labelText)}>
               {label}
               {required && (
-                <span className="ml-0.5 text-red-500">*</span>
+                <span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
               )}
             </span>
           </label>

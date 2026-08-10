@@ -35,6 +35,11 @@ import {
 import { Avatar, Badge, Button, Card, GhostSpinner, Input } from "@/components/ui";
 import { useAuthContext } from "@/app/contexts/auth/context";
 import { GHOST_ENTRY_PATH } from "@/constants/app";
+import {
+  AuthMeResponse,
+  getBranchFromMe,
+  getUserFromMe,
+} from "@/utils/authMeProfile";
 
 interface AuthMeBranch {
   id?: number | string;
@@ -80,45 +85,6 @@ interface AuthMeBranch {
   id_proof?: string;
   id_proof_url?: string;
   [k: string]: any;
-}
-
-interface AuthMeResponse {
-  success?: boolean;
-  data?: any;
-  result?: any;
-  results?: any;
-  user?: any;
-  branch?: AuthMeBranch;
-  id?: number | string;
-  name?: string;
-  username?: string;
-  email?: string;
-  phone?: string;
-  company_id?: number | string;
-  [k: string]: any;
-}
-
-function getBranchFromMe(payload: AuthMeResponse | null): AuthMeBranch {
-  if (!payload) return {} as AuthMeBranch;
-  if (payload.branch && typeof payload.branch === "object") return payload.branch;
-  if (payload.data?.branch && typeof payload.data.branch === "object") return payload.data.branch;
-  const inner = payload.data ?? payload.results ?? payload.result ?? payload;
-  if (inner && typeof inner === "object" && (inner.branch_name || inner.name || inner.id)) return inner;
-  return {} as AuthMeBranch;
-}
-
-function getUserFromMe(payload: AuthMeResponse | null): any {
-  if (!payload) return {};
-  if (payload.user && typeof payload.user === "object") return payload.user;
-  const inner = payload.data ?? payload.results ?? payload.result;
-  if (inner?.user && typeof inner.user === "object") return inner.user;
-  return {
-    id: payload.id,
-    name: payload.name,
-    username: payload.username,
-    email: payload.email,
-    phone: payload.phone,
-  };
 }
 
 // ── Section heading ───────────────────────────────────────────────────────
@@ -414,6 +380,7 @@ export default function AdminProfile() {
       if (saved) toastsuccessmsg("Profile updated successfully.");
       else throw new Error("failed");
       loadMe();
+      window.dispatchEvent(new Event("profile-updated"));
     } catch {
       toasterrormsg("Failed to save profile.");
     } finally {
@@ -462,9 +429,14 @@ export default function AdminProfile() {
             </div>
 
             <div className="w-full text-center">
-              <h1 className="text-2xl font-extrabold text-white drop-shadow-sm sm:text-3xl">
+              <h1 className="text-2xl font-extrabold text-gray-900 dark:text-dark-50 sm:text-3xl">
                 {displayName}
               </h1>
+              {ownerName && ownerName !== displayName && (
+                <p className="mt-1 text-sm font-medium text-gray-500 dark:text-dark-300">
+                  {ownerName}
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                 <Badge
                   className={
@@ -485,7 +457,7 @@ export default function AdminProfile() {
                 )}
               </div>
               {memberSince && (
-                <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/90">
+                <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 dark:text-dark-400">
                   <CalendarDaysIcon className="size-4" />
                   Member since: {formatDateDDMMYYYY(String(memberSince))}
                 </p>
