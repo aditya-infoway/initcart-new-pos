@@ -193,6 +193,29 @@ const protectedRoutes: RouteObject = {
                 },
               ],
             },
+            {
+              path: "stock-transfer",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer")).default,
+                  }),
+                },
+                {
+                  path: "new",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer/new")).default,
+                  }),
+                },
+                {
+                  path: ":id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer/detail")).default,
+                  }),
+                },
+              ],
+            },
           ],
         },
 
