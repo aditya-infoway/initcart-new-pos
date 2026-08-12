@@ -533,7 +533,7 @@ export default function B2BPurchaseVerificationDetailPage() {
               )}
             </div>
           </Card>
-        </div>
+        </div> 
 
         {/* GST Summary card */}
         {hasGst && (
