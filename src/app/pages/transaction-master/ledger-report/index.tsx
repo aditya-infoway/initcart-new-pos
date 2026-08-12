@@ -58,7 +58,7 @@ export default function LedgerReportPage() {
   }, [accounts, activeGroup]);
 
   const handleExport = () => {
-    const headers = ["#","Account Name","Group","City","State","Opening Balance","Dr/Cr","Current Balance","Dr/Cr"];
+    const headers = ["#", "Account Name", "Group", "City", "State", "Opening Balance", "Dr/Cr", "Current Balance", "Dr/Cr"];
     const rows = filteredByGroup.map((a, i) => [
       i + 1, a.accountName, a.group, a.city || "—", a.state || "—",
       a.openingBalance, a.drcr, a.currentBalance, a.currentDrcr,
@@ -214,24 +214,7 @@ export default function LedgerReportPage() {
             </div>
           </div>
 
-          {/* Page size selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-dark-300">Show</span>
-            <div className="flex gap-1">
-              {PAGE_SIZES.map(ps => (
-                <button key={ps} onClick={() => { setPageSize(ps); setPage(1); }}
-                  className={clsx(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
-                    pageSize === ps
-                      ? "bg-primary text-white"
-                      : "border border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary dark:border-dark-500 dark:bg-dark-700 dark:text-dark-200",
-                  )}>
-                  {ps}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-gray-500 dark:text-dark-300">per page</span>
-          </div>
+
         </div>
 
         {/* Search */}

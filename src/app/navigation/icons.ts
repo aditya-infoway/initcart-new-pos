@@ -274,6 +274,7 @@ userMaster: UsersIcon,
   "posOrderManagement.orderItems":        ShoppingCartIcon,
   "posOrderManagement.stockVerification": ClipboardDocumentCheckIcon,
   "posOrderManagement.stockReturn":       ReceiptRefundIcon,
+  "posOrderManagement.stockTransfer":     ArrowsRightLeftIcon,
 
   // Purchase Master
   posPurchaseMaster: TruckIcon,
