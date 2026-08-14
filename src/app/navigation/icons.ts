@@ -278,16 +278,18 @@ userMaster: UsersIcon,
 
   // Purchase Master
   posPurchaseMaster: TruckIcon,
-  "posPurchaseMaster.purchaseEntry":       ClipboardDocumentListIcon,
-  "posPurchaseMaster.purchaseReturn":      ReceiptRefundIcon,
-  "posPurchaseMaster.createOrder":         DocumentPlusIcon,
-  "posPurchaseMaster.purchaseOrderVerify": ClipboardDocumentCheckIcon,
+  "posPurchaseMaster.purchaseEntry":            ClipboardDocumentListIcon,
+  "posPurchaseMaster.purchaseReturn":           ReceiptRefundIcon,
+  "posPurchaseMaster.createOrder":              DocumentPlusIcon,
+  "posPurchaseMaster.purchaseOrderVerify":      ClipboardDocumentCheckIcon,
+  "posPurchaseMaster.b2bPurchaseVerification":  ClipboardDocumentCheckIcon,
 
   // Sales Master
   posSalesMaster: TagIcon,
   "posSalesMaster.salesEntryReport":  ClipboardDocumentListIcon,
   "posSalesMaster.salesEntry2":       DocumentPlusIcon,
   "posSalesMaster.salesReturnReport": ReceiptRefundIcon,
+  "posSalesMaster.b2bSales":          ShoppingCartIcon,
 
   // Stock Master
   posStockMaster: CircleStackIcon,
@@ -328,6 +330,7 @@ userMaster: UsersIcon,
   // Reporting
   posReporting: BookOpenIcon,
   "posReporting.outstanding":            ClipboardDocumentListIcon,
+  "posReporting.salesEntryReport":       ClipboardDocumentListIcon,
   "posReporting.salesRegister":          ClipboardDocumentListIcon,
   "posReporting.purchaseRegister":       ClipboardDocumentListIcon,
   "posReporting.salesReturnRegister":    ReceiptRefundIcon,

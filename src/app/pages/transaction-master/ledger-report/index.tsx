@@ -20,7 +20,7 @@ import { ensureString } from "@/utils/ensureString";
 import { LedgerAccount, GROUP_TABS, getDrCrColor, mapApiLedgerAccount } from "./data";
 
 const PAGE_SIZES = [10, 15, 25, 50, 100];
-
+0.
 export default function LedgerReportPage() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
@@ -68,7 +68,7 @@ export default function LedgerReportPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "ledger_report.csv"; a.click();
     URL.revokeObjectURL(url);
-  };
+  }; 
 
   const columns = useMemo<ColumnDef<LedgerAccount>[]>(() => [
     {
