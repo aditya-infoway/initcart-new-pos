@@ -24,13 +24,13 @@ import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { SalesBill, SalesBillLineItem, mapApiBill } from "./data";
 
-// ── Detail Modal ─────────────────────────────────────────────────────────────
-function DetailModal({ bill, onClose }: { bill: SalesBill | null; onClose: () => void }) {
+// ── Detail Drawer ─────────────────────────────────────────────────────────────
+function DetailDrawer({ bill, onClose }: { bill: SalesBill | null; onClose: () => void }) {
   const totals = useMemo(() => ({
-    netAmount:    bill?.lineItems.reduce((s, l) => s + l.netAmount, 0) ?? 0,
-    salesNet:     bill?.lineItems.reduce((s, l) => s + l.salesNet, 0) ?? 0,
+    netAmount: bill?.lineItems.reduce((s, l) => s + l.netAmount, 0) ?? 0,
+    salesNet: bill?.lineItems.reduce((s, l) => s + l.salesNet, 0) ?? 0,
     purchaseCost: bill?.lineItems.reduce((s, l) => s + l.purchaseCost, 0) ?? 0,
-    lineProfit:   bill?.lineItems.reduce((s, l) => s + l.lineProfit, 0) ?? 0,
+    lineProfit: bill?.lineItems.reduce((s, l) => s + l.lineProfit, 0) ?? 0,
   }), [bill]);
 
   return (
@@ -45,121 +45,158 @@ function DetailModal({ bill, onClose }: { bill: SalesBill | null; onClose: () =>
           className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
         />
 
-        {/* Panel */}
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <TransitionChild
-              as={DialogPanel}
-              enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
-              className="w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl transition-all dark:bg-dark-700"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between bg-primary px-5 py-4">
-                <div>
-                  <h3 className="text-base font-bold text-white">
-                    Line Items — {bill?.billNo}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-white/70">
-                    {bill?.customerName} · {formatDateDDMMYYYY(bill?.billDate ?? "")} · {bill?.terms}
+        {/* Drawer panel — slides in from the right */}
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full" enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0" leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[80%] xl:max-w-[72%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="flex shrink-0 items-start justify-between bg-primary px-5 py-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                Line Items — {bill?.billNo}
+              </h3>
+              <p className="mt-0.5 text-xs text-white/70">
+                {bill?.customerName} · {formatDateDDMMYYYY(bill?.billDate ?? "")} · {bill?.terms}
+              </p>
+            </div>
+
+            <Button onClick={onClose} variant="flat" isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10">
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
+
+
+
+          {/* Scrollable body */}
+          <div className="hide-scrollbar grow overflow-y-auto">
+            <div className="px-5 py-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                {
+                  label: "BILL AMOUNT",
+                  value: bill?.billAmount ?? 0,
+                  bg: "from-primary-500 to-primary-700",
+                },
+                {
+                  label: "PURCHASE COST",
+                  value: bill?.purchaseCost ?? 0,
+                  bg: "from-rose-500 to-rose-700",
+                },
+                {
+                  label: "PROFIT",
+                  value: bill?.profit ?? 0,
+                  bg: "from-emerald-500 to-emerald-700",
+                  pct: bill?.profitPercent,
+                },
+              ].map(({ label, value, bg, pct }) => (
+                <div
+                  key={label}
+                  className={clsx(
+                    "relative overflow-hidden rounded-xl bg-gradient-to-br p-4 text-white shadow-md",
+                    bg
+                  )}
+                >
+                  <div className="pointer-events-none absolute -right-2 -top-2 size-12 rounded-full bg-white/10" />
+
+                  <p className="text-lg font-bold tabular-nums">
+                    ₹
+                    {Number(value).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+
+                    {pct != null && (
+                      <span className="ml-1 text-xs font-normal">
+                        ({Number(pct).toFixed(1)}%)
+                      </span>
+                    )}
+                  </p>
+
+                  <p className="mt-0.5 text-xs font-medium text-white/80">
+                    {label}
                   </p>
                 </div>
-                <div className="mr-8 flex items-center gap-8">
-                  {[
-                    { label: "BILL AMOUNT",   val: bill?.billAmount ?? 0,   color: "text-white" },
-                    { label: "PURCHASE COST", val: bill?.purchaseCost ?? 0, color: "text-amber-300" },
-                    { label: "PROFIT",        val: bill?.profit ?? 0,       color: "text-emerald-300", pct: bill?.profitPercent },
-                  ].map(({ label, val, color, pct }) => (
-                    <div key={label} className="text-center">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">{label}</p>
-                      <p className={clsx("text-sm font-bold tabular-nums", color)}>
-                        ₹{Number(val).toFixed(2)}
-                        {pct != null && <span className="ml-1 text-xs font-normal">({Number(pct).toFixed(1)}%)</span>}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <Button onClick={onClose} variant="flat" isIcon
-                  className="size-8 rounded-full text-white hover:bg-white/10">
-                  <XMarkIcon className="size-5" />
-                </Button>
-              </div>
+              ))}
+            </div>
+            <div className="overflow-x-auto px-5">
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <Table hoverable className="w-full text-left">
-                  <THead>
-                    <Tr>
-                      {["SR","Item Name","HSN","Qty","Sale Price","Per","Disc%","Tax%","Net Amount","Sales Net","Purchase Price","Purchase Cost","Line Profit"].map(h => (
-                        <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 text-xs font-semibold uppercase text-gray-600">
-                          {h}
-                        </Th>
-                      ))}
-                    </Tr>
-                  </THead>
-                  <TBody>
-                    {!bill?.lineItems.length ? (
-                      <Tr>
-                        <Td colSpan={13} className="py-10 text-center text-sm text-gray-400">
-                          No line items available.
-                        </Td>
-                      </Tr>
-                    ) : bill.lineItems.map((l, i) => (
-                      <Tr key={l.id ?? i} className="dark:border-b-dark-500 border-b border-gray-200">
-                        <Td className="bg-white dark:bg-dark-700 text-gray-400">{i + 1}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium text-gray-800 dark:text-dark-100">{l.itemName}</Td>
-                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{l.hsn}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-center font-semibold text-gray-800 dark:text-dark-100">{l.qty}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-gray-800 dark:text-dark-100">₹{l.salePrice.toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-gray-500">{l.per}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-gray-500">{l.discPercent}%</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium text-amber-600">{l.taxPercent}%</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-primary-600 dark:text-primary-400">₹{l.netAmount.toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-primary-600 dark:text-primary-400">₹{l.salesNet.toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium tabular-nums text-amber-600">₹{l.purchasePrice.toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium tabular-nums text-amber-600">₹{l.purchaseCost.toFixed(2)}</Td>
-                        <Td className={clsx("bg-white dark:bg-dark-700 font-bold tabular-nums",
-                          l.lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
-                          {l.lineProfit >= 0 ? "+" : ""}₹{l.lineProfit.toFixed(2)}
-                        </Td>
-                      </Tr>
+              <Table hoverable className="w-full text-left">
+                <THead>
+                  <Tr>
+                    {["SR", "Item Name", "HSN", "Qty", "Sale Price", "Per", "Disc%", "Tax%", "Net Amount", "Sales Net", "Purchase Price", "Purchase Cost", "Line Profit"].map(h => (
+                      <Th key={h} className="bg-gray-100 dark:bg-dark-800 text-xs font-semibold uppercase text-gray-600 dark:text-dark-100 whitespace-nowrap">
+                        {h}
+                      </Th>
                     ))}
+                  </Tr>
+                </THead>
+                <TBody>
+                  {!bill?.lineItems.length ? (
+                    <Tr>
+                      <Td colSpan={13} className="py-10 text-center text-sm text-gray-400">
+                        No line items available.
+                      </Td>
+                    </Tr>
+                  ) : bill.lineItems.map((l, i) => (
+                    <Tr key={l.id ?? i} className="border-b border-gray-200 dark:border-dark-500">
+                      <Td className="text-gray-400">{i + 1}</Td>
+                      <Td className="font-medium text-gray-800 dark:text-dark-100 whitespace-nowrap">{l.itemName}</Td>
+                      <Td className="text-xs text-gray-500">{l.hsn}</Td>
+                      <Td className="text-center font-semibold text-gray-800 dark:text-dark-100">{l.qty}</Td>
+                      <Td className="font-semibold tabular-nums text-gray-800 dark:text-dark-100">₹{l.salePrice.toFixed(2)}</Td>
+                      <Td className="text-gray-500">{l.per}</Td>
+                      <Td className="text-gray-500">{l.discPercent}%</Td>
+                      <Td className="font-medium text-amber-600">{l.taxPercent}%</Td>
+                      <Td className="font-semibold tabular-nums text-primary-600 dark:text-primary-400">₹{l.netAmount.toFixed(2)}</Td>
+                      <Td className="font-semibold tabular-nums text-primary-600 dark:text-primary-400">₹{l.salesNet.toFixed(2)}</Td>
+                      <Td className="font-medium tabular-nums text-amber-600">₹{l.purchasePrice.toFixed(2)}</Td>
+                      <Td className="font-medium tabular-nums text-amber-600">₹{l.purchaseCost.toFixed(2)}</Td>
+                      <Td className={clsx("font-bold tabular-nums",
+                        l.lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                        {l.lineProfit >= 0 ? "+" : ""}₹{l.lineProfit.toFixed(2)}
+                      </Td>
+                    </Tr>
+                  ))}
+                </TBody>
+
+                {/* Totals footer */}
+                {(bill?.lineItems.length ?? 0) > 0 && (
+                  <TBody>
+                    <Tr className="border-t-2 border-gray-300 dark:border-dark-500">
+                      <Td colSpan={8} className="bg-gray-50 dark:bg-dark-800 text-xs font-bold uppercase text-gray-600 dark:text-dark-200">
+                        TOTAL
+                      </Td>
+                      <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                        ₹{totals.netAmount.toFixed(2)}
+                      </Td>
+                      <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                        ₹{totals.salesNet.toFixed(2)}
+                      </Td>
+                      <Td className="bg-gray-50 dark:bg-dark-800" />
+                      <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-amber-600">
+                        ₹{totals.purchaseCost.toFixed(2)}
+                      </Td>
+                      <Td className={clsx("bg-gray-50 dark:bg-dark-800 font-bold tabular-nums",
+                        totals.lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                        {totals.lineProfit >= 0 ? "+" : ""}₹{totals.lineProfit.toFixed(2)}
+                      </Td>
+                    </Tr>
                   </TBody>
-
-                  {/* Totals footer */}
-                  {(bill?.lineItems.length ?? 0) > 0 && (
-                    <TBody>
-                      <Tr className="border-t-2 border-gray-300 dark:border-dark-500">
-                        <Td colSpan={8} className="bg-gray-50 dark:bg-dark-800 text-xs font-bold uppercase text-gray-600 dark:text-dark-200">
-                          TOTAL
-                        </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
-                          ₹{totals.netAmount.toFixed(2)}
-                        </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
-                          ₹{totals.salesNet.toFixed(2)}
-                        </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800" />
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-amber-600">
-                          ₹{totals.purchaseCost.toFixed(2)}
-                        </Td>
-                        <Td className={clsx("bg-gray-50 dark:bg-dark-800 font-bold tabular-nums",
-                          totals.lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
-                          {totals.lineProfit >= 0 ? "+" : ""}₹{totals.lineProfit.toFixed(2)}
-                        </Td>
-                      </Tr>
-                    </TBody>
-                  )}
-                </Table>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end border-t border-gray-200 px-5 py-4 dark:border-dark-600">
-                <Button variant="outlined" className="px-8" onClick={onClose}>Close</Button>
-              </div>
-            </TransitionChild>
+                )}
+              </Table>
+            </div>
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="flex shrink-0 justify-end border-t border-gray-200 px-5 py-4 dark:border-dark-600">
+            <Button variant="outlined" className="px-8" onClick={onClose}>Close</Button>
+          </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );
@@ -186,16 +223,16 @@ export default function SalesProfitReportPage() {
       // API: { count, results: { success, summary, data: [...] } }
       const rows: any[] = Array.isArray(body?.results?.data) ? body.results.data
         : Array.isArray(body?.results) ? body.results
-        : Array.isArray(body?.data) ? body.data
-        : Array.isArray(body) ? body : [];
+          : Array.isArray(body?.data) ? body.data
+            : Array.isArray(body) ? body : [];
       // Use API summary if available
       const summary = body?.results?.summary;
       if (summary) {
         setSummary({
-          billAmount:   Number(summary.total_sales_amount ?? 0),
-          salesNet:     Number(summary.total_sales_net ?? 0),
+          billAmount: Number(summary.total_sales_amount ?? 0),
+          salesNet: Number(summary.total_sales_net ?? 0),
           purchaseCost: Number(summary.total_purchase_cost ?? 0),
-          profit:       Number(summary.total_profit ?? 0),
+          profit: Number(summary.total_profit ?? 0),
         });
         setSummaryFromApi(true);
       } else {
@@ -221,14 +258,14 @@ export default function SalesProfitReportPage() {
   }, [bills, filterTerms]);
 
   const totals = useMemo(() => summaryFromApi ? summary : ({
-    billAmount:   filtered.reduce((s, b) => s + b.billAmount, 0),
-    salesNet:     filtered.reduce((s, b) => s + b.salesNet, 0),
+    billAmount: filtered.reduce((s, b) => s + b.billAmount, 0),
+    salesNet: filtered.reduce((s, b) => s + b.salesNet, 0),
     purchaseCost: filtered.reduce((s, b) => s + b.purchaseCost, 0),
-    profit:       filtered.reduce((s, b) => s + b.profit, 0),
+    profit: filtered.reduce((s, b) => s + b.profit, 0),
   }), [filtered, summary, summaryFromApi]);
 
   const handleExport = () => {
-    const headers = ["SR","Bill No","Bill Date","Customer","Items","Bill Amount","Sales Net","Purchase Cost","Profit","Profit %","Terms","GST Type"];
+    const headers = ["SR", "Bill No", "Bill Date", "Customer", "Items", "Bill Amount", "Sales Net", "Purchase Cost", "Profit", "Profit %", "Terms", "GST Type"];
     const rows = filtered.map((b, i) => [
       i + 1, b.billNo, b.billDate, b.customerName, b.items,
       b.billAmount, b.salesNet, b.purchaseCost, b.profit,
@@ -423,12 +460,14 @@ export default function SalesProfitReportPage() {
         {/* Summary cards */}
         <div className="px-(--margin-x) mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Total Sales (Bill Amt)", value: totals.billAmount,   bg: "bg-gradient-to-br from-primary-500 to-primary-700",   Icon: ShoppingCartIcon },
-            { label: "Sales Net (Excl. GST)",  value: totals.salesNet,    bg: "bg-gradient-to-br from-blue-500 to-blue-700",           Icon: CurrencyRupeeIcon },
-            { label: "Purchase Cost",          value: totals.purchaseCost,bg: "bg-gradient-to-br from-amber-500 to-amber-600",         Icon: ReceiptRefundIcon },
-            { label: "Total Profit",           value: totals.profit,      bg: totals.profit >= 0
-              ? "bg-gradient-to-br from-emerald-500 to-emerald-700"
-              : "bg-gradient-to-br from-red-500 to-red-700",              Icon: BanknotesIcon },
+            { label: "Total Sales (Bill Amt)", value: totals.billAmount, bg: "bg-gradient-to-br from-primary-500 to-primary-700", Icon: ShoppingCartIcon },
+            { label: "Sales Net (Excl. GST)", value: totals.salesNet, bg: "bg-gradient-to-br from-blue-500 to-blue-700", Icon: CurrencyRupeeIcon },
+            { label: "Purchase Cost", value: totals.purchaseCost, bg: "bg-gradient-to-br from-amber-500 to-amber-600", Icon: ReceiptRefundIcon },
+            {
+              label: "Total Profit", value: totals.profit, bg: totals.profit >= 0
+                ? "bg-gradient-to-br from-emerald-500 to-emerald-700"
+                : "bg-gradient-to-br from-red-500 to-red-700", Icon: BanknotesIcon
+            },
           ].map(({ label, value, bg, Icon }) => (
             <div key={label} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bg)}>
               <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
@@ -479,8 +518,8 @@ export default function SalesProfitReportPage() {
         />
       </div>
 
-      {/* Detail Modal */}
-      <DetailModal bill={selectedBill} onClose={() => setSelectedBill(null)} />
+      {/* Detail Drawer */}
+      <DetailDrawer bill={selectedBill} onClose={() => setSelectedBill(null)} />
     </Page>
   );
 }
