@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Select } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
@@ -63,7 +63,7 @@ export default function B2BStockReturnPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<{ label: string; value: string } | null>(null);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -82,8 +82,8 @@ export default function B2BStockReturnPage() {
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const filtered = useMemo(() => {
-    if (!statusFilter) return rows;
-    return rows.filter(r => r.status === statusFilter);
+    if (!statusFilter?.value) return rows;
+    return rows.filter(r => r.status === statusFilter.value);
   }, [rows, statusFilter]);
 
   const columns = useMemo<ColumnDef<ReturnListItem>[]>(() => [
@@ -236,16 +236,16 @@ export default function B2BStockReturnPage() {
           <Button
             onClick={() => setShowFilters(!showFilters)}
             variant="soft"
-            color={showFilters || statusFilter ? "primary" : "neutral"}
+            color={showFilters || statusFilter?.value ? "primary" : "neutral"}
             className="flex items-center gap-2"
           >
             <FunnelIcon className="size-4" /> Filters
-            {statusFilter && <Badge color="error" variant="soft" className="text-[10px]">1</Badge>}
+            {statusFilter?.value && <Badge color="error" variant="soft" className="text-[10px]">1</Badge>}
           </Button>
 
-          {statusFilter && (
+          {statusFilter?.value && (
             <Button
-              onClick={() => { setStatusFilter(""); setShowFilters(false); }}
+              onClick={() => { setStatusFilter(null); setShowFilters(false); }}
               color="error"
               variant="soft"
               className="flex items-center gap-2"
@@ -268,17 +268,17 @@ export default function B2BStockReturnPage() {
           <div className="px-(--margin-x) mt-3">
             <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Select
+                <Combobox
                   label="Status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(item: any) => setStatusFilter(item)}
                   data={[
                     { label: "All Status", value: "" },
                     ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ label: v, value: k })),
                   ]}
-                  classNames={{
-                    wrapper: "h-[42px]",
-                  }}
+                  displayField="label"
+                  searchFields={["label"]}
+                  by="value"
                 />
               </div>
             </div>

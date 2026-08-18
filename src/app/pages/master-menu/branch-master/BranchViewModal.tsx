@@ -95,151 +95,150 @@ export function BranchViewModal({ isOpen, close, branch }: BranchViewModalProps)
           className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
         />
 
-        <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6">
-          <div className="flex min-h-full items-center justify-center">
-            <TransitionChild
-              as={DialogPanel}
-              enter="ease-out duration-200"
-              enterFrom="opacity-0 translate-y-2"
-              enterTo="opacity-100 translate-y-0"
-              leave="ease-in duration-150"
-              leaveFrom="opacity-100 translate-y-0"
-              leaveTo="opacity-0 translate-y-2"
-              className="w-full max-w-4xl overflow-hidden rounded-2xl bg-gray-50 shadow-xl dark:bg-dark-800"
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full"
+          enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0"
+          leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[65%] xl:max-w-[55%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="bg-primary flex shrink-0 items-center justify-between border-b border-primary/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
+                <EyeIcon className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {branch?.branchName || "Branch Details"}
+                </h3>
+                <p className="mt-0.5 text-sm text-white/75">Branch Details</p>
+              </div>
+            </div>
+            <Button
+              onClick={close}
+              variant="flat"
+              isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10"
             >
-              {/* Header (blue) */}
-              <div className="bg-primary relative flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
-                    <EyeIcon className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">
-                      {branch?.branchName || "Branch Details"}
-                    </h3>
-                    <p className="text-xs text-white/75">Branch Details</p>
-                  </div>
-                </div>
-                <Button onClick={close} variant="flat" isIcon className="size-9 rounded-full text-white hover:bg-white/10">
-                  <XMarkIcon className="size-5" />
-                </Button>
-              </div>
-
-              {/* Meta + Logo */}
-              <div className="px-6 pt-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge color={branch?.status === "active" ? "success" : "error"} variant="soft">
-                      {(branch?.status ?? "Active").charAt(0).toUpperCase() + (branch?.status ?? "active").slice(1)}
-                    </Badge>
-                    <span className="text-sm text-gray-500 dark:text-dark-300">
-                      Created: {formatDateDDMMYYYY(branch?.createdAt ?? "")}
-                    </span>
-                    {branch?.updatedAt && (
-                      <span className="text-sm text-gray-500 dark:text-dark-300">
-                        Updated: {formatDateDDMMYYYY(branch.updatedAt)}
-                      </span>
-                    )}
-                  </div>
-                  {branch?.branchLogo && (
-                    <img
-                      src={branch.branchLogo}
-                      alt={branch.branchName}
-                      className="size-24 rounded-full border-4 border-white object-cover shadow-md dark:border-dark-600"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="max-h-[65vh] space-y-3 overflow-y-auto px-5 pb-5 pt-3">
-                <SectionBox title="Basic Information" accent="blue">
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-3">
-                      <LabeledField label="Branch Name" value={branch?.branchName} />
-                      <LabeledField
-                        label="Business Type"
-                        value={
-                          branch?.businessType ? (
-                            <Badge color="primary" variant="soft">
-                              {branch.businessType.charAt(0).toUpperCase() + branch.businessType.slice(1)}
-                            </Badge>
-                          ) : null
-                        }
-                      />
-                      <LabeledField
-                        label="Linked Account"
-                        value={branch?.linkedAccount ? branch.linkedAccount : (
-                          <span className="text-gray-400">N/A</span>
-                        )}
-                      />
-                      <LabeledField
-                        label="Branch Type"
-                        value={
-                          branch?.branchType ? (
-                            <Badge color="primary" variant="soft">
-                              {branch.branchType.charAt(0).toUpperCase() + branch.branchType.slice(1)}
-                            </Badge>
-                          ) : null
-                        }
-                      />
-                      <LabeledField label="Owner Name" value={branch?.ownerName} />
-                      <LabeledField label="Email" value={branch?.email} />
-                      <LabeledField
-                        label="Phone"
-                        value={
-                          branch?.phone ? (
-                            <a href={`tel:${branch.phone}`} className="text-primary-600 dark:text-primary-400">
-                              {branch.phone}
-                            </a>
-                          ) : null
-                        }
-                      />
-                    </div>
-                  </div>
-                </SectionBox>
-
-                <SectionBox title="Address Details" accent="green">
-                  <div className="space-y-3">
-                    <LabeledField label="Address" value={branch?.address} />
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
-                      <LabeledField label="City" value={branch?.city} />
-                      <LabeledField label="State" value={branch?.state} />
-                      <LabeledField label="Country" value={branch?.country} />
-                      <LabeledField label="Pincode" value={branch?.pincode} />
-                    </div>
-                  </div>
-                </SectionBox>
-
-                <SectionBox title="Bank Details" accent="orange">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
-                    <LabeledField label="Bank Name" value={branch?.bankName} />
-                    <LabeledField label="Account Number" value={branch?.accountNumber} />
-                    <LabeledField label="IFSC Code" value={branch?.ifscCode} />
-                    <LabeledField label="UPI ID" value={branch?.upiId} />
-                  </div>
-                </SectionBox>
-
-                <SectionBox title="Documents" accent="purple">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
-                    <DocLink label="License" url={branch?.licenseFile} />
-                    <DocLink label="GST Certificate" url={branch?.gstCertificate} />
-                    <DocLink label="ID Proof" url={branch?.idProof} />
-                    <DocLink label="Branch Logo" url={branch?.branchLogo} />
-                  </div>
-                </SectionBox>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end gap-3 border-t border-gray-200 bg-white px-5 py-4 dark:border-dark-500 dark:bg-dark-750">
-                <Button color="primary" className="min-w-[8rem] gap-2" onClick={close}>
-                  <XMarkIcon className="size-4" /> Close
-                </Button>
-              </div>
-            </TransitionChild>
+              <XMarkIcon className="size-5" />
+            </Button>
           </div>
-        </div>
+
+          {/* Body */}
+          <div className="hide-scrollbar grow space-y-3 overflow-y-auto px-5 py-5">
+            {/* Meta + Logo */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge color={branch?.status === "active" ? "success" : "error"} variant="soft">
+                  {(branch?.status ?? "Active").charAt(0).toUpperCase() + (branch?.status ?? "active").slice(1)}
+                </Badge>
+                <span className="text-sm text-gray-500 dark:text-dark-300">
+                  Created: {formatDateDDMMYYYY(branch?.createdAt ?? "")}
+                </span>
+                {branch?.updatedAt && (
+                  <span className="text-sm text-gray-500 dark:text-dark-300">
+                    Updated: {formatDateDDMMYYYY(branch.updatedAt)}
+                  </span>
+                )}
+              </div>
+              {branch?.branchLogo && (
+                <img
+                  src={branch.branchLogo}
+                  alt={branch.branchName}
+                  className="size-24 rounded-full border-4 border-white object-cover shadow-md dark:border-dark-600"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+            </div>
+
+            <SectionBox title="Basic Information" accent="blue">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-3">
+                  <LabeledField label="Branch Name" value={branch?.branchName} />
+                  <LabeledField
+                    label="Business Type"
+                    value={
+                      branch?.businessType ? (
+                        <Badge color="primary" variant="soft">
+                          {branch.businessType.charAt(0).toUpperCase() + branch.businessType.slice(1)}
+                        </Badge>
+                      ) : null
+                    }
+                  />
+                  <LabeledField
+                    label="Linked Account"
+                    value={branch?.linkedAccount ? branch.linkedAccount : (
+                      <span className="text-gray-400">N/A</span>
+                    )}
+                  />
+                  <LabeledField
+                    label="Branch Type"
+                    value={
+                      branch?.branchType ? (
+                        <Badge color="primary" variant="soft">
+                          {branch.branchType.charAt(0).toUpperCase() + branch.branchType.slice(1)}
+                        </Badge>
+                      ) : null
+                    }
+                  />
+                  <LabeledField label="Owner Name" value={branch?.ownerName} />
+                  <LabeledField label="Email" value={branch?.email} />
+                  <LabeledField
+                    label="Phone"
+                    value={
+                      branch?.phone ? (
+                        <a href={`tel:${branch.phone}`} className="text-primary-600 dark:text-primary-400">
+                          {branch.phone}
+                        </a>
+                      ) : null
+                    }
+                  />
+                </div>
+              </div>
+            </SectionBox>
+
+            <SectionBox title="Address Details" accent="green">
+              <div className="space-y-3">
+                <LabeledField label="Address" value={branch?.address} />
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+                  <LabeledField label="City" value={branch?.city} />
+                  <LabeledField label="State" value={branch?.state} />
+                  <LabeledField label="Country" value={branch?.country} />
+                  <LabeledField label="Pincode" value={branch?.pincode} />
+                </div>
+              </div>
+            </SectionBox>
+
+            <SectionBox title="Bank Details" accent="orange">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+                <LabeledField label="Bank Name" value={branch?.bankName} />
+                <LabeledField label="Account Number" value={branch?.accountNumber} />
+                <LabeledField label="IFSC Code" value={branch?.ifscCode} />
+                <LabeledField label="UPI ID" value={branch?.upiId} />
+              </div>
+            </SectionBox>
+
+            <SectionBox title="Documents" accent="purple">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+                <DocLink label="License" url={branch?.licenseFile} />
+                <DocLink label="GST Certificate" url={branch?.gstCertificate} />
+                <DocLink label="ID Proof" url={branch?.idProof} />
+                <DocLink label="Branch Logo" url={branch?.branchLogo} />
+              </div>
+            </SectionBox>
+          </div>
+
+          {/* Footer */}
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+            <Button color="primary" className="min-w-[8rem] gap-2" onClick={close}>
+              <XMarkIcon className="size-4" /> Close
+            </Button>
+          </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );

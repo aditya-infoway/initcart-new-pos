@@ -11,7 +11,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Input, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, Textarea, Checkbox } from "@/components/ui";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
@@ -116,11 +116,9 @@ function BranchMultiSelect({
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dark:bg-dark-800 dark:border-dark-500">
           <div className="p-2 border-b border-gray-200 dark:border-dark-600">
             <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700 p-2 rounded">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selectedIds.length === branchOptions.length && branchOptions.length > 0}
                 onChange={toggleAll}
-                className="rounded text-primary focus:ring-primary"
               />
               <span className="font-medium">Select All</span>
             </label>
@@ -134,11 +132,9 @@ function BranchMultiSelect({
                   key={b.id}
                   className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700 p-2 rounded transition"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedIds.includes(b.id)}
                     onChange={() => toggleBranch(b.id)}
-                    className="rounded text-primary focus:ring-primary"
                   />
                   {b.branch_name}
                 </label>

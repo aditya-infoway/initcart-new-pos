@@ -28,7 +28,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Input } from "@/components/ui";
+import { Badge, Button, Card, Input, Checkbox } from "@/components/ui";
 import { Get, Patch, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -867,11 +867,9 @@ export default function WebsiteItemDetailPage() {
                 <div className="space-y-6">
                   {/* Warranty toggle */}
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={item.warranty_available}
                       onChange={e => set("warranty_available", e.target.checked)}
-                      className="size-4 rounded border-gray-300 text-primary accent-primary"
                     />
                     <span className="text-sm font-medium text-gray-700 dark:text-dark-200">Warranty Available</span>
                   </label>
@@ -925,11 +923,9 @@ export default function WebsiteItemDetailPage() {
                       </ThemedSelect>
                     </div>
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={item.free_shipping}
                         onChange={e => set("free_shipping", e.target.checked)}
-                        className="size-4 rounded border-gray-300 text-primary accent-primary"
                       />
                       <div>
                         <p className="text-sm font-medium text-gray-700 dark:text-dark-200">Free Shipping</p>
