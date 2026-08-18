@@ -13,7 +13,7 @@ import { Fragment, useCallback, useEffect, useState, useMemo } from "react";
 import Barcode from "react-barcode";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Input, Spinner, Table, TBody, Td, THead, Th, Tr } from "@/components/ui";
+import { Badge, Button, Card, Input, Spinner, Table, TBody, Td, THead, Th, Tr, Checkbox } from "@/components/ui";
 import { Get, Post, Put, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ function PrintModal({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ItemBarcodesPage() {
-    // ── role-based access ──
+  // ── role-based access ──
   const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
 
   // Superadmin: company + manual dono edit kar sakta hai.
@@ -370,9 +370,9 @@ export default function ItemBarcodesPage() {
   // print modal
   const [printItems, setPrintItems] = useState<PrintItem[]>([]);
   const [showPrint, setShowPrint] = useState(false);
-  
 
-    // ── inline barcode edit (generated tab) ──
+
+  // ── inline barcode edit (generated tab) ──
   const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
   const [editBarcodeValue, setEditBarcodeValue] = useState("");
   const [updatingBarcode, setUpdatingBarcode] = useState(false);
@@ -492,7 +492,7 @@ export default function ItemBarcodesPage() {
     } catch { toasterrormsg("Bulk generate failed"); }
     finally { setBulkLoading(false); }
   };
-// ── Update stock ───────────────────────────────────────────────────────────
+  // ── Update stock ───────────────────────────────────────────────────────────
   const handleUpdateStock = async (variantId: number) => {
     const val = stockInputs.get(variantId);
     if (!val) { toasterrormsg("Enter stock quantity"); return; }
@@ -710,8 +710,7 @@ export default function ItemBarcodesPage() {
                     <THead>
                       <Tr>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase w-10">
-                          <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                            className="size-4 cursor-pointer accent-primary rounded" />
+                          <Checkbox checked={allSelected} onChange={toggleAll} />
                         </Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase w-10">#</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Item Name</Th>
@@ -741,8 +740,7 @@ export default function ItemBarcodesPage() {
                             className={clsx("border-b border-gray-200 dark:border-dark-500 transition-colors",
                               selectedIds.has(v.variant_id) && "bg-primary-500/5 dark:bg-primary-500/10")}>
                             <Td className="bg-white dark:bg-dark-700 w-10">
-                              <input type="checkbox" checked={selectedIds.has(v.variant_id)} onChange={() => toggleOne(v.variant_id)}
-                                className="size-4 cursor-pointer accent-primary rounded" />
+                              <Checkbox checked={selectedIds.has(v.variant_id)} onChange={() => toggleOne(v.variant_id)} />
                             </Td>
                             <Td className="bg-white dark:bg-dark-700 text-gray-400 dark:text-dark-400 text-xs">
                               {(pendingPage.current_page - 1) * pendingPage.page_size + idx + 1}
@@ -843,8 +841,7 @@ export default function ItemBarcodesPage() {
                     <THead>
                       <Tr>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase w-10">
-                          <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                            className="size-4 cursor-pointer accent-primary rounded" />
+                          <Checkbox checked={allSelected} onChange={toggleAll} />
                         </Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">SR No.</Th>
                         <Th className="bg-gray-200 dark:bg-dark-800 dark:text-dark-100 font-semibold text-gray-800 uppercase">Item Name</Th>
@@ -861,7 +858,7 @@ export default function ItemBarcodesPage() {
                       </Tr>
                     </THead>
                     <TBody>
-{generated.length === 0 ? (
+                      {generated.length === 0 ? (
                         <Tr>
                           <Td colSpan={13} className="py-14 text-center text-gray-400 dark:text-dark-400">
                             <QrCodeIcon className="mx-auto mb-2 size-10 text-gray-200 dark:text-dark-600" />
@@ -875,8 +872,7 @@ export default function ItemBarcodesPage() {
                             className={clsx("border-b border-gray-200 dark:border-dark-500 transition-colors",
                               selectedIds.has(v.variant_id) && "bg-primary-500/5 dark:bg-primary-500/10")}>
                             <Td className="bg-white dark:bg-dark-700 w-10">
-                              <input type="checkbox" checked={selectedIds.has(v.variant_id)} onChange={() => toggleOne(v.variant_id)}
-                                className="size-4 cursor-pointer accent-primary rounded" />
+                              <Checkbox checked={selectedIds.has(v.variant_id)} onChange={() => toggleOne(v.variant_id)} />
                             </Td>
                             <Td className="bg-white dark:bg-dark-700 text-gray-400 dark:text-dark-400 text-xs">
                               {(generatedPage.current_page - 1) * generatedPage.page_size + idx + 1}
@@ -884,7 +880,7 @@ export default function ItemBarcodesPage() {
                             <Td className="bg-white dark:bg-dark-700 font-semibold text-gray-800 dark:text-dark-100 whitespace-nowrap">
                               {v.item_name}
                             </Td>
-<Td className="bg-white dark:bg-dark-700">
+                            <Td className="bg-white dark:bg-dark-700">
                               <div className="flex gap-1 flex-wrap">
                                 {v.size && <Badge color="neutral" variant="soft" className="text-xs">{v.size}</Badge>}
                                 {v.color && <Badge color="neutral" variant="soft" className="text-xs">{v.color}</Badge>}
@@ -907,14 +903,37 @@ export default function ItemBarcodesPage() {
                               {v.barcode}
                             </Td>
                             <Td className="bg-white dark:bg-dark-700">
-                              <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => updateQty(v.variant_id, qty - 1)}
-                                  className="flex size-6 items-center justify-center rounded bg-gray-100 text-sm font-bold text-gray-700 hover:bg-gray-200 dark:bg-dark-600 dark:text-dark-200 dark:hover:bg-dark-500">−</button>
-                                <Input type="number" min="0" max="100" value={qty}
-                                  onChange={e => updateQty(v.variant_id, parseInt(e.target.value) || 0)}
-                                  classNames={{ input: "h-6 w-12 text-center text-xs" }} />
-                                <button type="button" onClick={() => updateQty(v.variant_id, qty + 1)}
-                                  className="flex size-6 items-center justify-center rounded bg-gray-100 text-sm font-bold text-gray-700 hover:bg-gray-200 dark:bg-dark-600 dark:text-dark-200 dark:hover:bg-dark-500">+</button>
+                              <div className="flex items-center gap-1 whitespace-nowrap">
+
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(v.variant_id, Math.max(0, qty - 1))}
+                                  className="flex size-6 shrink-0 items-center justify-center rounded bg-gray-100 text-sm font-bold text-gray-700 hover:bg-gray-200 dark:bg-dark-600 dark:text-dark-200 dark:hover:bg-dark-500"
+                                >
+                                  −
+                                </button>
+
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={qty}
+                                  onChange={(e) =>
+                                    updateQty(v.variant_id, parseInt(e.target.value) || 0)
+                                  }
+                                  classNames={{
+                                    input: "h-6 w-14 min-w-14 px-1 text-center text-xs",
+                                  }}
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(v.variant_id, Math.min(100, qty + 1))}
+                                  className="flex size-6 shrink-0 items-center justify-center rounded bg-gray-100 text-sm font-bold text-gray-700 hover:bg-gray-200 dark:bg-dark-600 dark:text-dark-200 dark:hover:bg-dark-500"
+                                >
+                                  +
+                                </button>
+
                               </div>
                             </Td>
                             <Td className="bg-white dark:bg-dark-700">

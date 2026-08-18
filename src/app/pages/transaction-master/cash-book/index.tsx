@@ -11,8 +11,9 @@ import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Select } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
 import { DatePicker } from "@/components/shared/form/DatePicker";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -100,7 +101,7 @@ export default function CashBookPage() {
   // Filter state
   const [dateFrom, setDateFrom]         = useState("");
   const [dateTo, setDateTo]             = useState("");
-  const [filterType, setFilterType]     = useState("");
+  const [filterType, setFilterType]     = useState<{ label: string; value: string } | null>(null);
   const [filterAccount, setFilterAccount] = useState("");
 
   // ── Fetch cash-payments + cash-receipts in parallel ────────────────────
@@ -137,16 +138,16 @@ export default function CashBookPage() {
     let f = allEntries;
     if (dateFrom)     f = f.filter(e => e.date >= dateFrom);
     if (dateTo)       f = f.filter(e => e.date <= dateTo);
-    if (filterType)   f = f.filter(e => e.type.toLowerCase() === filterType.toLowerCase());
+    if (filterType?.value)   f = f.filter(e => e.type.toLowerCase() === filterType.value.toLowerCase());
     if (filterAccount) f = f.filter(e => e.accountName.toLowerCase().includes(filterAccount.toLowerCase()));
     return f;
   }, [allEntries, dateFrom, dateTo, filterType, filterAccount]);
 
-  const hasActiveFilters = !!(dateFrom || dateTo || filterType || filterAccount);
+  const hasActiveFilters = !!(dateFrom || dateTo || filterType?.value || filterAccount);
 
   const clearFilters = () => {
     setDateFrom(""); setDateTo("");
-    setFilterType(""); setFilterAccount("");
+    setFilterType(null); setFilterAccount("");
     setGlobalFilter("");
   };
 
@@ -313,7 +314,7 @@ export default function CashBookPage() {
               <span>Filters</span>
               {hasActiveFilters && (
                 <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-white">
-                  {[dateFrom, dateTo, filterType, filterAccount].filter(Boolean).length}
+                  {[dateFrom, dateTo, filterType?.value, filterAccount].filter(Boolean).length}
                 </span>
               )}
             </Button>
@@ -352,10 +353,10 @@ export default function CashBookPage() {
                   minDate={dateFrom || undefined}
                 />
                 {/* Transaction Type */}
-                <Select
+                <Combobox
                   label="Transaction Type"
                   value={filterType}
-                  onChange={e => setFilterType(e.target.value)}
+                  onChange={(item: any) => setFilterType(item)}
                   data={[
                     { label: "All Types",                         value: ""     },
                     { label: "CR — Cash Receipt",                 value: "CR"   },
@@ -365,6 +366,9 @@ export default function CashBookPage() {
                     { label: "PCP — Purchase Credit Payment",     value: "PCP"  },
                     { label: "SRCP — Sales Return Payment",       value: "SRCP" },
                   ]}
+                  displayField="label"
+                  searchFields={["label"]}
+                  by="value"
                 />
                 {/* Account filter */}
                 <Input

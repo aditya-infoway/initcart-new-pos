@@ -11,7 +11,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Input } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
+import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import {
@@ -206,28 +207,20 @@ export default function LedgerDetailPage() {
         {/* Date range filter */}
         <Card className="p-4">
           <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-300">
-                From Date
-              </label>
-              <Input
-                type="date"
+            <div className="min-w-[180px]">
+              <DatePicker
+                label="From Date"
                 value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                prefix={<CalendarDaysIcon className="size-4" />}
-                classNames={{ input: "h-9 text-sm" }}
+                onChange={(v: any) => setDateFrom(v || "")}
+                maxDate={dateTo || undefined}
               />
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-300">
-                To Date
-              </label>
-              <Input
-                type="date"
+            <div className="min-w-[180px]">
+              <DatePicker
+                label="To Date"
                 value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                prefix={<CalendarDaysIcon className="size-4" />}
-                classNames={{ input: "h-9 text-sm" }}
+                onChange={(v: any) => setDateTo(v || "")}
+                minDate={dateFrom || undefined}
               />
             </div>
             <Button color="primary" className="h-9 gap-2 px-4 text-sm" onClick={fetchDetail} disabled={loading}>

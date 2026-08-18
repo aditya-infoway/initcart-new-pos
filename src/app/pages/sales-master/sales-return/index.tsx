@@ -17,7 +17,8 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Select, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
+import { Badge, Button, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, Delete, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -118,7 +119,7 @@ export default function SalesReturnPage() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [filterType, setFilterType] = useState("");
+  const [filterType, setFilterType] = useState<{ label: string; value: string } | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<SalesReturnRecord | null>(null);
 
@@ -141,8 +142,8 @@ export default function SalesReturnPage() {
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   const filtered = useMemo(() => {
-    if (!filterType) return records;
-    return records.filter(r => r.returnType.toLowerCase() === filterType.toLowerCase());
+    if (!filterType?.value) return records;
+    return records.filter(r => r.returnType.toLowerCase() === filterType.value.toLowerCase());
   }, [records, filterType]);
 
   const totals = useMemo(() => ({
@@ -339,12 +340,16 @@ export default function SalesReturnPage() {
         {showFilter && (
           <div className="px-(--margin-x) mt-3">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-500 dark:bg-dark-600">
-              <Select label="Return Type" value={filterType} onChange={e => setFilterType(e.target.value)}
+              <Combobox label="Return Type" value={filterType} onChange={(item: any) => setFilterType(item)}
                 data={[
                   { label: "All Types", value: "" },
                   { label: "Full Return", value: "Full" },
                   { label: "Partial Return", value: "Partial" },
-                ]} />
+                ]}
+                displayField="label"
+                searchFields={["label"]}
+                by="value"
+              />
             </div>
           </div>
         )}

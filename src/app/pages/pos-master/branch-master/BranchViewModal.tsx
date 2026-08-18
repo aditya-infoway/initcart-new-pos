@@ -87,45 +87,49 @@ export function BranchViewModal({ isOpen, close, branch }: BranchViewModalProps)
           className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
         />
 
-        <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6">
-          <div className="flex min-h-full items-center justify-center">
-            <TransitionChild
-              as={DialogPanel}
-              enter="ease-out duration-200"
-              enterFrom="opacity-0 translate-y-2"
-              enterTo="opacity-100 translate-y-0"
-              leave="ease-in duration-150"
-              leaveFrom="opacity-100 translate-y-0"
-              leaveTo="opacity-0 translate-y-2"
-              className="w-full max-w-lg overflow-hidden rounded-2xl bg-gray-50 shadow-xl dark:bg-dark-800"
-            >
-              {/* Close */}
-              <div className="flex justify-end px-4 pt-4">
-                <Button onClick={close} variant="flat" isIcon className="size-8 rounded-full">
-                  <XMarkIcon className="size-5" />
-                </Button>
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full"
+          enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0"
+          leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[65%] xl:max-w-[55%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="bg-primary flex shrink-0 items-center justify-between border-b border-primary/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
+                {branch?.branchLogo ? (
+                  <img
+                    src={branch.branchLogo}
+                    alt={branch.branchName}
+                    className="size-full rounded-full object-cover"
+                  />
+                ) : (
+                  <InformationCircleIcon className="size-6" />
+                )}
               </div>
-
-              {/* Header */}
-              <div className="px-6 pb-4 text-center">
-                <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/10 text-primary">
-                  {branch?.branchLogo ? (
-                    <img
-                      src={branch.branchLogo}
-                      alt={branch.branchName}
-                      className="size-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <InformationCircleIcon className="size-7" />
-                  )}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
                   {branch?.branchName || "Branch Details"}
                 </h3>
+                <p className="mt-0.5 text-sm text-white/75">Branch Details</p>
               </div>
+            </div>
+            <Button
+              onClick={close}
+              variant="flat"
+              isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10"
+            >
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
 
-              {/* Body */}
-              <div className="max-h-[65vh] space-y-3 overflow-y-auto px-5 pb-5">
+          {/* Body */}
+          <div className="hide-scrollbar grow space-y-3 overflow-y-auto px-5 py-5">
                 <SectionBox title="Basic Information">
                   <div className="space-y-2">
                     <Row2
@@ -181,15 +185,13 @@ export function BranchViewModal({ isOpen, close, branch }: BranchViewModalProps)
                 </SectionBox>
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-center border-t border-gray-200 px-5 py-4 dark:border-dark-500">
-                <Button color="primary" className="min-w-[8rem]" onClick={close}>
-                  Close
-                </Button>
-              </div>
-            </TransitionChild>
+          {/* Footer */}
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+            <Button color="primary" className="min-w-[8rem]" onClick={close}>
+              Close
+            </Button>
           </div>
-        </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );
