@@ -52,25 +52,49 @@ export function SaleReceiptModal({ saleId, open, onClose }: Props) {
   return (
     <Transition appear show={open} as={Fragment}>
       <Dialog as="div" className="relative z-[220]" onClose={onClose}>
-        <TransitionChild as="div"
-          enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
-          leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" />
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <TransitionChild as={DialogPanel}
-              enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
-              leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
-              className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700"
-            >
-              <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-dark-600">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-dark-100">Sales Receipt</h2>
-                <button onClick={onClose} className="grid size-8 place-items-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-600">
-                  <XMarkIcon className="size-5" />
-                </button>
+        <TransitionChild
+          as="div"
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
+        />
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full"
+          enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0"
+          leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[65%] xl:max-w-[55%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="bg-primary flex shrink-0 items-center justify-between border-b border-primary/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
+                <PrinterIcon className="size-6" />
               </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Sales Receipt</h3>
+                <p className="mt-0.5 text-sm text-white/75">View and print receipt</p>
+              </div>
+            </div>
+            <Button
+              onClick={onClose}
+              variant="flat"
+              isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10"
+            >
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
 
-              <div className="max-h-[70vh] overflow-y-auto p-5">
+          {/* Body */}
+          <div className="hide-scrollbar grow overflow-y-auto px-5 py-5">
                 {loading ? (
                   <div className="py-12 text-center text-sm text-gray-400">Loading receipt...</div>
                 ) : saleData ? (
@@ -136,15 +160,14 @@ export function SaleReceiptModal({ saleId, open, onClose }: Props) {
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-600">
-                <Button variant="outlined" onClick={onClose}>Close</Button>
-                <Button color="primary" className="gap-2" onClick={handlePrint} disabled={!saleData}>
-                  <PrinterIcon className="size-4" /> Print
-                </Button>
-              </div>
-            </TransitionChild>
+          {/* Footer */}
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+            <Button variant="outlined" onClick={onClose}>Close</Button>
+            <Button color="primary" className="gap-2" onClick={handlePrint} disabled={!saleData}>
+              <PrinterIcon className="size-4" /> Print
+            </Button>
           </div>
-        </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );

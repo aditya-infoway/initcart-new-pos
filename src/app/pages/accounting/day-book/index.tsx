@@ -13,8 +13,9 @@ import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Select } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
 import { DatePicker } from "@/components/shared/form/DatePicker";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -151,8 +152,8 @@ export default function DayBookPage() {
   // Filter state
   const [dateFrom, setDateFrom]                 = useState(today);
   const [dateTo, setDateTo]                     = useState(today);
-  const [filterCategory, setFilterCategory]     = useState<"" | "cash" | "bank">("");
-  const [filterTxType, setFilterTxType]         = useState<"" | "Receipt" | "Payment">("");
+  const [filterCategory, setFilterCategory]     = useState<any>({ label: "All Transactions", value: "" });
+  const [filterTxType, setFilterTxType]         = useState<any>({ label: "All Types", value: "" });
 
   // ── Fetch all 4 APIs in parallel ──────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -193,24 +194,26 @@ export default function DayBookPage() {
     let f = allEntries;
     if (dateFrom) f = f.filter(e => e.date >= dateFrom);
     if (dateTo)   f = f.filter(e => e.date <= dateTo);
-    if (filterCategory === "cash") f = f.filter(e => e.category.startsWith("cash"));
-    if (filterCategory === "bank") f = f.filter(e => e.category.startsWith("bank"));
-    if (filterTxType)              f = f.filter(e => e.transactionType === filterTxType);
+    if (filterCategory?.value === "cash") f = f.filter(e => e.category.startsWith("cash"));
+    if (filterCategory?.value === "bank") f = f.filter(e => e.category.startsWith("bank"));
+    if (filterTxType?.value)              f = f.filter(e => e.transactionType === filterTxType.value);
     return f;
   }, [allEntries, dateFrom, dateTo, filterCategory, filterTxType]);
 
-  const isToday = dateFrom === today && dateTo === today && !filterCategory && !filterTxType && !globalFilter;
-  const hasActiveFilters = dateFrom !== today || dateTo !== today || !!filterCategory || !!filterTxType;
+  const isToday = dateFrom === today && dateTo === today && !filterCategory?.value && !filterTxType?.value && !globalFilter;
+  const hasActiveFilters = dateFrom !== today || dateTo !== today || !!filterCategory?.value || !!filterTxType?.value;
 
   const applyToday = () => {
     setDateFrom(today); setDateTo(today);
-    setFilterCategory(""); setFilterTxType("");
+    setFilterCategory({ label: "All Transactions", value: "" });
+    setFilterTxType({ label: "All Types", value: "" });
     setGlobalFilter("");
   };
 
   const clearFilters = () => {
     setDateFrom(today); setDateTo(today);
-    setFilterCategory(""); setFilterTxType("");
+    setFilterCategory({ label: "All Transactions", value: "" });
+    setFilterTxType({ label: "All Types", value: "" });
     setGlobalFilter("");
   };
 
@@ -427,7 +430,7 @@ export default function DayBookPage() {
               <span>Filters</span>
               {hasActiveFilters && (
                 <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-white">
-                  {[dateFrom !== today || dateTo !== today, !!filterCategory, !!filterTxType].filter(Boolean).length}
+                  {[dateFrom !== today || dateTo !== today, !!filterCategory?.value, !!filterTxType?.value].filter(Boolean).length}
                 </span>
               )}
             </Button>
@@ -464,26 +467,34 @@ export default function DayBookPage() {
                   minDate={dateFrom}
                 />
                 {/* Category */}
-                <Select
+                <Combobox
                   label="Category"
                   value={filterCategory}
-                  onChange={e => setFilterCategory(e.target.value as "" | "cash" | "bank")}
+                  onChange={setFilterCategory}
                   data={[
                     { label: "All Transactions", value: "" },
                     { label: "Cash Only",         value: "cash" },
                     { label: "Bank Only",          value: "bank" },
                   ]}
+                  placeholder="Select category"
+                  displayField="label"
+                  searchFields={["label"]}
+                  by="value"
                 />
                 {/* Transaction Type */}
-                <Select
+                <Combobox
                   label="Transaction Type"
                   value={filterTxType}
-                  onChange={e => setFilterTxType(e.target.value as "" | "Receipt" | "Payment")}
+                  onChange={setFilterTxType}
                   data={[
                     { label: "All Types", value: ""        },
                     { label: "Receipt",   value: "Receipt" },
                     { label: "Payment",   value: "Payment" },
                   ]}
+                  placeholder="Select type"
+                  displayField="label"
+                  searchFields={["label"]}
+                  by="value"
                 />
               </div>
               {hasActiveFilters && (

@@ -23,7 +23,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Input, Checkbox } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Listbox } from "@/components/shared/form/StyledListbox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
@@ -603,8 +603,7 @@ export default function NewSalesReturnPage() {
                 </div>
                 {billItems.length > 0 && (
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-dark-200">
-                    <input type="checkbox" checked={allSelected} onChange={e => selectAll(e.target.checked)}
-                      className="accent-primary size-4 rounded" />
+                    <Checkbox checked={allSelected} onChange={e => selectAll(e.target.checked)} />
                     Select All
                   </label>
                 )}
@@ -633,9 +632,8 @@ export default function NewSalesReturnPage() {
                       {billItems.map(item => (
                         <tr key={item.id} className="border-t border-gray-100 hover:bg-primary/5 dark:border-dark-600 dark:hover:bg-primary/10">
                           <td className="px-4 py-2.5">
-                            <input type="checkbox" checked={item.return_quantity > 0}
-                              onChange={e => updateQty(item.id, e.target.checked ? item.max_quantity : 0)}
-                              className="accent-primary size-4 rounded" />
+                            <Checkbox checked={item.return_quantity > 0}
+                              onChange={e => updateQty(item.id, e.target.checked ? item.max_quantity : 0)} />
                           </td>
                           <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</td>
                           <td className="px-4 py-2.5  text-xs text-gray-500">{item.hsn_code || "—"}</td>

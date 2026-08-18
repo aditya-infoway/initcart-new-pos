@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Select } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -32,7 +33,7 @@ export default function StockReturnPage() {
   const [sorting, setSorting]           = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showFilters, setShowFilters]   = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<{ label: string; value: string } | null>(null);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -50,8 +51,8 @@ export default function StockReturnPage() {
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const filtered = useMemo(() => {
-    if (!statusFilter) return rows;
-    return rows.filter(r => r.status === statusFilter);
+    if (!statusFilter?.value) return rows;
+    return rows.filter(r => r.status === statusFilter.value);
   }, [rows, statusFilter]);
 
   const columns = useMemo<ColumnDef<ReturnListItem>[]>(() => [
@@ -161,7 +162,7 @@ export default function StockReturnPage() {
     initialState: { pagination: { pageSize: 15 } },
   });
 
-  const hasActiveFilters = !!statusFilter;
+  const hasActiveFilters = !!statusFilter?.value;
 
   return (
     <Page title="Stock Return Register">
@@ -210,10 +211,10 @@ export default function StockReturnPage() {
           <div className="px-(--margin-x) mt-2">
             <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750 space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <Select
+                <Combobox
                   label="Status"
                   value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
+                  onChange={(item: any) => setStatusFilter(item)}
                   data={[
                     { label: "All Status",       value: "" },
                     { label: "Pending",          value: "pending" },
@@ -223,6 +224,9 @@ export default function StockReturnPage() {
                     { label: "Rejected",         value: "rejected" },
                     { label: "Cancelled",        value: "cancelled" },
                   ]}
+                  displayField="label"
+                  searchFields={["label"]}
+                  by="value"
                 />
               </div>
               {hasActiveFilters && (
@@ -230,7 +234,7 @@ export default function StockReturnPage() {
                   <Button
                     variant="outlined"
                     className="h-8 gap-1.5 rounded-md px-3 text-xs text-error-600 border-error-300 hover:bg-error-50 dark:border-error-800 dark:hover:bg-error-900/20"
-                    onClick={() => setStatusFilter("")}>
+                    onClick={() => setStatusFilter(null)}>
                     <XMarkIcon className="size-3.5" /> Clear Filters
                   </Button>
                 </div>
