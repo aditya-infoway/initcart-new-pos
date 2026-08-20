@@ -3,11 +3,6 @@ import {
   Popover,
   PopoverButton,
   PopoverPanel,
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
   Transition,
 } from "@headlessui/react";
 import {
@@ -23,6 +18,7 @@ import React, { Fragment, useState, FocusEvent } from "react";
 import { Link } from "react-router";
 
 // Local Imports
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   Avatar,
   type AvatarProps,
@@ -175,77 +171,32 @@ export function Notifications() {
                   </Button>
                 </div>
               </div>
-              <TabGroup
-                as={Fragment}
-                selectedIndex={activeTab}
-                onChange={setActiveTab}
-              >
-                <TabList className="hide-scrollbar flex shrink-0 overflow-x-auto scroll-smooth bg-gray-100 px-3 dark:bg-dark-800">
-                  <Tab
-                    onFocus={(e: FocusEvent<HTMLButtonElement>) => {
-                      const target = e.target;
-                      const parent = target.parentNode as HTMLElement;
-                      if (parent) {
-                        parent.scrollLeft =
-                          target.offsetLeft - parent.offsetWidth / 2;
-                      }
-                    }}
-                    className={({ selected }: { selected: boolean }) =>
-                      clsx(
-                        "shrink-0 scroll-mx-16 whitespace-nowrap border-b-2 px-3 py-2 font-medium",
-                        selected
-                          ? "border-primary-600 text-primary-600 dark:border-primary-500 dark:text-primary-400"
-                          : "border-transparent hover:text-gray-800 focus:text-gray-800 dark:hover:text-dark-100 dark:focus:text-dark-100",
-                      )
-                    }
-                    as={Button}
-                    unstyled
-                  >
-                    All
-                  </Tab>
-                  {typesKey.map((key) => (
-                    <Tab
-                      onFocus={(e: FocusEvent<HTMLButtonElement>) => {
-                        const target = e.target;
-                        const parent = target.parentNode as HTMLElement;
-                        if (parent) {
-                          parent.scrollLeft =
-                            target.offsetLeft - parent.offsetWidth / 2;
-                        }
-                      }}
-                      key={key}
-                      className={({ selected }: { selected: boolean }) =>
-                        clsx(
-                          "shrink-0 scroll-mx-16 whitespace-nowrap border-b-2 px-3 py-2 font-medium",
-                          selected
-                            ? "border-primary-600 text-primary-600 dark:border-primary-500 dark:text-primary-400"
-                            : "border-transparent hover:text-gray-800 focus:text-gray-800 dark:hover:text-dark-100 dark:focus:text-dark-100",
-                        )
-                      }
-                      as={Button}
-                      unstyled
-                    >
-                      {types[key].title}
-                    </Tab>
-                  ))}
-                </TabList>
-                {(notifications.length > 0 && activeTab === 0) ||
-                filteredNotifications.length > 0 ? (
-                  <TabPanels as={Fragment}>
-                    <TabPanel className="custom-scrollbar grow space-y-4 overflow-y-auto overflow-x-hidden p-4 outline-hidden">
-                      {notifications.map((item) => (
-                        <NotificationItem
-                          key={item.id}
-                          remove={removeNotification}
-                          data={item}
-                        />
-                      ))}
-                    </TabPanel>
-                    {typesKey.map((key) => (
-                      <TabPanel
-                        key={key}
-                        className="custom-scrollbar scrollbar-hide grow space-y-4 overflow-y-auto overflow-x-hidden p-4"
-                      >
+              <WithIcon
+                tabs={[
+                  {
+                    id: "all",
+                    title: "All",
+                    icon: EnvelopeIcon,
+                    content: notifications.length > 0 ? (
+                      <div className="custom-scrollbar grow space-y-4 overflow-y-auto overflow-x-hidden p-4 outline-hidden">
+                        {notifications.map((item) => (
+                          <NotificationItem
+                            key={item.id}
+                            remove={removeNotification}
+                            data={item}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty />
+                    ),
+                  },
+                  ...typesKey.map((key) => ({
+                    id: key,
+                    title: types[key].title,
+                    icon: types[key].Icon,
+                    content: filteredNotifications.length > 0 ? (
+                      <div className="custom-scrollbar scrollbar-hide grow space-y-4 overflow-y-auto overflow-x-hidden p-4">
                         {filteredNotifications.map((item) => (
                           <NotificationItem
                             key={item.id}
@@ -253,13 +204,15 @@ export function Notifications() {
                             data={item}
                           />
                         ))}
-                      </TabPanel>
-                    ))}
-                  </TabPanels>
-                ) : (
-                  <Empty />
-                )}
-              </TabGroup>
+                      </div>
+                    ) : (
+                      <Empty />
+                    ),
+                  })),
+                ]}
+                selectedIndex={activeTab}
+                onChange={setActiveTab}
+              />
               {((notifications.length > 0 && activeTab === 0) ||
                 filteredNotifications.length > 0) && (
                 <div className="shrink-0 overflow-hidden rounded-b-lg bg-gray-100 dark:bg-dark-800">

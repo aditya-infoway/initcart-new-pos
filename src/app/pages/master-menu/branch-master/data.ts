@@ -187,8 +187,13 @@ export function buildBranchPayload(
     upi_id: values.upiId,
     status: values.status,
   };
-  if (values.linkedAccountId) json.linked_account_id = values.linkedAccountId;
-  if (values.linkedAccount) json.linked_account = values.linkedAccount;
+  // Handle linked account
+  if (values.linkedAccountId && values.linkedAccountId !== "") {
+    json.linked_account_id = values.linkedAccountId;
+  }
+  if (values.linkedAccount && values.linkedAccount !== "") {
+    json.linked_account = values.linkedAccount;
+  }
   if (!isEdit && values.password) json.password = values.password;
   if (isEdit && values.password) json.password = values.password;
 

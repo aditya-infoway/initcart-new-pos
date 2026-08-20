@@ -1,6 +1,4 @@
-import {
-  Tab, TabGroup, TabList, TabPanel, TabPanels,
-} from "@headlessui/react";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
   getSortedRowModel, SortingState, useReactTable,
@@ -9,7 +7,7 @@ import {
 import {
   ArrowDownTrayIcon, ArrowPathIcon, BanknotesIcon,
   CurrencyRupeeIcon, FunnelIcon, MagnifyingGlassIcon,
-  PrinterIcon, ReceiptRefundIcon, ShoppingCartIcon,
+  PrinterIcon, ReceiptRefundIcon, ShoppingCartIcon, HomeIcon, ArrowUpRightIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -386,56 +384,38 @@ export default function OutstandingReportPage() {
 
         {/* Tabs */}
         <div className="px-(--margin-x)">
-          <TabGroup selectedIndex={activeTab} onChange={setActiveTab}>
-            <div className="hide-scrollbar overflow-x-auto rounded-xl bg-gray-100 dark:bg-dark-700">
-              <TabList className="flex w-max min-w-full gap-1 p-1">
-                {[
-                  { label: "Receivable", count: receivable.length, color: "text-emerald-600" },
-                  { label: "Payable",    count: payable.length,    color: "text-red-600" },
-                ].map((tab, i) => (
-                  <Tab key={tab.label}
-                    className={({ selected }: { selected: boolean }) => clsx(
-                      "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-5 py-2 text-sm font-medium transition-all duration-150 outline-none",
-                      selected
-                        ? "bg-white shadow text-gray-800 dark:bg-dark-600 dark:text-dark-100"
-                        : "text-gray-500 hover:text-gray-800 dark:text-dark-300 dark:hover:text-dark-100",
-                    )}
-                    as={Button}
-                    unstyled
-                  >
-                    <span>{tab.label}</span>
-                    <span className={clsx(
-                      "rounded-full px-2 py-0.5 text-xs font-bold",
-                      activeTab === i
-                        ? clsx("bg-primary/10", tab.color)
-                        : "bg-gray-200 text-gray-500 dark:bg-dark-500 dark:text-dark-300",
-                    )}>
-                      {tab.count}
-                    </span>
-                  </Tab>
-                ))}
-              </TabList>
-            </div>
-
-            <TabPanels className="mt-4">
-              <TabPanel>
-                <OutstandingTable
-                  data={receivable}
-                  loading={loading}
-                  label="Received"
-                  summary={receivableSummary}
-                />
-              </TabPanel>
-              <TabPanel>
-                <OutstandingTable
-                  data={payable}
-                  loading={loading}
-                  label="Paid"
-                  summary={payableSummary}
-                />
-              </TabPanel>
-            </TabPanels>
-          </TabGroup>
+          <WithIcon
+            tabs={[
+              {
+                id: "receivable",
+                title: `Receivable (${receivable.length})`,
+                icon: BanknotesIcon,
+                content: (
+                  <OutstandingTable
+                    data={receivable}
+                    loading={loading}
+                    label="Received"
+                    summary={receivableSummary}
+                  />
+                ),
+              },
+              {
+                id: "payable",
+                title: `Payable (${payable.length})`,
+                icon: ArrowUpRightIcon,
+                content: (
+                  <OutstandingTable
+                    data={payable}
+                    loading={loading}
+                    label="Paid"
+                    summary={payableSummary}
+                  />
+                ),
+              },
+            ]}
+            selectedIndex={activeTab}
+            onChange={setActiveTab}
+          />
         </div>
       </div>
     </Page>

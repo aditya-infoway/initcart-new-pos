@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowDownTrayIcon, ArrowPathIcon, BanknotesIcon,
-  CheckCircleIcon, EyeIcon, FunnelIcon,
+  CheckCircleIcon, CubeIcon, CurrencyRupeeIcon, EyeIcon, FunnelIcon,
   MagnifyingGlassIcon, PrinterIcon,
   ReceiptRefundIcon, XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -16,7 +16,7 @@ import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
+import { Badge, Button, Input, Card, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -96,55 +96,93 @@ function ReturnTypeBadge({ value }: { value: string }) {
   );
 }
 
-// ── Items Detail Modal ────────────────────────────────────────────────────
-function ItemsModal({
-  record,
-  onClose,
-}: {
-  record: SalesReturnRecord | null;
-  onClose: () => void;
-}) {
+// ── Items Detail Drawer ────────────────────────────────────────────────────
+function ItemsDrawer({ isOpen, onClose, record }: { isOpen: boolean; onClose: () => void; record: SalesReturnRecord | null }) {
   return (
-    <Transition appear show={!!record} as={Fragment}>
-      <Dialog as="div" className="relative z-[200]" onClose={onClose}>
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-100" onClose={onClose}>
         <TransitionChild
           as="div"
-          enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
-          leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
           className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
         />
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <TransitionChild
-              as={DialogPanel}
-              enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
-              className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-xl transition-all dark:bg-dark-700"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between bg-primary px-5 py-4">
-                <div>
-                  <h3 className="text-base font-bold text-white">
-                    Returned Items — {record?.returnNo}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-white/70">
-                    {record?.partyName} · {formatDateDDMMYYYY(record?.date ?? "")}
-                    {record?.returnType ? ` · ${record.returnType} Return` : ""}
-                  </p>
-                </div>
-                <Button onClick={onClose} variant="flat" isIcon
-                  className="size-8 rounded-full text-white hover:bg-white/10">
-                  <XMarkIcon className="size-5" />
-                </Button>
-              </div>
 
-              {/* Table */}
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full"
+          enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0"
+          leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[65%] xl:max-w-[55%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="bg-primary flex shrink-0 items-center justify-between border-b border-primary/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
+                <ReceiptRefundIcon className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Returned Items — {record?.returnNo}
+                </h3>
+                <p className="mt-0.5 text-sm text-white/75">
+                  {record?.partyName} · {formatDateDDMMYYYY(record?.date ?? "")}
+                  {record?.returnType ? ` · ${record.returnType} Return` : ""}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={onClose}
+              variant="flat"
+              isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10"
+            >
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
+
+          {/* Content */}
+          <div className="hide-scrollbar grow space-y-4 overflow-y-auto px-5 py-5">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                { label: "Total Items", value: record?.items.length ?? 0, bg: "bg-gradient-to-br from-blue-500 to-blue-700", Icon: CubeIcon },
+                { label: "Amount", value: `₹${Number(record?.amount ?? 0).toFixed(2)}`, bg: "bg-gradient-to-br from-primary-500 to-primary-700", Icon: BanknotesIcon },
+                { label: "Return Type", value: record?.returnType ?? "—", bg: "bg-gradient-to-br from-emerald-500 to-emerald-700", Icon: CurrencyRupeeIcon },
+              ].map(({ label, value, bg, Icon }) => (
+                <div key={label} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bg)}>
+                  <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
+                  <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/20">
+                    <Icon className="size-4 text-white" />
+                  </div>
+                  <p className="text-xl font-bold tabular-nums">{value}</p>
+                  <p className="mt-0.5 text-xs font-medium text-white/80">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Items table */}
+            <Card className="overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-600 flex items-center gap-3 bg-gray-50 dark:bg-dark-800">
+                <ReceiptRefundIcon className="size-4 text-primary" />
+                <h3 className="text-sm font-bold text-gray-800 dark:text-dark-50">Returned Items</h3>
+                <Badge color="primary" variant="soft" className="text-xs font-semibold">
+                  {record?.items.length ?? 0}
+                </Badge>
+              </div>
               <div className="overflow-x-auto">
                 <Table hoverable className="w-full text-left">
                   <THead>
                     <Tr>
                       {["SR","Item Name","HSN","Qty","Price","Per","Disc%","Basic Amt","Disc Amt","Tax Amt","Net Value"].map(h => (
-                        <Th key={h} className="bg-gray-100 text-xs font-semibold uppercase text-gray-600 dark:bg-dark-800 dark:text-dark-100">
+                        <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">
                           {h}
                         </Th>
                       ))}
@@ -153,57 +191,71 @@ function ItemsModal({
                   <TBody>
                     {!record?.items.length ? (
                       <Tr>
-                        <Td colSpan={11} className="py-10 text-center text-sm text-gray-400">
+                        <Td colSpan={11} className="px-4 py-10 text-center text-sm text-gray-400">
                           No items found.
                         </Td>
                       </Tr>
                     ) : record.items.map((item, i) => (
-                      <Tr key={i} className="border-b border-gray-200 dark:border-b-dark-500">
-                        <Td className="bg-white dark:bg-dark-700 text-gray-400">{i + 1}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</Td>
-                        <Td className="bg-white dark:bg-dark-700  text-xs text-gray-500">{item.hsnCode}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-center font-semibold tabular-nums text-gray-800 dark:text-dark-100">{item.qty}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-semibold tabular-nums text-gray-800 dark:text-dark-100">₹{Number(item.price).toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-gray-500">{item.unit}</Td>
-                        <Td className="bg-white dark:bg-dark-700 text-gray-500">{Number(item.discountPercent).toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium tabular-nums text-primary-600 dark:text-primary-400">₹{Number(item.basicAmount).toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 tabular-nums text-gray-500">₹{Number(item.discountAmount).toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-medium tabular-nums text-amber-600">₹{Number(item.taxAmount).toFixed(2)}</Td>
-                        <Td className="bg-white dark:bg-dark-700 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{Number(item.netAmount).toFixed(2)}</Td>
+                      <Tr key={i} className="dark:border-b-dark-500 border-b border-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-dark-800">
+                        <Td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</Td>
+                        <Td className="px-4 py-3 font-semibold text-gray-800 dark:text-dark-100">{item.itemName}</Td>
+                        <Td className="px-4 py-3 text-xs text-gray-500">{item.hsnCode}</Td>
+                        <Td className="px-4 py-3 text-center">
+                          <Badge color="info" variant="soft" className="text-xs font-bold">
+                            {item.qty}
+                          </Badge>
+                        </Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-semibold text-primary">
+                          ₹{Number(item.price).toFixed(2)}
+                        </Td>
+                        <Td className="px-4 py-3 text-center text-xs text-gray-500">{item.unit}</Td>
+                        <Td className="px-4 py-3 text-center">
+                          <Badge color="warning" variant="soft" className="text-xs">
+                            {Number(item.discountPercent).toFixed(2)}%
+                          </Badge>
+                        </Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-semibold text-primary">
+                          ₹{Number(item.basicAmount).toFixed(2)}
+                        </Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono text-gray-500">
+                          ₹{Number(item.discountAmount).toFixed(2)}
+                        </Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-semibold text-amber-600">
+                          ₹{Number(item.taxAmount).toFixed(2)}
+                        </Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-primary">
+                          ₹{Number(item.netAmount).toFixed(2)}
+                        </Td>
                       </Tr>
                     ))}
-                  </TBody>
-                  {(record?.items.length ?? 0) > 0 && (
-                    <TBody>
-                      <Tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                        <Td colSpan={7} className="bg-gray-50 dark:bg-dark-800 text-xs font-bold uppercase text-gray-600 dark:text-dark-200">
-                          TOTAL
-                        </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                    {(record?.items.length ?? 0) > 0 && (
+                      <Tr className="dark:border-b-dark-500 border-t-2 border-gray-200 dark:border-dark-500 bg-gray-50 dark:bg-dark-800">
+                        <Td colSpan={7} className="px-4 py-3 text-xs font-bold uppercase text-gray-700 dark:text-dark-100">Total</Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-primary dark:text-primary-400">
                           ₹{record?.items.reduce((s, i) => s + Number(i.basicAmount), 0).toFixed(2)}
                         </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-gray-500">
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-gray-500">
                           ₹{record?.items.reduce((s, i) => s + Number(i.discountAmount), 0).toFixed(2)}
                         </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-amber-600">
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-amber-600">
                           ₹{record?.items.reduce((s, i) => s + Number(i.taxAmount), 0).toFixed(2)}
                         </Td>
-                        <Td className="bg-gray-50 dark:bg-dark-800 font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-primary dark:text-primary-400">
                           ₹{record?.items.reduce((s, i) => s + Number(i.netAmount), 0).toFixed(2)}
                         </Td>
                       </Tr>
-                    </TBody>
-                  )}
+                    )}
+                  </TBody>
                 </Table>
               </div>
-
-              {/* Footer */}
-              <div className="flex justify-end border-t border-gray-200 px-5 py-4 dark:border-dark-600">
-                <Button variant="outlined" className="px-8" onClick={onClose}>Close</Button>
-              </div>
-            </TransitionChild>
+            </Card>
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="flex shrink-0 items-center justify-end border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+            <Button variant="outlined" onClick={onClose}>Close</Button>
+          </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );
@@ -535,8 +587,8 @@ export default function SalesReturnRegisterPage() {
         />
       </div>
 
-      {/* ── Items Detail Modal ────────────────────────────────────────── */}
-      <ItemsModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      {/* ── Items Detail Drawer ────────────────────────────────────────── */}
+      <ItemsDrawer isOpen={!!selectedRecord} record={selectedRecord} onClose={() => setSelectedRecord(null)} />
     </Page>
   );
 }

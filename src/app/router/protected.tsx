@@ -635,6 +635,31 @@ const protectedRoutes: RouteObject = {
           ],
         },
 
+        // ── Employee Management ─────────────────────────────────────────
+        {
+          path: "employee-management",
+          children: [
+            { index: true, element: <Navigate to="/employee-management/employee-master" replace /> },
+            {
+              path: "employee-master",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/employee-management/employee-master")).default,
+                  }),
+                },
+                {
+                  path: ":id/permissions",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/employee-management/employee-master/permissions")).default,
+                  }),
+                },
+              ],
+            },
+          ],
+        },
+
         // ── Settings ───────────────────────────────────────────────────
         {
           path: "settings",

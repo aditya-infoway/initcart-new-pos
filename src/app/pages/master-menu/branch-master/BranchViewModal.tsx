@@ -171,7 +171,18 @@ export function BranchViewModal({ isOpen, close, branch }: BranchViewModalProps)
                   />
                   <LabeledField
                     label="Linked Account"
-                    value={branch?.linkedAccount ? branch.linkedAccount : (
+                    value={branch?.linkedAccount ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{branch.linkedAccount}</span>
+                        <Badge
+                          color={branch.linkedAccountId ? "primary" : "warning"}
+                          variant="soft"
+                          className="text-xs"
+                        >
+                          {branch.linkedAccountId ? "Sundry Debitor" : "Sundry Creditor"}
+                        </Badge>
+                      </div>
+                    ) : (
                       <span className="text-gray-400">N/A</span>
                     )}
                   />

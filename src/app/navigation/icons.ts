@@ -351,6 +351,10 @@ userMaster: UsersIcon,
   "posAccounting.journalEntries": ClipboardDocumentListIcon,
   "posAccounting.salesProfit":    BanknotesIcon,
 
+  // Employee Management
+  posEmployeeManagement: UserGroupIcon,
+  "posEmployeeManagement.employeeMaster": UsersIcon,
+
   // Logout
   posLogout: ArrowLeftStartOnRectangleIcon,
 };

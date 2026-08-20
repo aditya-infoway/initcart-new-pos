@@ -19,6 +19,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input, Radio } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
@@ -117,130 +118,6 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// ── Bill Search Modal ──────────────────────────────────────────────────────
-function BillSearchModal({
-  isOpen, onClose, onSelect, billType,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelect: (bill: BillResult) => void;
-  billType: "salesReturn" | "purchaseEntry";
-}) {
-  const [query, setQuery]     = useState("");
-  const [bills, setBills]     = useState<BillResult[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async (q: string) => {
-    setLoading(true);
-    try {
-      const endpoint = billType === "salesReturn"
-        ? "pos/sales-return-credit-bills/"
-        : "pos/purchase-credit-bills/";
-      const res  = await Get(endpoint, { query: q }) as any;
-      const body = res?.data ?? res;
-      const rows: any[] = Array.isArray(body?.results) ? body.results
-        : Array.isArray(body?.bills) ? body.bills
-        : Array.isArray(body) ? body : [];
-      setBills(rows.map(mapBill));
-    } catch {
-      toasterrormsg("Failed to search bills.");
-    } finally {
-      setLoading(false);
-    }
-  }, [billType]);
-
-  useEffect(() => {
-    if (isOpen) { setQuery(""); load(""); }
-  }, [isOpen, load]);
-
-  const title = billType === "salesReturn"
-    ? "Sales Return Credit Bills"
-    : "Purchase Entry Credit Bills";
-
-  return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[210]" onClose={onClose}>
-        <TransitionChild as="div"
-          enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
-          leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm dark:bg-black/50"
-        />
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <TransitionChild as={DialogPanel}
-              enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
-              leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
-              className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between bg-primary px-5 py-4">
-                <h3 className="text-base font-bold text-white">Search {title}</h3>
-                <Button onClick={onClose} variant="flat" isIcon
-                  className="size-8 rounded-full text-white hover:bg-white/10">
-                  <XMarkIcon className="size-5" />
-                </Button>
-              </div>
-              {/* Search bar */}
-              <div className="border-b border-gray-200 px-5 py-3 dark:border-dark-500">
-                <Input
-                  value={query}
-                  onChange={e => { setQuery(e.target.value); load(e.target.value); }}
-                  prefix={<MagnifyingGlassIcon className="size-4" />}
-                  placeholder="Search by Bill No or Party Name…"
-                  classNames={{ input: "h-9 text-sm" }}
-                />
-              </div>
-              {/* Results */}
-              <div className="max-h-[55vh] overflow-y-auto overflow-x-auto">
-                {loading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  </div>
-                ) : bills.length === 0 ? (
-                  <div className="py-16 text-center text-sm text-gray-400 dark:text-dark-400">
-                    No credit bills found.
-                  </div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-gray-100 dark:bg-dark-800">
-                      <tr>
-                        {["Bill No","Party","Original Bill","Date","Total","Paid","Pending",""].map(h => (
-                          <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-600 dark:text-dark-200">
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bills.map(b => (
-                        <tr key={b.id} className="border-t border-gray-100 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-600">
-                          <td className="whitespace-nowrap px-4 py-2.5 font-medium text-primary-600 dark:text-primary-400">{b.billNo}</td>
-                          <td className="px-4 py-2.5 text-gray-700 dark:text-dark-200">{b.partyName}</td>
-                          <td className="px-4 py-2.5  text-xs text-gray-500 dark:text-dark-300">{b.originalBillNo ?? "—"}</td>
-                          <td className="whitespace-nowrap px-4 py-2.5 text-gray-600 dark:text-dark-200">{formatDateDDMMYYYY(b.date)}</td>
-                          <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">₹{b.grandTotal.toFixed(2)}</td>
-                          <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-emerald-600 dark:text-emerald-400">₹{b.paidAmount.toFixed(2)}</td>
-                          <td className="whitespace-nowrap px-4 py-2.5 font-semibold tabular-nums text-amber-600 dark:text-amber-400">₹{b.pendingAmount.toFixed(2)}</td>
-                          <td className="px-4 py-2.5">
-                            <Button color="primary" className="h-7 rounded-md px-3 text-xs"
-                              onClick={() => { onSelect(b); onClose(); }}>
-                              Select
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </Transition>
-  );
-}
-
 // ── Add Cash Payment Drawer ────────────────────────────────────────────────
 function AddCashPaymentDrawer({
   isOpen, close, onSaved,
@@ -252,7 +129,9 @@ function AddCashPaymentDrawer({
   const [saving, setSaving]               = useState(false);
   const [cashAccounts, setCashAccounts]   = useState<AccountOption[]>([]);
   const [allAccounts, setAllAccounts]     = useState<AccountOption[]>([]);
-  const [showBillModal, setShowBillModal] = useState(false);
+  const [salesReturnBills, setSalesReturnBills] = useState<BillResult[]>([]);
+  const [purchaseEntryBills, setPurchaseEntryBills] = useState<BillResult[]>([]);
+  const [loadingBills, setLoadingBills]   = useState(false);
 
   const {
     control, register, handleSubmit, reset, setValue, watch,
@@ -283,6 +162,29 @@ function AddCashPaymentDrawer({
     Get("pos/voucher/generate/", { type: "CP" }).then((res: any) => {
       setValue("voucherNo", (res?.data ?? res)?.voucher_no ?? "");
     }).catch(() => {});
+
+    // Load credit bills
+    setLoadingBills(true);
+    Promise.all([
+      Get("pos/sales-return-credit-bills/"),
+      Get("pos/purchase-credit-bills/"),
+    ]).then(([salesRes, purchaseRes]: any[]) => {
+      const sBody = salesRes?.data ?? salesRes;
+      const sRows: any[] = Array.isArray(sBody?.results) ? sBody.results
+        : Array.isArray(sBody?.bills) ? sBody.bills
+        : Array.isArray(sBody) ? sBody : [];
+      setSalesReturnBills(sRows.map(mapBill));
+
+      const pBody = purchaseRes?.data ?? purchaseRes;
+      const pRows: any[] = Array.isArray(pBody?.results) ? pBody.results
+        : Array.isArray(pBody?.bills) ? pBody.bills
+        : Array.isArray(pBody) ? pBody : [];
+      setPurchaseEntryBills(pRows.map(mapBill));
+    }).catch(() => {
+      toasterrormsg("Failed to load credit bills.");
+    }).finally(() => {
+      setLoadingBills(false);
+    });
   }, [isOpen, setValue]);
 
   const handleClose = () => { reset(DEFAULT_VALUES); close(); };
@@ -407,23 +309,59 @@ function AddCashPaymentDrawer({
                       <DocumentTextIcon className="size-4" />
                       {paymentType === "salesReturn" ? "Sales Return Credit Bill" : "Purchase Entry Credit Bill"}
                     </h4>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          {...register("billNo")}
-                          placeholder="Search by Bill No…"
-                          classNames={{ input: "h-9 text-sm" }}
-                          prefix={<MagnifyingGlassIcon className="size-4" />}
-                          readOnly
+                    <Controller
+                      control={control}
+                      name="selectedBill"
+                      rules={{ required: `${paymentType === "salesReturn" ? "Sales Return" : "Purchase Entry"} bill is required` }}
+                      render={({ field: { value, onChange } }) => (
+                        <Combobox
+                          data={paymentType === "salesReturn" ? salesReturnBills : purchaseEntryBills}
+                          displayField="billNo"
+                          searchFields={["billNo", "partyName"]}
+                          placeholder="Search Bill No or Party Name..."
+                          value={value}
+                          onChange={(item: any) => {
+                            onChange(item);
+                            setValue("billNo", item?.billNo ?? "");
+                            setValue("opAccount", item?.partyId ?? null);
+                            setValue("amount", item?.pendingAmount ? String(item.pendingAmount) : "");
+                          }}
+                          renderItem={(item: BillResult, selected, query) => (
+                            <div className="px-4 py-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {item.billNo}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-dark-300">
+                                    {item.partyName}
+                                  </div>
+                                  <div className="text-xs text-gray-400 dark:text-dark-400">
+                                    {item.originalBillNo && `Original: ${item.originalBillNo}`}
+                                  </div>
+                                </div>
+                                <div className="ml-4 text-right">
+                                  <div className="text-xs text-gray-500 dark:text-dark-300">
+                                    {formatDateDDMMYYYY(item.date)}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-emerald-600 dark:text-emerald-400">
+                                      Paid: ₹{item.paidAmount.toFixed(2)}
+                                    </span>
+                                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                      Pending: ₹{item.pendingAmount.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          inputProps={{ className: "h-9 text-sm" }}
+                          error={(errors.selectedBill as any)?.message}
+                          disabled={loadingBills}
                         />
-                      </div>
-                      <Button type="button" color="primary"
-                        className="h-9 shrink-0 gap-2 rounded-md px-4 text-sm"
-                        onClick={() => setShowBillModal(true)}>
-                        <MagnifyingGlassIcon className="size-4" />
-                        Search Bill
-                      </Button>
-                    </div>
+                      )}
+                    />
                     {/* Selected bill card */}
                     {selectedBill && (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800/40 dark:bg-emerald-900/20">
@@ -563,22 +501,6 @@ function AddCashPaymentDrawer({
           </TransitionChild>
         </Dialog>
       </Transition>
-
-      {/* Bill Search Modal */}
-      {(paymentType === "salesReturn" || paymentType === "purchaseEntry") && (
-        <BillSearchModal
-          isOpen={showBillModal}
-          onClose={() => setShowBillModal(false)}
-          billType={paymentType}
-          onSelect={(bill) => {
-            setValue("billNo",       bill.billNo);
-            setValue("selectedBill", bill);
-            setValue("opAccount",    bill.partyId ?? null);
-            setValue("amount",       String(bill.pendingAmount));
-            toastsuccessmsg(`Bill ${bill.billNo} selected — ₹${bill.pendingAmount.toFixed(2)} pending`);
-          }}
-        />
-      )}
     </>
   );
 }
