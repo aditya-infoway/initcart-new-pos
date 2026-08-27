@@ -10,6 +10,6 @@ export const posOrderManagement: NavigationTree = {
     { id: "posOrderManagement.orderItems",        type: "item", path: "/order-management/order-items",        title: "Order Items",        icon: "posOrderManagement.orderItems"  },
     { id: "posOrderManagement.stockVerification",  type: "item", path: "/order-management/stock-verification", title: "Stock Verification", icon: "posOrderManagement.stockVerification" },
     { id: "posOrderManagement.stockReturn",        type: "item", path: "/order-management/stock-return",       title: "Stock Return",       icon: "posOrderManagement.stockReturn" },
-    { id: "posOrderManagement.stockTransfer",      type: "item", path: "/order-management/stock-transfer",     title: "Stock Transfer",     icon: "posOrderManagement.stockTransfer" },
+    { id: "posOrderManagement.stockTransfer",      type: "item", path: "/order-management/stock-transfer",     title: "Stock Transfer",     icon: "posOrderManagement.stockTransfer", superAdminOnly: true },
   ],
 };

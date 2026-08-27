@@ -666,13 +666,13 @@ export default function SchemeOfferListPage() {
       enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<SchemeOfferItem, unknown>) => (
         <div className="flex items-center gap-1.5">
-          <button
-            title="View"
-            onClick={() => navigate(`/b2b-inventory/scheme-offer/${row.original.id}`)}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors dark:text-dark-300"
-          >
-            <EyeIcon className="size-4" />
-          </button>
+      <button
+        title="View Report"
+        onClick={() => navigate(`/b2b-inventory/scheme-offer/${row.original.id}/report`)}
+        className="p-1.5 rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors dark:text-dark-300"
+      >
+        <EyeIcon className="size-4" />
+      </button>
           <button
             title="Edit"
             onClick={() => { setEditingScheme(row.original); setShowModal(true); }}

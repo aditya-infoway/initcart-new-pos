@@ -6,6 +6,7 @@ export const posEmployeeManagement: NavigationTree = {
   path: "/employee-management",
   title: "Employee Management",
   icon: "posEmployeeManagement",
+  superAdminOnly: true,
   childs: [
     { id: "posEmployeeManagement.employeeMaster", type: "item", path: "/employee-management/employee-master", title: "Employee Master", icon: "posEmployeeManagement.employeeMaster" },
   ],

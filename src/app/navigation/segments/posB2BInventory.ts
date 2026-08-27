@@ -16,12 +16,10 @@ export const posB2BInventory: NavigationTree = {
       title: "Stock Transfer", 
       icon: "posB2BInventory.stockTransfer",
       childs: [
-        { id: "posB2BInventory.stockTransfer.sendOrder", type: "item", path: "/b2b-inventory/stock-transfer/send-order", title: "Send Order", icon: "posB2BInventory.stockTransfer.sendOrder" },
-        { id: "posB2BInventory.stockTransfer.receivedOrders", type: "item", path: "/b2b-inventory/stock-transfer/received-orders", title: "Received Orders", icon: "posB2BInventory.stockTransfer.receivedOrders" },
+        { id: "posB2BInventory.stockTransfer.sendOrder", type: "item", path: "/b2b-inventory/stock-transfer/send-order", title: "Send Order", icon: "posB2BInventory.stockTransfer.sendOrder", branchOnly:true },
+        { id: "posB2BInventory.stockTransfer.receivedOrders", type: "item", path: "/b2b-inventory/stock-transfer/received-orders", title: "Received Orders", icon: "posB2BInventory.stockTransfer.receivedOrders" , branchOnly:true},
       ]
     },
-    { id: "posB2BInventory.stockReturnManagement", type: "item", path: "/b2b-inventory/stock-return-management", title: "Stock Return Management", icon: "posB2BInventory.stockReturnManagement", branchOnly: true },
-    { id: "posB2BInventory.b2bStockReturnManagement", type: "item", path: "/b2b-inventory/b2b-stock-return-management", title: "B2B Stock Return Management", icon: "posB2BInventory.b2bStockReturnManagement", branchOnly: true },
-    { id: "posB2BInventory.schemeOffer", type: "item", path: "/b2b-inventory/scheme-offer", title: "Scheme Offer", icon: "posB2BInventory.schemeOffer", branchOnly: true },
+
   ],
 };
