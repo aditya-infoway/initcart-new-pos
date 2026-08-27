@@ -5,6 +5,7 @@ import {
   ColumnDef,
   CellContext,
 } from "@tanstack/react-table";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -235,13 +236,13 @@ function ImageUploadBox({
 
 // ── Tab definitions ────────────────────────────────────────────────────────
 const TABS = [
-  { id: "basic",          label: "Basic Info",             icon: InformationCircleIcon },
-  { id: "images",         label: "Images",                 icon: PhotoIcon },
-  { id: "description",    label: "Description & Features", icon: ListBulletIcon },
-  { id: "specifications", label: "Specifications",         icon: Squares2X2Icon },
-  { id: "warranty",       label: "Warranty & Shipping",    icon: ShieldCheckIcon },
-  { id: "variants",       label: "Variants",               icon: CubeIcon },
-] as const;
+  { id: "basic",          title: "Basic Info",             icon: InformationCircleIcon, content: null },
+  { id: "images",         title: "Images",                 icon: PhotoIcon,            content: null },
+  { id: "description",    title: "Description & Features", icon: ListBulletIcon,      content: null },
+  { id: "specifications", title: "Specifications",         icon: Squares2X2Icon,      content: null },
+  { id: "warranty",       title: "Warranty & Shipping",    icon: ShieldCheckIcon,     content: null },
+  { id: "variants",       title: "Variants",               icon: CubeIcon,            content: null },
+];
 
 type TabId = typeof TABS[number]["id"];
 
@@ -537,23 +538,20 @@ export default function WebsiteItemDetailPage() {
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <Page title={`${item.itemName} — Website Item`}>
-      <div className="transition-content w-full pb-10">
-
-        {/* Back + header */}
-        <div className="px-(--margin-x) pt-4 pb-2">
-          <button
-            type="button"
-            onClick={() => navigate("/master-menu/website-items")}
-            className="mb-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary dark:text-dark-400 dark:hover:text-primary-400"
-          >
-            <ArrowLeftIcon className="size-4" /> Back to Website Items
-          </button>
-
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="transition-content w-full px-(--margin-x) py-5 space-y-5">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outlined"
+              className="h-8 gap-2 rounded-md px-3 text-sm"
+              onClick={() => navigate("/master-menu/website-items")}
+            >
+              <ArrowLeftIcon className="size-4" /> Back to Website Items
+            </Button>
+            <div className="h-5 w-px bg-gray-300 dark:bg-dark-500" />
             <div>
-              <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">
-                {item.itemName}
-              </h2>
+              <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">{item.itemName}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge color={statusCfg.color} variant="soft" className="text-xs">{statusCfg.label}</Badge>
                 {item.linked_product && (
@@ -564,76 +562,62 @@ export default function WebsiteItemDetailPage() {
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-2">
-              {item.website_status === "draft" && (
-                <Button
-                  color="success"
-                  variant="outlined"
-                  className="h-9 gap-2 px-4 text-sm"
-                  disabled={saving}
-                  onClick={handleSubmit}
-                >
-                  <CheckBadgeIcon className="size-4" /> Submit for Approval
-                </Button>
-              )}
+          <div className="flex gap-2">
+            {item.website_status === "draft" && (
               <Button
-                color="primary"
+                color="success"
+                variant="outlined"
                 className="h-9 gap-2 px-4 text-sm"
                 disabled={saving}
-                onClick={handleSave}
+                onClick={handleSubmit}
               >
-                <CheckCircleIcon className="size-4" />
-                {saving ? "Saving…" : "Save Changes"}
+                <CheckBadgeIcon className="size-4" /> Submit for Approval
               </Button>
-            </div>
+            )}
+            <Button
+              color="primary"
+              className="h-9 gap-2 px-4 text-sm"
+              disabled={saving}
+              onClick={handleSave}
+            >
+              <CheckCircleIcon className="size-4" />
+              {saving ? "Saving…" : "Save Changes"}
+            </Button>
           </div>
         </div>
 
-        {/* Variant product info banner */}
-        {isVariantProduct && (
-          <div className="px-(--margin-x) mb-4">
-            <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-900/40 dark:bg-purple-900/10">
-              <div className="flex items-start gap-2">
-                <InformationCircleIcon className="mt-0.5 size-4 shrink-0 text-purple-600 dark:text-purple-400" />
-                <p className="text-xs text-purple-700 dark:text-purple-300">
-                  <span className="font-semibold">Variant Product</span> — this item has{" "}
-                  {item.variants.length} variants. Upload variant-specific images in the{" "}
-                  <strong>Images</strong> tab.
-                </p>
-              </div>
+      {/* Variant product info banner */}
+      {isVariantProduct && (
+        <div className="px-(--margin-x) mb-4">
+          <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-900/40 dark:bg-purple-900/10">
+            <div className="flex items-start gap-2">
+              <InformationCircleIcon className="mt-0.5 size-4 shrink-0 text-purple-600 dark:text-purple-400" />
+              <p className="text-xs text-purple-700 dark:text-purple-300">
+                <span className="font-semibold">Variant Product</span> — this item has{" "}
+                {item.variants.length} variants. Upload variant-specific images in the{" "}
+                <strong>Images</strong> tab.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tab bar */}
-        <div className="px-(--margin-x)">
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto border-b border-gray-200 dark:border-dark-600">
-              <nav className="flex -mb-px">
-                {TABS.map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={clsx(
-                        "flex shrink-0 items-center gap-2 border-b-2 px-5 py-3 text-sm font-medium transition whitespace-nowrap",
-                        activeTab === tab.id
-                          ? "border-primary-500 text-primary-600 dark:border-primary-400 dark:text-primary-400"
-                          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-dark-400 dark:hover:border-dark-500 dark:hover:text-dark-200",
-                      )}
-                    >
-                      <Icon className="size-4" />{tab.label}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
+      {/* Tab bar */}
+      <div className="px-(--margin-x)">
+        <WithIcon
+          tabs={TABS}
+          selectedIndex={TABS.findIndex(t => t.id === activeTab)}
+          onChange={(idx) => setActiveTab(TABS[idx].id)}
+          hidePanels={true}
+        />
+      </div>
 
-            {/* Tab content */}
-            <div className="p-6">
+      {/* Tab content */}
+      <div className="px-(--margin-x)">
+        <Card className="overflow-hidden">
+          <div className="p-6">
 
               {/* ── Basic Info ── */}
               {activeTab === "basic" && (
@@ -986,9 +970,9 @@ export default function WebsiteItemDetailPage() {
                 </div>
               )}
 
-            </div>{/* /tab content */}
+            </div>{/* /p-6 */}
           </Card>
-        </div>{/* /tab area */}
+        </div>{/* /px-(--margin-x) */}
 
         {/* Draft submission prompt */}
         {item.website_status === "draft" && (

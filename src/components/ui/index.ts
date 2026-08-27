@@ -16,3 +16,4 @@ export * from "./Timeline";
 export * from "./Box";
 export * from "./CopyButton";
 export * from "./Form";
+export * from "./Tab";

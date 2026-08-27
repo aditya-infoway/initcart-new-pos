@@ -3,8 +3,10 @@ import {
   getSortedRowModel, SortingState, useReactTable,
   ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   ArrowDownTrayIcon, ArrowPathIcon, EyeIcon, MagnifyingGlassIcon,
+  HomeIcon, UserGroupIcon, BuildingOfficeIcon, BuildingLibraryIcon, CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,7 +22,7 @@ import { ensureString } from "@/utils/ensureString";
 import { LedgerAccount, GROUP_TABS, getDrCrColor, mapApiLedgerAccount } from "./data";
 
 const PAGE_SIZES = [10, 15, 25, 50, 100];
-0.
+
 export default function LedgerReportPage() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
@@ -198,23 +200,31 @@ export default function LedgerReportPage() {
         {/* Group tabs + page size in one row */}
         <div className="px-(--margin-x) mt-2 flex flex-wrap items-center justify-between gap-3">
           {/* Group filter tabs */}
-          <div className="hide-scrollbar overflow-x-auto">
-            <div className="flex w-max gap-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-700">
-              {GROUP_TABS.map(tab => (
-                <button key={tab.key} onClick={() => setActiveGroup(tab.key)}
-                  className={clsx(
-                    "shrink-0 whitespace-nowrap rounded-lg px-4 py-1.5 text-xs font-medium transition-all duration-150",
-                    activeGroup === tab.key
-                      ? "bg-white text-primary shadow dark:bg-dark-600 dark:text-primary-400"
-                      : "text-gray-500 hover:text-gray-800 dark:text-dark-300 dark:hover:text-dark-100",
-                  )}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-
+          <WithIcon
+            tabs={GROUP_TABS.map(tab => {
+              // Map appropriate icons based on group type
+              const getIcon = () => {
+                switch(tab.key) {
+                  case "all": return HomeIcon;
+                  case "Customer": return UserGroupIcon;
+                  case "Sundry Creditor(Main)": return BuildingOfficeIcon;
+                  case "Bank Account": return BuildingLibraryIcon;
+                  case "Case In Hand": return CurrencyDollarIcon;
+                  default: return HomeIcon;
+                }
+              };
+              
+              return {
+                id: tab.key,
+                title: tab.label,
+                icon: getIcon(),
+                content: null, // Content is handled separately via activeGroup state
+              };
+            })}
+            selectedIndex={GROUP_TABS.findIndex(t => t.key === activeGroup)}
+            onChange={(idx) => setActiveGroup(GROUP_TABS[idx].key)}
+            hidePanels={true}
+          />
         </div>
 
         {/* Search */}

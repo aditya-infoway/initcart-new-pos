@@ -136,7 +136,7 @@ export default function LedgerDetailPage() {
 
         {/* Header */}
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outlined" className="h-9 gap-2 px-4 text-sm"
+          <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
             onClick={() => navigate("/transaction/ledger-report")}>
             <ArrowLeftIcon className="size-4" /> Back to Ledger
           </Button>

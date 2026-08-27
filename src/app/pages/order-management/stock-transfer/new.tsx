@@ -1,3 +1,4 @@
+//stock-transfer/new.tsx
 import { Page } from "@/components/shared/Page";
 import { Button } from "@/components/ui";
 import { useNavigate } from "react-router";

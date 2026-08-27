@@ -22,7 +22,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Button, Input } from "@/components/ui";
 import { GhostSpinner } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
-import { Post, Patch, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
+import { Post, Patch, Get, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
 import {
   Branch,
   BranchFormValues,
@@ -95,6 +95,9 @@ function FileField({
 export function BranchDrawer({ isOpen, close, branch, onSaved }: BranchDrawerProps) {
   const isEdit = Boolean(branch && branch.id > 0);
   const [saving, setSaving] = useState(false);
+  const [debitorAccounts, setDebitorAccounts] = useState<{ id: number; account_name: string }[]>([]);
+  const [creditorAccounts, setCreditorAccounts] = useState<{ id: number; account_name: string }[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
 
   const defaultValues = useMemo(() => buildBranchFormValues(branch), [branch]);
 
@@ -112,10 +115,44 @@ export function BranchDrawer({ isOpen, close, branch, onSaved }: BranchDrawerPro
     if (isOpen) reset(buildBranchFormValues(branch));
   }, [branch, isOpen, reset]);
 
+  // Fetch linked accounts when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchAccounts = async () => {
+        setLoadingAccounts(true);
+        try {
+          const params = branch ? `?branch_id=${branch.id}` : "";
+          const res = await Get(`pos/branch-linkable-accounts/${params}`);
+          setDebitorAccounts((res as any)?.debitor_accounts || []);
+          setCreditorAccounts((res as any)?.creditor_accounts || []);
+        } catch (error) {
+          console.error("Failed to fetch accounts:", error);
+          setDebitorAccounts([]);
+          setCreditorAccounts([]);
+        } finally {
+          setLoadingAccounts(false);
+        }
+      };
+      fetchAccounts();
+    }
+  }, [isOpen, branch]);
+
   const handleClose = () => {
     reset();
     close();
   };
+
+  // Combine accounts for combobox
+  const accountOptions = useMemo(() => {
+    const options: Array<{ id: string | number; label: string; type: "debitor" | "creditor" }> = [];
+    debitorAccounts.forEach((acc) => {
+      options.push({ id: acc.id, label: acc.account_name, type: "debitor" });
+    });
+    creditorAccounts.forEach((acc) => {
+      options.push({ id: acc.id, label: acc.account_name, type: "creditor" });
+    });
+    return options;
+  }, [debitorAccounts, creditorAccounts]);
 
   const onSubmit = async (values: BranchFormValues) => {
     setSaving(true);
@@ -283,15 +320,32 @@ export function BranchDrawer({ isOpen, close, branch, onSaved }: BranchDrawerPro
 
               {/* Row 4: Linked Account + Business Type */}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">
-                    Linked Account (Sundry Debitor / Creditor)
-                  </label>
-                  <Input
-                    {...register("linkedAccount")}
-                    placeholder="Search or type account name..."
-                  />
-                </div>
+                <Controller
+                  control={control}
+                  name="linkedAccountId"
+                  render={({ field: { value, onChange, ...rest } }) => (
+                    <Combobox
+                      data={accountOptions}
+                      displayField="label"
+                      searchFields={["label"]}
+                      placeholder="Select Linked Account"
+                      value={accountOptions.find((o) => o.id === value) ?? null}
+                      onChange={(item: any) => {
+                        if (item) {
+                          onChange(item.id);
+                          setValue("linkedAccount", item.label, { shouldDirty: true });
+                        } else {
+                          onChange("");
+                          setValue("linkedAccount", "", { shouldDirty: true });
+                        }
+                      }}
+                      label="Linked Account (Sundry Debitor / Creditor)"
+                      {...rest}
+                      inputProps={{ className: "h-9 text-sm" }}
+                      disabled={loadingAccounts}
+                    />
+                  )}
+                />
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">
                     Business Type <span className="text-red-500">*</span>

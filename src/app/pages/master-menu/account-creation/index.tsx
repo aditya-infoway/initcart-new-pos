@@ -1,10 +1,4 @@
-import {
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-} from "@headlessui/react";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   Menu,
   MenuButton,
@@ -41,6 +35,12 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Delete, Get, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
+import { 
+  HomeIcon, 
+  UserGroupIcon, 
+  BuildingOfficeIcon, 
+  CubeIcon 
+} from "@heroicons/react/24/outline";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { SelectCell, SelectHeader } from "@/components/shared/table/SelectCheckbox";
 import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
@@ -417,52 +417,38 @@ export default function AccountCreationPage() {
 
         {/* Tab filters + table */}
         <div className="px-(--margin-x) pt-4">
-          <TabGroup
-            selectedIndex={ACCOUNT_TABS.findIndex((t) => t.key === activeTab)}
-            onChange={(idx) => {
-              setActiveTab(ACCOUNT_TABS[idx].key);
-              setRowSelection({});
-            }}
-          >
-            <div className="hide-scrollbar overflow-x-auto rounded-lg bg-gray-200 text-gray-600 dark:bg-dark-900 dark:text-dark-200">
-              <TabList className="flex w-max min-w-full px-1.5 py-1">
-                {ACCOUNT_TABS.map((tab) => (
-                  <Tab
-                    key={tab.key}
-                    className={({ selected }: { selected: boolean }) =>
-                      clsx(
-                        "shrink-0 whitespace-nowrap rounded-lg px-4 py-2 font-medium",
-                        selected
-                          ? "bg-white shadow dark:bg-surface-2 dark:text-dark-100"
-                          : "hover:text-gray-800 focus:text-gray-800 dark:hover:text-dark-100 dark:focus:text-dark-100",
-                      )
-                    }
-                    as={Button}
-                    unstyled
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{tab.title}</span>
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-primary/15 dark:text-primary-300">
-                        {tabCounts[tab.key as keyof typeof tabCounts] ?? 0}
-                      </span>
-                    </div>
-                  </Tab>
-                ))}
-              </TabList>
-            </div>
-
-            <TabPanels className="mt-0">
-              {ACCOUNT_TABS.map((tab) => (
-                <TabPanel key={tab.key}>
+          <WithIcon
+            tabs={ACCOUNT_TABS.map((tab) => {
+              // Map appropriate icons based on tab type
+              const getIcon = () => {
+                switch(tab.key) {
+                  case "all": return HomeIcon;
+                  case "Sundry Creditor(Main)": return BuildingOfficeIcon;
+                  case "Customer": return UserGroupIcon;
+                  case "Case In Hand": return CubeIcon;
+                  default: return HomeIcon;
+                }
+              };
+              
+              return {
+                id: tab.key,
+                title: `${tab.title} (${tabCounts[tab.key as keyof typeof tabCounts] ?? 0})`,
+                icon: getIcon(),
+                content: (
                   <MasterTable
                     table={table}
                     columnCount={columns.length}
                     emptyMessage={loading ? "Loading accounts..." : "No accounts found."}
                   />
-                </TabPanel>
-              ))}
-            </TabPanels>
-          </TabGroup>
+                ),
+              };
+            })}
+            selectedIndex={ACCOUNT_TABS.findIndex((t) => t.key === activeTab)}
+            onChange={(idx) => {
+              setActiveTab(ACCOUNT_TABS[idx].key);
+              setRowSelection({});
+            }}
+          />
         </div>
       </div>
 

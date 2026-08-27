@@ -1,3 +1,4 @@
+//stock-transfer/detail.tsx
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 

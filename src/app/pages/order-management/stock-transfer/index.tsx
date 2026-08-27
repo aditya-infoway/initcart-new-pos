@@ -1,4 +1,5 @@
-﻿import {
+﻿//stock-transfer/index.tsx
+import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
 import {
@@ -409,7 +410,7 @@ function OrderTracking() {
     try {
       let page = 1; let all: BranchOrderListItem[] = [];
       while (true) {
-        const res = await Get(`branch-orders/admin/list/`, { page }) as any;
+        const res = await Get(`pos/branch-orders/admin/list/`, { page }) as any;
         const body = res?.data ?? res;
         if (!body?.results?.success) break;
         const arr: BranchOrderListItem[] = body.results.orders || [];
@@ -433,7 +434,7 @@ function OrderTracking() {
 
   async function loadOrderDetail(id: number) {
     try {
-      const res = await Get(`branch-orders/${id}/`) as any;
+      const res = await Get(`pos/branch-orders/${id}/`) as any;
       const body = res?.data ?? res;
       if (body.success) {
         const order: BranchOrderDetail = body.order;
@@ -457,7 +458,7 @@ function OrderTracking() {
     if (!selectedOrder) return;
     setProcessing(true);
     try {
-      const res = await Post(`branch-orders/${selectedOrder.id}/process/`, {
+      const res = await Post(`pos/branch-orders/${selectedOrder.id}/process/`, {
         transfer_date: transferDate, note: transferNote,
         items: selectedOrder.items.map(item => ({
           item_id: item.id,
@@ -480,7 +481,7 @@ function OrderTracking() {
   async function cancelOrder(id: number) {
     if (!confirm("Cancel this order?")) return;
     try {
-      const res = await Post(`branch-orders/${id}/cancel/`, {}) as any;
+      const res = await Post(`pos/branch-orders/${id}/cancel/`, {}) as any;
       const body = res?.data ?? res;
       if (body.success) { toastsuccessmsg("Order cancelled"); loadAll(); setSelectedOrder(null); setItemGstMap({}); }
     } catch { toasterrormsg("Could not cancel order"); }
@@ -981,7 +982,7 @@ export default function StockTransferPage() {
     try {
       let page = 1; let all: TransferListItem[] = [];
       while (true) {
-        const res = await Get(`stock-transfers/`, { page }) as any;
+        const res = await Get(`pos/stock-transfers/`, { page }) as any;
         const body = res?.data ?? res;
         if (!body?.success) break;
         const arr: TransferListItem[] = body.results || body.data || [];
@@ -996,7 +997,7 @@ export default function StockTransferPage() {
 
   async function loadBranches() {
     try {
-      const res = await Get("branches/", { ownership_type: "branch" }) as any;
+      const res = await Get("pos/branches/", { ownership_type: "branch" }) as any;
       const body = res?.data ?? res;
       const myId = (() => { try { const b = sessionStorage.getItem("branch"); return b ? JSON.parse(b).id : null; } catch { return null; } })();
       setBranches((body.data || []).filter((b: BranchOption) => b.id !== myId && b.status === "active"));
@@ -1005,7 +1006,7 @@ export default function StockTransferPage() {
 
   async function loadMyItems() {
     try {
-      const res = await Get("stock-transfers/my-items/") as any;
+      const res = await Get("pos/stock-transfers/my-items/") as any;
       const body = res?.data ?? res;
       if (body.success) setMyItems(body.data || []);
     } catch { toasterrormsg("Could not load items"); }
@@ -1082,7 +1083,7 @@ export default function StockTransferPage() {
     if (form.items.some(r => Number(r.quantity) === 0)) { toasterrormsg("Remove items with 0 qty"); return; }
     setLoading(true);
     try {
-      const res = await Post("stock-transfers/", {
+      const res = await Post("pos/stock-transfers/", {
         to_branch_id: parseInt(form.to_branch_id), transfer_date: form.transfer_date, note: form.note,
         items: form.items.map(r => ({ from_variant_id: parseInt(r.from_variant_id), quantity: parseInt(String(r.quantity)), rate: parseFloat(r.rate || "0") })),
       }) as any;
@@ -1096,7 +1097,7 @@ export default function StockTransferPage() {
   async function completeTransfer(id: number) {
     if (!confirm("Complete transfer?")) return;
     try {
-      const res = await Post(`stock-transfers/${id}/complete/`, {}) as any;
+      const res = await Post(`pos/stock-transfers/${id}/complete/`, {}) as any;
       const body = res?.data ?? res;
       if (body.success) { toastsuccessmsg(body.message); loadAllTransfers(); if (detail?.id === id) setDetail(null); }
     } catch (e: any) { toasterrormsg(e.response?.data?.message || "Error"); }
@@ -1105,7 +1106,7 @@ export default function StockTransferPage() {
   async function cancelTransfer(id: number) {
     if (!confirm("Cancel this transfer?")) return;
     try {
-      const res = await Post(`stock-transfers/${id}/cancel/`, {}) as any;
+      const res = await Post(`pos/stock-transfers/${id}/cancel/`, {}) as any;
       const body = res?.data ?? res;
       if (body.success) { toastsuccessmsg("Transfer cancelled."); loadAllTransfers(); setDetail(null); }
     } catch { toasterrormsg("Error cancelling"); }
@@ -1113,7 +1114,7 @@ export default function StockTransferPage() {
 
   async function loadDetail(id: number) {
     try {
-      const res = await Get(`stock-transfers/${id}/`) as any;
+      const res = await Get(`pos/stock-transfers/${id}/`) as any;
       const body = res?.data ?? res;
       if (body.success) setDetail(body.data);
     } catch { toasterrormsg("Error loading details"); }

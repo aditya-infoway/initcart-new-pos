@@ -108,44 +108,63 @@ const TRANSFER_STATUS_LABEL: Record<string, string> = {
 };
 
 // ── GST Summary Card ─────────────────────────────────────────────────────────
-interface GstTotals { basic: number; tax: number; cgst: number; sgst: number; igst: number; net: number; }
+interface GstTotals { 
+  basic: number; 
+  tax: number; 
+  cgst: number; 
+  sgst: number; 
+  igst: number; 
+  net: number; 
+}
 
-const GstSummaryCard = ({ totals, title = "GST Summary" }: { totals: GstTotals; title?: string }) => (
-  <Card skin="bordered" className="p-6 bg-gradient-to-br from-primary/5 to-blue-50/50 dark:from-primary/10 dark:to-blue-900/10">
-    <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100 mb-4">{title}</h3>
-    <div className="space-y-1 text-sm">
-      <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
-        <span className="text-gray-600 dark:text-dark-400">Total Basic Amount</span>
-        <span className="font-medium">₹ {totals.basic.toFixed(2)}</span>
-      </div>
-      {totals.cgst > 0 || totals.sgst > 0 ? (
-        <>
-          <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
-            <span className="text-gray-600 dark:text-dark-400">CGST</span>
-            <span className="font-medium">₹ {totals.cgst.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
-            <span className="text-gray-600 dark:text-dark-400">SGST</span>
-            <span className="font-medium">₹ {totals.sgst.toFixed(2)}</span>
-          </div>
-        </>
-      ) : totals.igst > 0 ? (
+const GstSummaryCard = ({ totals, title = "GST Summary" }: { totals: GstTotals; title?: string }) => {
+  // ✅ Ensure all values are numbers — FIXES the toFixed error
+  const safeTotals = {
+    basic: Number(totals?.basic) || 0,
+    tax: Number(totals?.tax) || 0,
+    cgst: Number(totals?.cgst) || 0,
+    sgst: Number(totals?.sgst) || 0,
+    igst: Number(totals?.igst) || 0,
+    net: Number(totals?.net) || 0,
+  };
+
+  return (
+    <Card skin="bordered" className="p-6 bg-gradient-to-br from-primary/5 to-blue-50/50 dark:from-primary/10 dark:to-blue-900/10">
+      <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100 mb-4">{title}</h3>
+      <div className="space-y-1 text-sm">
         <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
-          <span className="text-gray-600 dark:text-dark-400">IGST</span>
-          <span className="font-medium">₹ {totals.igst.toFixed(2)}</span>
+          <span className="text-gray-600 dark:text-dark-400">Total Basic Amount</span>
+          <span className="font-medium">₹ {safeTotals.basic.toFixed(2)}</span>
         </div>
-      ) : null}
-      <div className="flex justify-between pt-2 text-base font-bold">
-        <span>Total Tax Amount</span>
-        <span className="text-primary-700 dark:text-primary-400">₹ {totals.tax.toFixed(2)}</span>
+        {safeTotals.cgst > 0 || safeTotals.sgst > 0 ? (
+          <>
+            <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
+              <span className="text-gray-600 dark:text-dark-400">CGST</span>
+              <span className="font-medium">₹ {safeTotals.cgst.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
+              <span className="text-gray-600 dark:text-dark-400">SGST</span>
+              <span className="font-medium">₹ {safeTotals.sgst.toFixed(2)}</span>
+            </div>
+          </>
+        ) : safeTotals.igst > 0 ? (
+          <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-dark-600">
+            <span className="text-gray-600 dark:text-dark-400">IGST</span>
+            <span className="font-medium">₹ {safeTotals.igst.toFixed(2)}</span>
+          </div>
+        ) : null}
+        <div className="flex justify-between pt-2 text-base font-bold">
+          <span>Total Tax Amount</span>
+          <span className="text-primary-700 dark:text-primary-400">₹ {safeTotals.tax.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/30 dark:border-primary/20">
+          <span>Net Total (incl. Tax)</span>
+          <span className="text-primary-700 dark:text-primary-400">₹ {safeTotals.net.toFixed(2)}</span>
+        </div>
       </div>
-      <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/30 dark:border-primary/20">
-        <span>Net Total (incl. Tax)</span>
-        <span className="text-primary-700 dark:text-primary-400">₹ {totals.net.toFixed(2)}</span>
-      </div>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 // ── Info Field (static info box with label/value) ────────────────────────────
 function InfoField({ label, value }: { label: string; value: string | number }) {
@@ -244,13 +263,14 @@ export default function B2BOrderDetailPage() {
   const isPending = order?.status === "pending";
   const totalRequestedQty = order?.items?.reduce((s, i) => s + i.requested_quantity, 0) || 0;
 
+  // ✅ SAFE GST CALCULATION - ensures numbers
   const gst = transfer ? transfer.items.reduce((acc, i) => ({
-    basic: acc.basic + (i.basic_amount || 0),
-    tax: acc.tax + (i.tax_amount || 0),
-    cgst: acc.cgst + (i.cgst || 0),
-    sgst: acc.sgst + (i.sgst || 0),
-    igst: acc.igst + (i.igst || 0),
-    net: acc.net + (i.net_amount || 0),
+    basic: acc.basic + (Number(i.basic_amount) || 0),
+    tax: acc.tax + (Number(i.tax_amount) || 0),
+    cgst: acc.cgst + (Number(i.cgst) || 0),
+    sgst: acc.sgst + (Number(i.sgst) || 0),
+    igst: acc.igst + (Number(i.igst) || 0),
+    net: acc.net + (Number(i.net_amount) || 0),
   }), { basic: 0, tax: 0, cgst: 0, sgst: 0, igst: 0, net: 0 }) : { basic: 0, tax: 0, cgst: 0, sgst: 0, igst: 0, net: 0 };
 
   const canReceive = !!transfer && ["packaging_ready", "partially_received"].includes(transfer.status);
@@ -459,7 +479,8 @@ export default function B2BOrderDetailPage() {
                     </div>
                   </Card>
 
-                  {gst.basic > 0 && <GstSummaryCard totals={gst} />}
+                  {/* ✅ GST Summary - Now safe */}
+                  {(gst.basic > 0 || gst.tax > 0) && <GstSummaryCard totals={gst} />}
 
                   <Card skin="bordered" className="p-4 bg-gray-50 dark:bg-dark-800">
                     <div className="flex items-center gap-3 justify-end flex-wrap">

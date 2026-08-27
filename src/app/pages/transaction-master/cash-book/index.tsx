@@ -365,7 +365,7 @@ export default function CashBookPage() {
                     { label: "CP — Cash Payment",                 value: "CP"   },
                     { label: "PCP — Purchase Credit Payment",     value: "PCP"  },
                     { label: "SRCP — Sales Return Payment",       value: "SRCP" },
-                  ]}
+                   ]}
                   displayField="label"
                   searchFields={["label"]}
                   by="value"

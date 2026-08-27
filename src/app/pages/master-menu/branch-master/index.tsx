@@ -323,6 +323,25 @@ export default function BranchMasterPage() {
         },
       },
       {
+        id: "linkedAccount", accessorKey: "linkedAccount", header: "Linked Account", size: 150,
+        cell: ({ row }: CellContext<Branch, unknown>) => {
+          const { linkedAccount, linkedAccountId } = row.original;
+          if (!linkedAccount) return <span className="text-gray-400">—</span>;
+          return (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-gray-700 dark:text-dark-100 truncate max-w-[120px]">{linkedAccount}</span>
+              <Badge
+                color={linkedAccountId ? "primary" : "warning"}
+                variant="soft"
+                className="text-xs shrink-0"
+              >
+                {linkedAccountId ? "Debitor" : "Creditor"}
+              </Badge>
+            </div>
+          );
+        },
+      },
+      {
         id: "ownerName", accessorKey: "ownerName", header: "Owner",
         cell: ({ getValue, table }: CellContext<Branch, unknown>) => {
           const q = ensureString(table.getState().globalFilter);

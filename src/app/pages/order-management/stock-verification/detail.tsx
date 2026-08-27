@@ -283,9 +283,9 @@ export default function StockVerificationDetailPage() {
         {/* Top Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outlined" className="h-10 gap-2 px-4 text-sm font-medium"
+            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
               onClick={() => navigate("/order-management/stock-verification")}>
-              <ArrowLeftIcon className="size-5" /> Back to Verifications
+              <ArrowLeftIcon className="size-4" /> Back to Verifications
             </Button>
             <div className="flex flex-wrap items-center gap-2">
               <Badge color="primary" className="h-9 px-4 text-[13px] font-bold shadow-sm">

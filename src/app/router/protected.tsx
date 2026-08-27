@@ -291,6 +291,29 @@ const protectedRoutes: RouteObject = {
                 },
               ],
             },
+            {
+              path: "stock-transfer",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer")).default,
+                  }),
+                },
+                {
+                  path: "new",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer/new")).default,
+                  }),
+                },
+                {
+                  path: ":id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/order-management/stock-transfer/detail")).default,
+                  }),
+                },
+              ],
+            },
           ],
         },
 
@@ -397,23 +420,48 @@ const protectedRoutes: RouteObject = {
             },
 
             // ── NEW: SchemeOffer ──────────────────────────────────────────
-            {
-              path: "scheme-offer",
-              children: [
-                {
-                  index: true,
-                  lazy: async () => ({
-                    Component: (await import("@/app/pages/b2b-inventory/scheme-offer/index")).default,
-                  }),
-                },
-                {
-                  path: "create",
-                  lazy: async () => ({
-                    Component: (await import("@/app/pages/b2b-inventory/scheme-offer/create")).default,
-                  }),
-                },
-              ],
-            },
+// ✅ SAHI - my-offers scheme-offer ke andar
+{
+  path: "scheme-offer",
+  children: [
+    {
+      index: true,
+      lazy: async () => ({
+        Component: (await import("@/app/pages/b2b-inventory/scheme-offer/index")).default,
+      }),
+    },
+    {
+      path: "create",
+      lazy: async () => ({
+        Component: (await import("@/app/pages/b2b-inventory/scheme-offer/create")).default,
+      }),
+    },
+    {
+      path: ":id/report",
+      lazy: async () => ({
+        Component: (await import("@/app/pages/b2b-inventory/scheme-offer/report")).default,
+      }),
+    },
+    // ✅ my-offers ANDAR hai
+    {
+      path: "my-offers",
+      children: [
+        {
+          index: true,
+          lazy: async () => ({
+            Component: (await import("@/app/pages/b2b-inventory/scheme-offer/my-offers/index")).default,
+          }),
+        },
+        {
+          path: ":id/report",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/b2b-inventory/scheme-offer/my-offers/report")).default,
+          }),
+        },
+      ],
+    },
+  ],
+},
           ],
         },
 
@@ -428,6 +476,12 @@ const protectedRoutes: RouteObject = {
                 Component: (await import("@/app/pages/purchase-master/purchase-entry")).default,
               }),
             },
+            {
+  path: "purchase-excel-import-export",
+  lazy: async () => ({
+    Component: (await import("@/app/pages/purchase-master/purchase-excel-import-export/index")).default,
+  }),
+},
             {
               path: "purchase-entry/new",
               lazy: async () => ({
@@ -451,6 +505,7 @@ const protectedRoutes: RouteObject = {
                 },
               ],
             },
+            
             {
               path: "b2b-purchase-verification",
               children: [
@@ -628,6 +683,31 @@ const protectedRoutes: RouteObject = {
                   path: ":id",
                   lazy: async () => ({
                     Component: (await import("@/app/pages/transaction-master/ledger-report/detail")).default,
+                  }),
+                },
+              ],
+            },
+          ],
+        },
+
+        // ── Employee Management ─────────────────────────────────────────
+        {
+          path: "employee-management",
+          children: [
+            { index: true, element: <Navigate to="/employee-management/employee-master" replace /> },
+            {
+              path: "employee-master",
+              children: [
+                {
+                  index: true,
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/employee-management/employee-master")).default,
+                  }),
+                },
+                {
+                  path: ":id/permissions",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/employee-management/employee-master/permissions")).default,
                   }),
                 },
               ],

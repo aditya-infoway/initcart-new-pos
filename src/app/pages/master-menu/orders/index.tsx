@@ -3,6 +3,7 @@ import {
   getSortedRowModel, SortingState, useReactTable,
   ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   ArchiveBoxIcon, ArrowPathIcon, CheckCircleIcon, ClockIcon,
   CubeIcon, ExclamationCircleIcon, EyeIcon, MagnifyingGlassIcon,
@@ -239,22 +240,36 @@ export default function BranchOrdersPage() {
 
           {/* Status tabs */}
           <div className="hide-scrollbar overflow-x-auto mb-0">
-            <div className="flex w-max min-w-full gap-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-700">
-              {STATUS_TABS.map(tab => {
+            <WithIcon
+              tabs={STATUS_TABS.map(tab => {
                 const count = stats[tab.key as keyof OrderStats] ?? 0;
-                return (
-                  <button key={tab.key} onClick={() => handleTabChange(tab.key)}
-                    className={clsx(
-                      "shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150",
-                      activeStatus === tab.key
-                        ? "bg-white text-primary shadow dark:bg-dark-600 dark:text-primary-400"
-                        : "text-gray-500 hover:text-gray-800 dark:text-dark-300 dark:hover:text-dark-100",
-                    )}>
-                    {tab.label} ({count})
-                  </button>
-                );
+                // Map appropriate icons based on status
+                const getIcon = () => {
+                  switch(tab.key) {
+                    case "all": return ShoppingBagIcon;
+                    case "pending": return ClockIcon;
+                    case "confirmed": return CheckCircleIcon;
+                    case "packaging": return CubeIcon;
+                    case "out_for_delivery": return TruckIcon;
+                    case "delivered": return ArchiveBoxIcon;
+                    case "cancelled": return XCircleIcon;
+                    case "returned": return ArrowUturnLeftIcon;
+                    case "failed": return ExclamationCircleIcon;
+                    default: return ShoppingBagIcon;
+                  }
+                };
+                
+                return {
+                  id: tab.key,
+                  title: `${tab.label} (${count})`,
+                  icon: getIcon(),
+                  content: null, // Content is handled separately via activeStatus state
+                };
               })}
-            </div>
+              selectedIndex={STATUS_TABS.findIndex(t => t.key === activeStatus)}
+              onChange={(idx) => handleTabChange(STATUS_TABS[idx].key)}
+              hidePanels={true}
+            />
           </div>
         </div>
 

@@ -8,6 +8,7 @@ import {
   ColumnDef,
   CellContext,
 } from "@tanstack/react-table";
+import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   ArrowPathIcon,
   EyeIcon,
@@ -482,27 +483,20 @@ export default function WebsiteItemsListPage() {
 
         {/* ── Status Tabs ── */}
         <div className="px-(--margin-x) mt-4">
-          <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit dark:border-dark-500 dark:bg-dark-750 flex-wrap">
-            {STATUS_TABS.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => { setActiveTab(tab.key); setPage(1); }}
-                  className={clsx(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all",
-                    activeTab === tab.key
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-gray-500 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-600",
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <WithIcon
+            tabs={STATUS_TABS.map(tab => ({
+              id: tab.key,
+              title: tab.label,
+              icon: tab.icon, // These already have appropriate icons defined
+              content: null, // Content is handled separately via activeTab state
+            }))}
+            selectedIndex={STATUS_TABS.findIndex(t => t.key === activeTab)}
+            onChange={(idx) => {
+              setActiveTab(STATUS_TABS[idx].key);
+              setPage(1);
+            }}
+            hidePanels={true}
+          />
         </div>
 
         {/* ── Search ── */}

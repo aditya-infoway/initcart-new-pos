@@ -7,7 +7,7 @@ import {
   ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
 import {
-  ArrowDownTrayIcon, ArrowPathIcon, EyeIcon,
+  ArrowDownTrayIcon, ArrowPathIcon, CubeIcon, EyeIcon,
   FunnelIcon, MagnifyingGlassIcon, PlusIcon,
   PrinterIcon, TrashIcon, XMarkIcon,
   BanknotesIcon, ReceiptRefundIcon,
@@ -17,7 +17,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
+import { Badge, Button, Input, Table, THead, TBody, Tr, Th, Td, Card } from "@/components/ui";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, Delete, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
@@ -26,32 +26,83 @@ import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { mapApiSalesReturn, SalesReturnRecord } from "./data";
 
-function DetailModal({ rec, onClose }: { rec: SalesReturnRecord | null; onClose: () => void }) {
+function DetailDrawer({ isOpen, onClose, rec }: { isOpen: boolean; onClose: () => void; rec: SalesReturnRecord | null }) {
   return (
-    <Transition appear show={!!rec} as={Fragment}>
-      <Dialog as="div" className="relative z-[200]" onClose={onClose}>
-        <TransitionChild as="div"
-          enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
-          leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
-          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm dark:bg-black/40"
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-100" onClose={onClose}>
+        <TransitionChild
+          as="div"
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
         />
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <TransitionChild as={DialogPanel}
-              enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
-              leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
-              className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700"
-            >
-              <div className="flex items-start justify-between bg-primary px-5 py-4">
-                <div>
-                  <h3 className="text-base font-bold text-white">Sales Return Details</h3>
-                  <p className="mt-0.5 text-xs text-white/70">{rec?.returnNo}</p>
-                </div>
-                <Button onClick={onClose} variant="flat" isIcon className="size-8 rounded-full text-white hover:bg-white/10">
-                  <XMarkIcon className="size-5" />
-                </Button>
+
+        <TransitionChild
+          as={DialogPanel}
+          enter="ease-out transform-gpu transition-transform duration-200"
+          enterFrom="translate-x-full"
+          enterTo="translate-x-0"
+          leave="ease-in transform-gpu transition-transform duration-200"
+          leaveFrom="translate-x-0"
+          leaveTo="translate-x-full"
+          className="fixed top-0 right-0 flex h-full w-full lg:max-w-[65%] xl:max-w-[55%] transform-gpu flex-col bg-white dark:bg-dark-700"
+        >
+          {/* Header */}
+          <div className="bg-primary flex shrink-0 items-center justify-between border-b border-primary/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-full bg-white/20 text-white">
+                <ReceiptRefundIcon className="size-6" />
               </div>
-              <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Sales Return Details — {rec?.returnNo}
+                </h3>
+                <p className="mt-0.5 text-sm text-white/75">
+                  {rec?.customerName} · {formatDateDDMMYYYY(rec?.date ?? "")}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={onClose}
+              variant="flat"
+              isIcon
+              className="size-8 rounded-full text-white hover:bg-white/10"
+            >
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
+
+          {/* Content */}
+          <div className="hide-scrollbar grow space-y-4 overflow-y-auto px-5 py-5">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                { label: "Total Items", value: rec?.items.length ?? 0, bg: "bg-gradient-to-br from-blue-500 to-blue-700", Icon: CubeIcon },
+                { label: "Grand Total", value: `₹${Number(rec?.grandTotal ?? 0).toFixed(2)}`, bg: "bg-gradient-to-br from-primary-500 to-primary-700", Icon: BanknotesIcon },
+                { label: "Return Type", value: rec?.returnType ?? "—", bg: "bg-gradient-to-br from-emerald-500 to-emerald-700", Icon: ReceiptRefundIcon },
+              ].map(({ label, value, bg, Icon }) => (
+                <div key={label} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bg)}>
+                  <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
+                  <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/20">
+                    <Icon className="size-4 text-white" />
+                  </div>
+                  <p className="text-xl font-bold tabular-nums">{value}</p>
+                  <p className="mt-0.5 text-xs font-medium text-white/80">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Info cards */}
+            <Card className="overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-600 flex items-center gap-3 bg-gray-50 dark:bg-dark-800">
+                <ReceiptRefundIcon className="size-4 text-primary" />
+                <h3 className="text-sm font-bold text-gray-800 dark:text-dark-50">Return Information</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
                 {[
                   { label: "Return No", value: rec?.returnNo ?? "" },
                   { label: "Date", value: formatDateDDMMYYYY(rec?.date ?? "") },
@@ -59,7 +110,6 @@ function DetailModal({ rec, onClose }: { rec: SalesReturnRecord | null; onClose:
                   { label: "Reason", value: rec?.reason ?? "" },
                   { label: "Return Type", value: rec?.returnType ?? "" },
                   { label: "Approved By", value: rec?.approvedBy || "—" },
-                  { label: "Grand Total", value: `₹${Number(rec?.grandTotal ?? 0).toFixed(2)}` },
                 ].map(({ label, value }) => (
                   <div key={label} className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-dark-500 dark:bg-dark-800">
                     <p className="text-xs text-gray-400 dark:text-dark-400">{label}</p>
@@ -67,46 +117,70 @@ function DetailModal({ rec, onClose }: { rec: SalesReturnRecord | null; onClose:
                   </div>
                 ))}
               </div>
-              {(rec?.items.length ?? 0) > 0 && (
-                <div className="overflow-x-auto border-t border-gray-100 dark:border-dark-600">
-                  <p className="px-5 py-2 text-sm font-semibold text-gray-700 dark:text-dark-200">Returned Items</p>
+            </Card>
+
+            {/* Items table */}
+            {(rec?.items.length ?? 0) > 0 && (
+              <Card className="overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-600 flex items-center gap-3 bg-gray-50 dark:bg-dark-800">
+                  <ReceiptRefundIcon className="size-4 text-primary" />
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-dark-50">Returned Items</h3>
+                  <Badge color="primary" variant="soft" className="text-xs font-semibold">
+                    {rec?.items.length ?? 0}
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto">
                   <Table hoverable className="w-full">
                     <THead>
                       <Tr>
                         {["Item", "Qty", "Price", "Tax%", "Net Amount"].map(h => (
-                          <Th key={h} className="bg-gray-100 text-xs font-semibold uppercase text-gray-600 dark:bg-dark-800 dark:text-dark-200">{h}</Th>
+                          <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">{h}</Th>
                         ))}
                       </Tr>
                     </THead>
                     <TBody>
                       {rec?.items.map((item, i) => (
-                        <Tr key={i} className="border-b border-gray-100 dark:border-dark-600">
-                          <Td className="font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
-                          <Td className="text-center tabular-nums">{item.return_quantity}</Td>
-                          <Td className="tabular-nums text-gray-600 dark:text-dark-200">₹{Number(item.price).toFixed(2)}</Td>
-                          <Td className="text-center"><Badge color="warning" variant="soft" className="text-xs">{item.tax_percent}%</Badge></Td>
-                          <Td className="font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{Number(item.net_amount).toFixed(2)}</Td>
+                        <Tr key={i} className="dark:border-b-dark-500 border-b border-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-dark-800">
+                          <Td className="px-4 py-3 font-semibold text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                          <Td className="px-4 py-3 text-center">
+                            <Badge color="info" variant="soft" className="text-xs font-bold">
+                              {item.return_quantity}
+                            </Badge>
+                          </Td>
+                          <Td className="px-4 py-3 text-right text-xs font-mono font-semibold text-primary">
+                            ₹{Number(item.price).toFixed(2)}
+                          </Td>
+                          <Td className="px-4 py-3 text-center">
+                            <Badge color="warning" variant="soft" className="text-xs">
+                              {item.tax_percent}%
+                            </Badge>
+                          </Td>
+                          <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-primary">
+                            ₹{Number(item.net_amount).toFixed(2)}
+                          </Td>
                         </Tr>
                       ))}
-                      <Tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                        <Td colSpan={4} className="bg-gray-50 text-xs font-bold uppercase dark:bg-dark-800">Total</Td>
-                        <Td className="bg-gray-50 font-bold tabular-nums text-primary-600 dark:bg-dark-800 dark:text-primary-400">
+                      <Tr className="dark:border-b-dark-500 border-t-2 border-gray-200 dark:border-dark-500 bg-gray-50 dark:bg-dark-800">
+                        <Td colSpan={4} className="px-4 py-3 text-xs font-bold uppercase text-gray-700 dark:text-dark-100">Total</Td>
+                        <Td className="px-4 py-3 text-right text-xs font-mono font-bold text-primary dark:text-primary-400">
                           ₹{Number(rec?.grandTotal ?? 0).toFixed(2)}
                         </Td>
                       </Tr>
                     </TBody>
                   </Table>
                 </div>
-              )}
-              <div className="flex justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-600">
-                <Button variant="outlined" className="gap-2 px-4" onClick={() => window.print()}>
-                  <PrinterIcon className="size-4" /> Print
-                </Button>
-                <Button variant="outlined" className="px-6" onClick={onClose}>Close</Button>
-              </div>
-            </TransitionChild>
+              </Card>
+            )}
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+            <Button variant="outlined" className="gap-2" onClick={() => window.print()}>
+              <PrinterIcon className="size-4" /> Print
+            </Button>
+            <Button variant="outlined" onClick={onClose}>Close</Button>
+          </div>
+        </TransitionChild>
       </Dialog>
     </Transition>
   );
@@ -357,7 +431,7 @@ export default function SalesReturnPage() {
         <MasterTable table={table} columnCount={columns.length}
           emptyMessage={loading ? "Loading sales returns…" : "No sales returns found."} />
       </div>
-      <DetailModal rec={selected} onClose={() => setSelected(null)} />
+      <DetailDrawer isOpen={!!selected} onClose={() => setSelected(null)} rec={selected} />
     </Page>
   );
 }
