@@ -465,6 +465,19 @@ const protectedRoutes: RouteObject = {
           ],
         },
 
+
+// ── My Branches ───────────────────────────────────────────────────────────
+{
+  path: "mybranches",
+  children: [
+    {
+      index: true,
+      lazy: async () => ({
+        Component: (await import("@/app/pages/my-branches")).default,
+      }),
+    },
+  ],
+},
         // ── Purchase Master ────────────────────────────────────────────
         {
           path: "purchase",

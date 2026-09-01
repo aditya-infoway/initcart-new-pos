@@ -10,4 +10,5 @@ export interface NavigationTree {
   childs?: NavigationTree[];
   superAdminOnly?: boolean; 
   branchOnly?: boolean; 
+  franchiseOnly?: boolean; 
 }

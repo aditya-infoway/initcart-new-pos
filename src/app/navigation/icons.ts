@@ -61,6 +61,7 @@ import {
   CalculatorIcon,
   QrCodeIcon,
   ArrowUpTrayIcon,
+  HomeModernIcon
 } from "@heroicons/react/24/outline";
 import { ElementType } from "react";
 
@@ -76,6 +77,7 @@ export const navigationIcons: Record<string, ElementType> = {
   logout: ArrowLeftStartOnRectangleIcon,
 
   "dashboards.home": HomeIcon,
+  "myBranches": HomeModernIcon,
 
   "registration.new": DocumentPlusIcon,
   "registration.expired": ClockIcon,
