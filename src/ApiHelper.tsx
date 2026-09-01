@@ -9,7 +9,7 @@ export function toastsuccessmsg(message: unknown) {
   toast.success(String(message));
 }
 
-const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api/";
+const rawApiUrl = import.meta.env.VITE_API_URL || "https://api.initcart.com/api/";
 export const API_URL = rawApiUrl.endsWith("/") ? rawApiUrl : `${rawApiUrl}/`;
 
 // Kept for existing imports. All calls now use the Vite environment value.

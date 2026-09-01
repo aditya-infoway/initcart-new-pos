@@ -1,3 +1,4 @@
+// pages/settings/sections/AdminProfile.tsx
 import {
   ArrowPathIcon,
   BanknotesIcon,
@@ -19,8 +20,11 @@ import {
   HashtagIcon,
   TagIcon,
   EyeIcon,
+  PencilIcon,
+  XMarkIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import {
@@ -69,6 +73,8 @@ interface AuthMeBranch {
   updated_on?: string;
   last_login?: string;
   owner_name?: string;
+  gst_number?: string;
+  pan_number?: string;
   gst_no?: string;
   pan_no?: string;
   bank_name?: string;
@@ -84,6 +90,8 @@ interface AuthMeBranch {
   gst_certificate_url?: string;
   id_proof?: string;
   id_proof_url?: string;
+  pan_card?: string;
+  pan_card_url?: string;
   [k: string]: any;
 }
 
@@ -91,28 +99,38 @@ interface AuthMeBranch {
 function SectionHeader({
   icon: Icon,
   title,
+  action,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-center gap-2.5 border-b border-gray-200 pb-3 dark:border-dark-600">
-      <Icon className="size-5 text-primary" />
-      <h3 className="text-[15px] font-extrabold tracking-wide text-gray-800 dark:text-dark-50">
-        {title}
-      </h3>
+    <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3 dark:border-dark-600">
+      <div className="flex items-center gap-2.5">
+        <Icon className="size-5 text-primary" />
+        <h3 className="text-[15px] font-extrabold tracking-wide text-gray-800 dark:text-dark-50">
+          {title}
+        </h3>
+      </div>
+      {action}
     </div>
   );
 }
 
-// ── Helper field row (static or editable Input pair) ──────────────────────
+// ── Helper field row ──────────────────────────────────────────────────────
 type FieldValue = string | number | null | undefined;
+
 function FieldRow({
   left,
   right,
+  isEditing = false,
+  onFieldChange,
 }: {
-  left: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; register?: any; errorMsg?: string };
-  right?: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; register?: any; errorMsg?: string };
+  left: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; fieldKey?: string };
+  right?: { label: string; icon?: React.ComponentType<{ className?: string }>; value: FieldValue; placeholder?: string; accent?: "info" | "warn" | "error"; editable?: boolean; fieldKey?: string };
+  isEditing?: boolean;
+  onFieldChange?: (key: string, value: string) => void;
 }) {
   const renderCell = (
     label: string,
@@ -121,8 +139,7 @@ function FieldRow({
     placeholder: string | undefined,
     accent: "info" | "warn" | "error" | undefined,
     editable: boolean | undefined,
-    register: any,
-    errorMsg: string | undefined,
+    fieldKey: string | undefined,
   ) => {
     const accentBg = {
       info: "bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300",
@@ -130,7 +147,11 @@ function FieldRow({
       error: "bg-rose-50 dark:bg-rose-500/10 text-rose-800 dark:text-rose-300",
     }[accent ?? "info"];
 
-    if (editable) {
+    const displayValue = value !== undefined && value !== null && String(value).trim() !== ""
+      ? String(value)
+      : "";
+
+    if (isEditing && editable) {
       return (
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
@@ -139,8 +160,13 @@ function FieldRow({
           </label>
           <Input
             placeholder={placeholder ?? label}
-            error={errorMsg}
-            {...(register ?? {})}
+            value={displayValue}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              if (onFieldChange && fieldKey) {
+                onFieldChange(fieldKey, e.target.value);
+              }
+            }}
+            className="w-full"
           />
         </div>
       );
@@ -158,9 +184,7 @@ function FieldRow({
             (accent ? accentBg : "")
           }
         >
-          {value !== undefined && value !== null && String(value).trim() !== ""
-            ? String(value)
-            : <span className="text-xs text-gray-400 dark:text-dark-400">{placeholder ?? "—"}</span>}
+          {displayValue || <span className="text-xs text-gray-400 dark:text-dark-400">{placeholder ?? "—"}</span>}
         </div>
       </div>
     );
@@ -170,7 +194,7 @@ function FieldRow({
     return (
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.register, left.errorMsg)}
+          {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.fieldKey)}
         </div>
       </div>
     );
@@ -178,8 +202,8 @@ function FieldRow({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.register, left.errorMsg)}
-      {renderCell(right.label, right.icon, right.value, right.placeholder, right.accent, right.editable, right.register, right.errorMsg)}
+      {renderCell(left.label, left.icon, left.value, left.placeholder, left.accent, left.editable, left.fieldKey)}
+      {renderCell(right.label, right.icon, right.value, right.placeholder, right.accent, right.editable, right.fieldKey)}
     </div>
   );
 }
@@ -248,7 +272,26 @@ export default function AdminProfile() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [raw, setRaw] = useState<AuthMeResponse | null>(null);
 
-  // ── Form states (in-mirror of editable fields on Branch Information row)
+  // ── Role check ──────────────────────────────────────────────────────────
+  // NOTE: role state (from /auth/me) is kept for display/debug purposes, but
+  // isSuperAdmin itself is derived from localStorage — same reliable pattern
+  // used across the app (ItemFormPage, ItemsListPage) that already works
+  // correctly. Depending only on getUserFromMe(body) here was the bug: if the
+  // API response shape didn't match what getUserFromMe expects, userRole
+  // stayed empty and every "Edit" button silently disappeared.
+  const [userRole, setUserRole] = useState<string>("");
+
+  const isSuperAdmin = useMemo(() => {
+    return localStorage.getItem("role") === "superadmin";
+  }, []);
+
+  // ── Edit states ────────────────────────────────────────────────────────
+  const [isEditingBranchInfo, setIsEditingBranchInfo] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isEditingTax, setIsEditingTax] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+
+  // ── Form states ────────────────────────────────────────────────────────
   const [branchId, setBranchId] = useState<string>("");
   const [branchCode, setBranchCode] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
@@ -265,6 +308,21 @@ export default function AdminProfile() {
   const [accountNumber, setAccountNumber] = useState<string>("");
   const [ifscCode, setIfscCode] = useState<string>("");
   const [upiId, setUpiId] = useState<string>("");
+  const [gstNumber, setGstNumber] = useState<string>("");
+  const [panNumber, setPanNumber] = useState<string>("");
+
+  // ── Password states ────────────────────────────────────────────────────
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+
+  // ── Logo states ──────────────────────────────────────────────────────
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const [savingLogo, setSavingLogo] = useState(false);
 
   const loadMe = useCallback(async () => {
     setLoading(true);
@@ -272,14 +330,18 @@ export default function AdminProfile() {
       const res = (await Get("pos/auth/me/")) as AuthMeResponse | any;
       const body = (res?.data ?? res) as AuthMeResponse;
       setRaw(body);
+
+      // Get user role (kept for display/debug — isSuperAdmin uses localStorage above)
+      const user = getUserFromMe(body);
+      setUserRole(String(user?.role || user?.user_type || localStorage.getItem("role") || ""));
+
       const b = getBranchFromMe(body);
-      const u = getUserFromMe(body);
       setBranchId(String(b.id ?? b.branch_id ?? ""));
       setBranchCode(String(b.branch_code ?? b.code ?? ""));
-      setBranchName(String(b.name ?? b.branch_name ?? u.branch_name ?? ""));
-      setOwnerName(String(b.owner_name ?? u.name ?? u.full_name ?? ""));
-      setPhone(String(b.phone ?? u.phone ?? ""));
-      setEmail(String(b.email ?? u.email ?? ""));
+      setBranchName(String(b.name ?? b.branch_name ?? user.branch_name ?? ""));
+      setOwnerName(String(b.owner_name ?? user.name ?? user.full_name ?? ""));
+      setPhone(String(b.phone ?? user.phone ?? ""));
+      setEmail(String(b.email ?? user.email ?? ""));
       setBranchType(String(b.branch_type ?? b.type ?? ""));
       setAddress(String(b.address ?? ""));
       setCountry(String(b.country ?? ""));
@@ -290,6 +352,8 @@ export default function AdminProfile() {
       setAccountNumber(String(b.bank_account ?? b.account_number ?? ""));
       setIfscCode(String(b.ifsc_code ?? b.ifsc ?? ""));
       setUpiId(String(b.upi_id ?? b.upi ?? ""));
+      setGstNumber(String(b.gst_number ?? b.gst_no ?? ""));
+      setPanNumber(String(b.pan_number ?? b.pan_no ?? ""));
     } catch {
       toasterrormsg("Failed to load profile.");
     } finally {
@@ -316,76 +380,172 @@ export default function AdminProfile() {
   const memberSince = (
     branch?.created_at ?? branch?.created_on ?? branch?.date_joined ?? user?.date_joined ?? raw?.created_at ?? raw?.date_joined ?? ""
   ) as string;
-  const accountCreated = memberSince;
   const lastUpdated = (branch?.updated_at ?? branch?.updated_on ?? raw?.updated_at ?? user?.last_login ?? raw?.last_login ?? "") as string;
 
   const maskAccount = (s: string) =>
     s.length > 4 ? "**** " + s.slice(-4) : s || "";
 
-  // ── Save profile (all editable fields + branch id in url if present)
-  const handleSave = async () => {
-    if (!raw) return;
+  // ── Save handlers ─────────────────────────────────────────────────────
+
+  // 1. Save Branch Info
+  const handleSaveBranchInfo = async () => {
+    if (!branchName.trim()) {
+      toasterrormsg("Branch name is required");
+      return;
+    }
     setSaving(true);
     try {
       const payload: Record<string, any> = {
-        branch_id: Number.isFinite(Number(branch?.id ?? branch?.branch_id)) ? Number(branch?.id ?? branch?.branch_id) : undefined,
-        branch_code: branchCode,
         branch_name: branchName,
-        name: branchName,
         owner_name: ownerName,
         phone,
         email,
         branch_type: branchType,
+      };
+
+      await Patch("pos/auth/me/", payload);
+      toastsuccessmsg("Branch info updated successfully!");
+      setIsEditingBranchInfo(false);
+      loadMe();
+    } catch {
+      toasterrormsg("Failed to update branch info");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 2. Save Location
+  const handleSaveLocation = async () => {
+    if (!country.trim() || !stateName.trim() || !city.trim()) {
+      toasterrormsg("Country, State, and City are required!");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
         address,
         country,
         state: stateName,
         city,
         pincode,
-        bank_name: bankName,
-        bank_account: accountNumber,
-        account_number: accountNumber,
-        ifsc_code: ifscCode,
-        ifsc: ifscCode,
-        upi_id: upiId,
-        upi: upiId,
       };
-      const bid = branch?.id ?? branch?.branch_id ?? user?.branch_id ?? raw?.id;
-      let saved = false;
-      const urls = bid
-        ? [
-            `pos/branch/${bid}/`,
-            `pos/branches/${bid}/`,
-            `pos/auth/me/`,
-          ]
-        : [`pos/auth/me/`, `pos/branch/`, `pos/branches/`];
-      for (const url of urls) {
-        try {
-          const isPost = /\/$/.test(url) && !bid && url.includes("branch");
-          const res = await (isPost ? Post : (Patch as any))(url, payload, false);
-          const data = (res as any)?.data ?? res;
-          if (data && (data?.success === true || data?.id || data?.branch_id || data?.name)) {
-            saved = true;
-            break;
-          }
-          saved = true;
-          break;
-        } catch { /* try next */ }
-      }
-      if (!saved) {
-        try {
-          await Put("pos/auth/me/", payload, false);
-          saved = true;
-        } catch { /* noop */ }
-      }
-      if (saved) toastsuccessmsg("Profile updated successfully.");
-      else throw new Error("failed");
+
+      await Patch("pos/auth/me/", payload);
+      toastsuccessmsg("Location updated successfully!");
+      setIsEditingLocation(false);
       loadMe();
-      window.dispatchEvent(new Event("profile-updated"));
     } catch {
-      toasterrormsg("Failed to save profile.");
+      toasterrormsg("Failed to update location");
     } finally {
       setSaving(false);
     }
+  };
+
+  // 3. Save GST/PAN
+  const handleSaveTax = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        gst_number: gstNumber,
+        pan_number: panNumber,
+      };
+
+      await Patch("pos/auth/me/", payload);
+      toastsuccessmsg("GST & PAN details updated successfully!");
+      setIsEditingTax(false);
+      loadMe();
+    } catch {
+      toasterrormsg("Failed to update GST/PAN details");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 4. Save Branch Code
+  const handleSaveBranchCode = async () => {
+    const code = branchCode.trim().toUpperCase();
+    if (code && !/^[A-Z]{3}$/.test(code)) {
+      toasterrormsg("Code must be exactly 3 letters (A-Z)");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = { branch_code: code };
+      await Patch("pos/auth/me/", payload);
+      toastsuccessmsg("Branch code updated successfully!");
+      loadMe();
+    } catch {
+      toasterrormsg("Failed to update branch code");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 5. Save Logo
+  const handleSaveLogo = async () => {
+    if (!logoFile) return;
+    setSavingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("branch_logo", logoFile);
+
+      await Patch("pos/auth/me/", formData, true);
+      toastsuccessmsg("Logo updated successfully!");
+      setLogoFile(null);
+      setLogoPreview("");
+      loadMe();
+    } catch {
+      toasterrormsg("Failed to update logo");
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
+  // 6. Save Password
+  const handleSavePassword = async () => {
+    if (!currentPassword) {
+      toasterrormsg("Current password is required");
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      toasterrormsg("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toasterrormsg("Passwords do not match");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        current_password: currentPassword,
+        new_password: newPassword,
+      };
+      await Patch("pos/auth/change-password/", payload);
+      toastsuccessmsg("Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setIsEditingPassword(false);
+    } catch {
+      toasterrormsg("Failed to update password");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 7. Logo select handler
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCancelLogo = () => {
+    setLogoFile(null);
+    setLogoPreview("");
   };
 
   const handleLogout = async () => {
@@ -415,7 +575,9 @@ export default function AdminProfile() {
           <div className="relative -mt-20 flex flex-col items-center gap-4 sm:-mt-28">
             <div className="relative">
               <div className="size-32 overflow-hidden rounded-full border-4 border-white bg-white shadow-xl ring-1 ring-black/5 dark:border-dark-800 dark:bg-dark-800 dark:ring-white/10 sm:size-40">
-                {logoSrc ? (
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Branch Logo" className="size-full object-cover" />
+                ) : logoSrc ? (
                   <img src={logoSrc as string} alt="Branch" className="size-full object-cover" />
                 ) : (
                   <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary to-primary-600 text-4xl font-extrabold text-white sm:text-5xl">
@@ -423,9 +585,32 @@ export default function AdminProfile() {
                   </div>
                 )}
               </div>
-              <div className="absolute bottom-1 right-1 flex size-9 items-center justify-center rounded-full border-2 border-white bg-white text-primary shadow-md dark:border-dark-800 dark:bg-dark-800">
-                <CameraIcon className="size-4.5" />
-              </div>
+              {/* ✅ Logo upload - Only SuperAdmin */}
+              {isSuperAdmin && (
+                <>
+                  <label className="absolute bottom-1 right-1 flex size-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-white text-primary shadow-md hover:bg-gray-100 dark:border-dark-800 dark:bg-dark-800">
+                    <CameraIcon className="size-4.5" />
+                    <input type="file" accept="image/*" onChange={handleLogoSelect} className="hidden" />
+                  </label>
+                  {logoFile && (
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex gap-1">
+                      <button
+                        onClick={handleSaveLogo}
+                        disabled={savingLogo}
+                        className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {savingLogo ? "..." : "Save"}
+                      </button>
+                      <button
+                        onClick={handleCancelLogo}
+                        className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="w-full text-center">
@@ -455,6 +640,12 @@ export default function AdminProfile() {
                     {String(displayBranchType).charAt(0).toUpperCase() + String(displayBranchType).slice(1)}
                   </Badge>
                 )}
+                {isSuperAdmin && (
+                  <Badge className="gap-1.5 bg-indigo-500/90 px-3 py-1 text-[12px] font-extrabold text-white shadow-sm">
+                    <SparklesIcon className="size-3.5" />
+                    Super Admin
+                  </Badge>
+                )}
               </div>
               {memberSince && (
                 <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 dark:text-dark-400">
@@ -469,7 +660,32 @@ export default function AdminProfile() {
 
       {/* ── Branch Information ───────────────────────────────────── */}
       <Card className="p-5 sm:p-6">
-        <SectionHeader icon={BuildingStorefrontIcon} title="Branch Information" />
+        <SectionHeader
+          icon={BuildingStorefrontIcon}
+          title="Branch Information"
+          action={
+            isSuperAdmin && !isEditingBranchInfo ? (
+              <Button
+                size="sm"
+                variant="flat"
+                color="primary"
+                className="gap-1.5"
+                onClick={() => setIsEditingBranchInfo(true)}
+              >
+                <PencilIcon className="size-4" /> Edit
+              </Button>
+            ) : isSuperAdmin && isEditingBranchInfo ? (
+              <div className="flex gap-2">
+                <Button size="sm" variant="flat" onClick={() => setIsEditingBranchInfo(false)}>
+                  <XMarkIcon className="size-4" /> Cancel
+                </Button>
+                <Button size="sm" color="primary" onClick={handleSaveBranchInfo} disabled={saving}>
+                  <CheckCircleIcon className="size-4" /> {saving ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            ) : null
+          }
+        />
         <div className="space-y-4">
           <FieldRow
             left={{
@@ -484,10 +700,21 @@ export default function AdminProfile() {
               icon: IdentificationIcon,
               value: branchCode,
               placeholder: "e.g. D8E",
-              editable: true,
-              register: { value: branchCode, onChange: (e: any) => setBranchCode(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "branchCode",
+            }}
+            isEditing={isEditingBranchInfo}
+            onFieldChange={(key, val) => {
+              if (key === "branchCode") setBranchCode(val);
             }}
           />
+          {isSuperAdmin && isEditingBranchInfo && (
+            <div className="-mt-2 flex justify-end">
+              <Button size="sm" variant="soft" color="primary" onClick={handleSaveBranchCode} disabled={saving}>
+                Save Branch Code
+              </Button>
+            </div>
+          )}
           {branchCode && (
             <p className="-mt-1 text-[10.5px] font-semibold text-gray-400 dark:text-dark-400">
               Will be used in Order ID /DB/{branchCode}/ DD-MM-YY / 100001
@@ -499,16 +726,21 @@ export default function AdminProfile() {
               icon: BuildingStorefrontIcon,
               value: branchName,
               placeholder: "Branch name",
-              editable: true,
-              register: { value: branchName, onChange: (e: any) => setBranchName(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "branchName",
             }}
             right={{
               label: "Owner Name",
               icon: SparklesIcon,
               value: ownerName,
               placeholder: "Owner / In-charge name",
-              editable: true,
-              register: { value: ownerName, onChange: (e: any) => setOwnerName(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "ownerName",
+            }}
+            isEditing={isEditingBranchInfo}
+            onFieldChange={(key, val) => {
+              if (key === "branchName") setBranchName(val);
+              if (key === "ownerName") setOwnerName(val);
             }}
           />
           <FieldRow
@@ -517,16 +749,21 @@ export default function AdminProfile() {
               icon: PhoneIcon,
               value: phone,
               placeholder: "Branch contact number",
-              editable: true,
-              register: { value: phone, onChange: (e: any) => setPhone(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "phone",
             }}
             right={{
               label: "Email",
               icon: EnvelopeIcon,
               value: email,
               placeholder: "Branch email",
-              editable: true,
-              register: { value: email, onChange: (e: any) => setEmail(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "email",
+            }}
+            isEditing={isEditingBranchInfo}
+            onFieldChange={(key, val) => {
+              if (key === "phone") setPhone(val);
+              if (key === "email") setEmail(val);
             }}
           />
           <FieldRow
@@ -535,8 +772,12 @@ export default function AdminProfile() {
               icon: FolderIcon,
               value: branchType,
               placeholder: "e.g. Fashion, Retail, etc.",
-              editable: true,
-              register: { value: branchType, onChange: (e: any) => setBranchType(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "branchType",
+            }}
+            isEditing={isEditingBranchInfo}
+            onFieldChange={(key, val) => {
+              if (key === "branchType") setBranchType(val);
             }}
           />
         </div>
@@ -544,7 +785,26 @@ export default function AdminProfile() {
 
       {/* ── Address Details ──────────────────────────────────────── */}
       <Card className="p-5 sm:p-6">
-        <SectionHeader icon={MapPinIcon} title="Address Details" />
+        <SectionHeader
+          icon={MapPinIcon}
+          title="Address Details"
+          action={
+            isSuperAdmin && !isEditingLocation ? (
+              <Button size="sm" variant="flat" color="primary" className="gap-1.5" onClick={() => setIsEditingLocation(true)}>
+                <PencilIcon className="size-4" /> Edit
+              </Button>
+            ) : isSuperAdmin && isEditingLocation ? (
+              <div className="flex gap-2">
+                <Button size="sm" variant="flat" onClick={() => setIsEditingLocation(false)}>
+                  <XMarkIcon className="size-4" /> Cancel
+                </Button>
+                <Button size="sm" color="primary" onClick={handleSaveLocation} disabled={saving}>
+                  <CheckCircleIcon className="size-4" /> {saving ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            ) : null
+          }
+        />
         <div className="space-y-4">
           <FieldRow
             left={{
@@ -552,27 +812,36 @@ export default function AdminProfile() {
               icon: HomeIcon,
               value: address,
               placeholder: "Street / Area / Landmark",
-              editable: true,
-              register: { value: address, onChange: (e: any) => setAddress(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "address",
+            }}
+            isEditing={isEditingLocation}
+            onFieldChange={(key, val) => {
+              if (key === "address") setAddress(val);
             }}
           />
           <FieldRow
             left={{
               label: "Country",
-              icon: GlobeAltIcon_local,
+              icon: GlobeAltIcon,
               value: country,
               placeholder: "Country name",
               accent: !country || /not specified|not specified/i.test(country) ? "warn" : "info",
-              editable: true,
-              register: { value: country, onChange: (e: any) => setCountry(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "country",
             }}
             right={{
               label: "State",
               icon: MapPinIcon,
               value: stateName,
               placeholder: "State",
-              editable: true,
-              register: { value: stateName, onChange: (e: any) => setStateName(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "stateName",
+            }}
+            isEditing={isEditingLocation}
+            onFieldChange={(key, val) => {
+              if (key === "country") setCountry(val);
+              if (key === "stateName") setStateName(val);
             }}
           />
           <FieldRow
@@ -581,20 +850,76 @@ export default function AdminProfile() {
               icon: MapPinIcon,
               value: city,
               placeholder: "City",
-              editable: true,
-              register: { value: city, onChange: (e: any) => setCity(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "city",
             }}
             right={{
               label: "Pincode",
               icon: HashtagIcon,
               value: pincode,
               placeholder: "Pincode / ZIP",
-              editable: true,
-              register: { value: pincode, onChange: (e: any) => setPincode(e.target.value) },
+              editable: isSuperAdmin,
+              fieldKey: "pincode",
+            }}
+            isEditing={isEditingLocation}
+            onFieldChange={(key, val) => {
+              if (key === "city") setCity(val);
+              if (key === "pincode") setPincode(val);
             }}
           />
         </div>
       </Card>
+
+      {/* ── GST/PAN Details ─────────────────────────────────────────── */}
+      {isSuperAdmin && (
+        <Card className="p-5 sm:p-6">
+          <SectionHeader
+            icon={IdentificationIcon}
+            title="GST & PAN Details"
+            action={
+              !isEditingTax ? (
+                <Button size="sm" variant="flat" color="primary" className="gap-1.5" onClick={() => setIsEditingTax(true)}>
+                  <PencilIcon className="size-4" /> Edit
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="flat" onClick={() => setIsEditingTax(false)}>
+                    <XMarkIcon className="size-4" /> Cancel
+                  </Button>
+                  <Button size="sm" color="primary" onClick={handleSaveTax} disabled={saving}>
+                    <CheckCircleIcon className="size-4" /> {saving ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              )
+            }
+          />
+          <div className="space-y-4">
+            <FieldRow
+              left={{
+                label: "GST Number",
+                icon: DocumentTextIcon,
+                value: gstNumber,
+                placeholder: "e.g. 24AAAAA0000A1Z5",
+                editable: isSuperAdmin,
+                fieldKey: "gstNumber",
+              }}
+              right={{
+                label: "PAN Number",
+                icon: IdentificationIcon,
+                value: panNumber,
+                placeholder: "e.g. ABCDE1234F",
+                editable: isSuperAdmin,
+                fieldKey: "panNumber",
+              }}
+              isEditing={isEditingTax}
+              onFieldChange={(key, val) => {
+                if (key === "gstNumber") setGstNumber(val.toUpperCase());
+                if (key === "panNumber") setPanNumber(val.toUpperCase());
+              }}
+            />
+          </div>
+        </Card>
+      )}
 
       {/* ── Bank Details ─────────────────────────────────────────── */}
       <Card className="p-5 sm:p-6">
@@ -606,16 +931,12 @@ export default function AdminProfile() {
               icon: BanknotesIcon,
               value: bankName,
               placeholder: "Bank name",
-              editable: true,
-              register: { value: bankName, onChange: (e: any) => setBankName(e.target.value) },
             }}
             right={{
               label: "Account Number",
               icon: ClipboardIcon,
               value: accountNumber ? maskAccount(String(accountNumber)) : "",
               placeholder: "Account number",
-              editable: true,
-              register: { value: accountNumber, onChange: (e: any) => setAccountNumber(e.target.value) },
             }}
           />
           <FieldRow
@@ -624,16 +945,12 @@ export default function AdminProfile() {
               icon: HashtagIcon,
               value: ifscCode,
               placeholder: "IFSC code",
-              editable: true,
-              register: { value: ifscCode, onChange: (e: any) => setIfscCode(e.target.value) },
             }}
             right={{
               label: "UPI ID",
               icon: SparklesIcon,
               value: upiId,
               placeholder: "e.g. branch@upi",
-              editable: true,
-              register: { value: upiId, onChange: (e: any) => setUpiId(e.target.value) },
             }}
           />
         </div>
@@ -675,7 +992,7 @@ export default function AdminProfile() {
             left={{
               label: "Account Created",
               icon: CalendarDaysIcon,
-              value: accountCreated ? formatDateDDMMYYYY(String(accountCreated)) : "",
+              value: memberSince ? formatDateDDMMYYYY(String(memberSince)) : "",
               placeholder: "—",
               accent: "info",
             }}
@@ -689,7 +1006,105 @@ export default function AdminProfile() {
         </div>
       </Card>
 
-      {/* ── Save + Logout row ───────────────────────────────────── */}
+      {/* ── Password Change ── Only SuperAdmin ───────────────────── */}
+      {isSuperAdmin && (
+        <Card className="p-5 sm:p-6">
+          <SectionHeader
+            icon={KeyIcon}
+            title="Branch Panel Login Password"
+            action={
+              !isEditingPassword ? (
+                <Button size="sm" variant="flat" color="primary" className="gap-1.5" onClick={() => setIsEditingPassword(true)}>
+                  <PencilIcon className="size-4" /> Change Password
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="flat" onClick={() => setIsEditingPassword(false)}>
+                    <XMarkIcon className="size-4" /> Cancel
+                  </Button>
+                  <Button size="sm" color="primary" onClick={handleSavePassword} disabled={saving}>
+                    <CheckCircleIcon className="size-4" /> {saving ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              )
+            }
+          />
+          {isEditingPassword && (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
+                    <KeyIcon className="size-4 text-primary" />
+                    Current Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPwd ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showCurrentPwd ? <EyeIcon className="size-4" /> : <EyeSlashIcon className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
+                    <KeyIcon className="size-4 text-primary" />
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPwd ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min 6 characters"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPwd(!showNewPwd)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showNewPwd ? <EyeIcon className="size-4" /> : <EyeSlashIcon className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-gray-600 dark:text-dark-300">
+                    <KeyIcon className="size-4 text-primary" />
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPwd ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showConfirmPwd ? <EyeIcon className="size-4" /> : <EyeSlashIcon className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Logout ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
         <div>
           <div className="flex items-start gap-3 rounded-2xl border border-error/30 bg-error/5 p-4 pr-6 dark:bg-error/10">
@@ -704,49 +1119,35 @@ export default function AdminProfile() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outlined"
-            color="error"
-            className="h-10 gap-2 px-5 text-sm font-extrabold"
-            onClick={handleLogout}
-            disabled={loggingOut}
-          >
-            {loggingOut
-              ? <ArrowPathIcon className="size-4.5 animate-spin" />
-              : <ArrowRightOnRectangleIcon className="size-4.5" />}
-            Logout
-          </Button>
-          <Button
-            color="primary"
-            variant="filled"
-            className="h-10 gap-2 px-6 text-sm font-extrabold shadow-md shadow-primary/20"
-            onClick={handleSave}
-            disabled={saving || loading}
-          >
-            {saving ? (
-              <>
-                <ArrowPathIcon className="size-4.5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <CheckCircleIcon className="size-4.5" />
-                Save
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          variant="outlined"
+          color="error"
+          className="h-10 gap-2 px-5 text-sm font-extrabold"
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
+          {loggingOut
+            ? <ArrowPathIcon className="size-4.5 animate-spin" />
+            : <ArrowRightOnRectangleIcon className="size-4.5" />}
+          Logout
+        </Button>
       </div>
     </div>
   );
 }
 
-const GlobeAltIcon_local = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M2 12h20" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+// ── Missing Icons ─────────────────────────────────────────────────────────
+const KeyIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+  </svg>
+);
+
+const EyeSlashIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.16 13.16 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" x2="22" y1="2" y2="22" />
   </svg>
 );
