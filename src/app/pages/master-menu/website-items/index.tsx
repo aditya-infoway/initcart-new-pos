@@ -104,7 +104,7 @@ function mapRow(raw: any): WebsiteItemRow {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "https://api.initcart.com";
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "http://localhost:8000";
 
 function getFullImageUrl(mediaPath: string | null | undefined): string | null {
   if (!mediaPath) return null;
