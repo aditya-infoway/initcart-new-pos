@@ -11,6 +11,8 @@ export function isRouteActive(
   path: string | undefined,
   pathname: string,
 ): boolean {
-  // Check if the given path matches the current pathname using react-router's matchPath
-  return path ? !!matchPath({ path, end: false }, pathname) : false;
+  if (!path) return false;
+  // Use exact match (end: true) to prevent "/" and short paths
+  // from matching every URL via prefix matching.
+  return !!matchPath({ path, end: true }, pathname);
 }

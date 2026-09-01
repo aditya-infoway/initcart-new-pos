@@ -18,7 +18,7 @@ import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Card, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
-import { safeGet, toasterrormsg, formatDateDDMMYYYY, safePost } from "@/ApiHelper";
+import { safeGet, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY, safePost } from "@/ApiHelper";
 import { usePermission } from "@/hooks/usePermissions";
 
 interface TransferHop {
@@ -224,7 +224,7 @@ export default function StockReturnManagementPage() {
     try {
       const res = await safePost(`admin/b2b-stock-returns/${id}/process/`, { action: "approve", note: "" }) as any;
       if (res?.data?.success) {
-        toasterrormsg("Return approved successfully", "success");
+        toastsuccessmsg("Return approved successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
@@ -247,7 +247,7 @@ export default function StockReturnManagementPage() {
     try {
       const res = await safePost(`admin/b2b-stock-returns/${id}/process/`, { action: "reject", note }) as any;
       if (res?.data?.success) {
-        toasterrormsg("Return rejected successfully", "success");
+        toastsuccessmsg("Return rejected successfully");
         setSelectedReturn(null);
         setShowRejectModal(false);
         setRejectNote("");
@@ -268,7 +268,7 @@ export default function StockReturnManagementPage() {
     try {
       const res = await safePost(`admin/b2b-stock-returns/${id}/receive/`) as any;
       if (res?.data?.success) {
-        toasterrormsg("Stock received successfully", "success");
+        toastsuccessmsg("Stock received successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
