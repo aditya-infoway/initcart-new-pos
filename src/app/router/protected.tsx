@@ -35,42 +35,42 @@ const protectedRoutes: RouteObject = {
           element: <Navigate to="/login" replace />,
         },
 
-        // ── Master Menu ────────────────────────────────────────────────
-        // Account Creation
-        {
-          path: "accounts",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/master-menu/account-creation")).default,
-          }),
-        },
-        {
-          path: "addAccounts",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/master-menu/account-creation")).default,
-          }),
-        },
-        {
-          path: "accounts/edit/:id",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/master-menu/account-creation")).default,
-          }),
-        },
+// ── Master Menu ────────────────────────────────────────────────
+// Account Creation
+{
+  path: "Addaccounts",
+  lazy: async () => ({
+    Component: (await import("@/app/pages/master-menu/account-creation")).default,
+  }),
+},
+{
+  path: "accounts",
+  lazy: async () => ({
+    Component: (await import("@/app/pages/master-menu/account-creation/AccountForm")).default,
+  }),
+},
+{
+  path: "Addaccounts/edit/:id",
+  lazy: async () => ({
+    Component: (await import("@/app/pages/master-menu/account-creation/AccountForm")).default,
+  }),
+},
 
         // Items
         {
-          path: "items",
+          path: "Additems",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/items")).default,
           }),
         },
         {
-          path: "AddItems",
+          path: "Items",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/items/item-form")).default,
           }),
         },
         {
-          path: "items/:id/edit",
+          path: "Additems/:id/edit",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/items/item-form")).default,
           }),
@@ -462,13 +462,13 @@ const protectedRoutes: RouteObject = {
         {
           path: "Employees",
           lazy: async () => ({
-            Component: (await import("@/app/pages/employee-management/employee-master")).default,
+            Component: (await import("@/app/pages/employee-management/employee-master/EmployeeFormPage")).default,
           }),
         },
         {
           path: "Employees/edit/:id",
           lazy: async () => ({
-            Component: (await import("@/app/pages/employee-management/employee-master")).default,
+            Component: (await import("@/app/pages/employee-management/employee-master/EmployeeFormPage")).default,
           }),
         },
         {
