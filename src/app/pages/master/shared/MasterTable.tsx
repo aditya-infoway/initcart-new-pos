@@ -14,12 +14,14 @@ interface MasterTableProps<T> {
   table: TanstackTable<T>;
   columnCount: number;
   emptyMessage: string;
+  hidePagination?: boolean;
 }
 
 export function MasterTable<T>({
   table,
   columnCount,
   emptyMessage,
+  hidePagination = false,
 }: MasterTableProps<T>) {
   const { cardSkin } = useThemeContext();
 
@@ -104,7 +106,7 @@ export function MasterTable<T>({
           </Table>
         </div>
 
-        {table.getRowModel().rows.length > 0 && (
+        {table.getRowModel().rows.length > 0 && !hidePagination && (
           <div className="px-4 pb-4 pt-4 sm:px-5">
             <PaginationSection table={table} />
           </div>

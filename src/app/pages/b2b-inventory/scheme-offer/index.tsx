@@ -25,6 +25,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface SchemeOfferItem {
   id: number;
@@ -521,6 +522,7 @@ function SchemeFormModal({
 
 export default function SchemeOfferListPage() {
   const navigate = useNavigate();
+  const { canAdd, canEdit, canDelete, canView } = usePermission("/scheme-offer");
 
   const [rows, setRows] = useState<SchemeOfferItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -673,6 +675,7 @@ export default function SchemeOfferListPage() {
       >
         <EyeIcon className="size-4" />
       </button>
+          {canEdit && (
           <button
             title="Edit"
             onClick={() => { setEditingScheme(row.original); setShowModal(true); }}
@@ -680,6 +683,8 @@ export default function SchemeOfferListPage() {
           >
             <PencilIcon className="size-4" />
           </button>
+          )}
+          {canDelete && (
           <button
             title="Delete"
             disabled={deletingId === row.original.id}
@@ -688,6 +693,7 @@ export default function SchemeOfferListPage() {
           >
             <TrashIcon className="size-4" />
           </button>
+          )}
         </div>
       ),
     },
@@ -720,9 +726,11 @@ export default function SchemeOfferListPage() {
               <p className="text-xs text-gray-500 dark:text-dark-400">Manage promotional schemes and offers</p>
             </div>
           </div>
+          {canAdd && (
           <Button color="primary" className="gap-2" onClick={handleCreate}>
             <PlusIcon className="size-4" /> New Scheme
           </Button>
+          )}
         </div>
 
         <div className="px-(--margin-x) flex flex-wrap gap-3 items-center mt-2">

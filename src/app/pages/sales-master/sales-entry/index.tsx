@@ -23,6 +23,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 interface SaleItem {
@@ -267,6 +268,8 @@ function ItemsDrawer({ isOpen, onClose, sale }: { isOpen: boolean; onClose: () =
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function SalesRegisterPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/sales-entry");
+
   const [records, setRecords] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -488,11 +491,13 @@ export default function SalesRegisterPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
               onClick={() => navigate("/sales/sales-entry-report/new")}>
               <PlusIcon className="size-4" />
               <span>Add Sales</span>
             </Button>
+            )}
           </div>
         </div>
 

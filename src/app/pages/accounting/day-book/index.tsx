@@ -21,6 +21,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EntryCategory = "cash_payment" | "cash_receipt" | "bank_payment" | "bank_receipt";
@@ -142,6 +143,8 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function DayBookPage() {
+  const { canView } = usePermission("/day-book");
+
   const [allEntries, setAllEntries]     = useState<DayBookEntry[]>([]);
   const [loading, setLoading]           = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");

@@ -25,6 +25,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Decimal-safe rounding (fixes float drift like 12.999999999) ────────────
 const round2 = (val: any): number => {
@@ -302,6 +303,8 @@ function ItemsDrawer({ record, onClose }: { record: PurchaseRecord | null; onClo
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function PurchaseEntryPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/purchase-entry");
+
   const [records, setRecords]           = useState<PurchaseRecord[]>([]);
   const [loading, setLoading]           = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -527,10 +530,12 @@ export default function PurchaseEntryPage() {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={fetchRecords} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
               onClick={() => navigate("/purchase/purchase-entry/new")}>
               <PlusIcon className="size-4" /><span>Add Purchase</span>
             </Button>
+            )}
           </div>
         </div>
 

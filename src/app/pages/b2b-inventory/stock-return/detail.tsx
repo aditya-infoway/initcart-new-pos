@@ -6,14 +6,23 @@ import {
   ArrowLeftIcon, ArrowPathIcon, CheckCircleIcon,
   CubeIcon, BuildingOfficeIcon, CalendarDaysIcon,
   DocumentCheckIcon, XMarkIcon, InformationCircleIcon,
+  CheckIcon, ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckSolid } from "@heroicons/react/24/solid";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import { Fragment, useRef } from "react";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
 
@@ -148,6 +157,9 @@ export default function B2BStockReturnDetailPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [rejectNote, setRejectNote] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -164,6 +176,9 @@ export default function B2BStockReturnDetailPage() {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const canPackage = detail?.status === "approved";
+  const canApprove = detail?.status === "pending";
+  const canReceive = detail?.status === "approved" || detail?.status === "packaging_ready";
+  const isCompleted = detail?.status === "received" || detail?.status === "rejected";
   const canCancel = detail ? !["received", "rejected", "approved", "cancelled"].includes(detail.status) : false;
   const allPackaged = detail?.items.every(i => i.is_packaging_ready) ?? false;
   const packedCount = detail?.items.filter(i => i.is_packaging_ready).length ?? 0;
@@ -193,6 +208,38 @@ export default function B2BStockReturnDetailPage() {
         ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/b2b-inventory/stock-return"))
         : toasterrormsg(body?.message ?? "Failed.");
     } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error."); }
+  };
+
+  const handleApprove = async () => {
+    if (!detail) return;
+    setProcessing(true);
+    try {
+      const res = await Post(`pos/b2b-stock-returns/${detail.id}/process/`, { action: "approve", note: "" }) as any;
+      const body = res?.data ?? res;
+      body?.success !== false
+        ? (toastsuccessmsg(body?.message ?? "Return approved successfully."), setShowApproveModal(false), await load())
+        : toasterrormsg(body?.message ?? "Action failed");
+    } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error processing return"); }
+    finally { setProcessing(false); }
+  };
+
+  const handleReject = async () => {
+    if (!detail) return;
+    if (!rejectNote.trim()) {
+      toasterrormsg("Please provide a reason for rejection.");
+      return;
+    }
+    const confirmed = window.confirm(`Reject B2B return request? Reason: "${rejectNote}"`);
+    if (!confirmed) return;
+    setProcessing(true);
+    try {
+      const res = await Post(`pos/b2b-stock-returns/${detail.id}/process/`, { action: "reject", note: rejectNote }) as any;
+      const body = res?.data ?? res;
+      body?.success !== false
+        ? (toastsuccessmsg(body?.message ?? "Return rejected successfully."), setShowRejectModal(false), setRejectNote(""), await load())
+        : toasterrormsg(body?.message ?? "Action failed");
+    } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error processing return"); }
+    finally { setProcessing(false); }
   };
 
   // ── GST Calculation ───────────────────────────────────────────────────────
@@ -387,6 +434,18 @@ export default function B2BStockReturnDetailPage() {
               onClick={load} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
             </Button>
+            {canApprove && (
+              <>
+                <Button color="success" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
+                  onClick={() => setShowApproveModal(true)} disabled={processing}>
+                  <CheckIcon className="size-4" /> Approve
+                </Button>
+                <Button color="error" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
+                  onClick={() => setShowRejectModal(true)} disabled={processing}>
+                  <XMarkIcon className="size-4" /> Reject
+                </Button>
+              </>
+            )}
             {canCancel && (
               <Button variant="outlined"
                 className="h-8 gap-1.5 rounded-md px-3 text-xs text-error-600 border-error-300 hover:bg-error-50 dark:border-error-800 dark:hover:bg-error-900/20"
@@ -502,6 +561,160 @@ export default function B2BStockReturnDetailPage() {
         />
 
       </div>
+
+      {/* Reject Modal */}
+      <Transition appear show={showRejectModal} as={Fragment}>
+        <Dialog
+          as="div"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden px-4 py-6 sm:px-5"
+          onClose={() => setShowRejectModal(false)}
+        >
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="absolute inset-0 bg-gray-900/50 backdrop-blur transition-opacity dark:bg-black/30" />
+          </TransitionChild>
+
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+          >
+            <DialogPanel className="relative flex w-full max-w-md origin-top flex-col overflow-hidden rounded-lg bg-white transition-all duration-300 dark:bg-dark-700">
+              <div className="flex items-center justify-between rounded-t-lg bg-gray-200 px-4 py-3 dark:bg-dark-800 sm:px-5">
+                <DialogTitle
+                  as="h3"
+                  className="text-base font-medium text-gray-800 dark:text-dark-100"
+                >
+                  Reject B2B Return
+                </DialogTitle>
+                <Button
+                  onClick={() => setShowRejectModal(false)}
+                  variant="flat"
+                  isIcon
+                  className="size-7 rounded-full ltr:-mr-1.5 rtl:-ml-1.5"
+                >
+                  <XMarkIcon className="size-4.5" />
+                </Button>
+              </div>
+
+              <div className="flex flex-col overflow-y-auto px-4 py-4 sm:px-5">
+                <Card className="p-3 bg-error/5 border-error/200 text-error-600 text-sm flex items-center gap-2">
+                  <XMarkIcon className="size-4" /> This will reject the return request.
+                </Card>
+                <p className="text-sm text-gray-600 mt-4 mb-3">Please provide a reason for rejection:</p>
+                <textarea
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  placeholder="Reason for rejection..."
+                  className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-error-500 min-h-[100px] resize-none"
+                />
+                <div className="flex gap-3 justify-end mt-4">
+                  <Button
+                    variant="outlined"
+                    onClick={() => setShowRejectModal(false)}
+                    className="min-w-[7rem] rounded-full"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    color="error"
+                    onClick={handleReject}
+                    disabled={processing}
+                    className="min-w-[7rem] rounded-full"
+                  >
+                    {processing ? "Processing..." : "Reject"}
+                  </Button>
+                </div>
+              </div>
+            </DialogPanel>
+          </TransitionChild>
+        </Dialog>
+      </Transition>
+
+      {/* Approve Modal */}
+      <Transition appear show={showApproveModal} as={Fragment}>
+        <Dialog
+          as="div"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden px-4 py-6 sm:px-5"
+          onClose={() => setShowApproveModal(false)}
+        >
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="absolute inset-0 bg-gray-900/50 backdrop-blur transition-opacity dark:bg-black/30" />
+          </TransitionChild>
+
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+          >
+            <DialogPanel className="relative flex w-full max-w-md origin-top flex-col overflow-hidden rounded-lg bg-white transition-all duration-300 dark:bg-dark-700">
+              <div className="flex items-center justify-between rounded-t-lg bg-gray-200 px-4 py-3 dark:bg-dark-800 sm:px-5">
+                <DialogTitle
+                  as="h3"
+                  className="text-base font-medium text-gray-800 dark:text-dark-100"
+                >
+                  Approve B2B Return
+                </DialogTitle>
+                <Button
+                  onClick={() => setShowApproveModal(false)}
+                  variant="flat"
+                  isIcon
+                  className="size-7 rounded-full ltr:-mr-1.5 rtl:-ml-1.5"
+                >
+                  <XMarkIcon className="size-4.5" />
+                </Button>
+              </div>
+
+              <div className="flex flex-col overflow-y-auto px-4 py-4 sm:px-5">
+                <Card className="p-3 bg-success/5 border-success/200 text-success-600 text-sm flex items-center gap-2">
+                  <CheckIcon className="size-4" /> This will allow the branch to package items for this return.
+                </Card>
+                <p className="text-sm text-gray-600 mt-4 mb-3">Are you sure you want to approve this B2B return request?</p>
+                <div className="flex gap-3 justify-end mt-4">
+                  <Button
+                    variant="outlined"
+                    onClick={() => setShowApproveModal(false)}
+                    className="min-w-[7rem] rounded-full"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    color="success"
+                    onClick={handleApprove}
+                    disabled={processing}
+                    className="min-w-[7rem] rounded-full"
+                  >
+                    {processing ? "Processing..." : "Approve"}
+                  </Button>
+                </div>
+              </div>
+            </DialogPanel>
+          </TransitionChild>
+        </Dialog>
+      </Transition>
     </Page>
   );
 }

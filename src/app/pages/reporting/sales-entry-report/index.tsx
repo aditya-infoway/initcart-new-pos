@@ -22,6 +22,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 interface SaleItem {
@@ -265,6 +266,8 @@ function ItemsDrawer({ isOpen, onClose, sale }: { isOpen: boolean; onClose: () =
 
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function SalesEntryReportPage() {
+  const { canView } = usePermission("/sales-entry-report");
+
   const [records, setRecords] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");

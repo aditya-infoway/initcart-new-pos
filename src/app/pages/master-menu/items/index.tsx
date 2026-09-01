@@ -490,7 +490,7 @@ const isSuperAdmin = useMemo(() => {
         </div>
 
         {/* Table */}
-        <MasterTable table={table} columnCount={columns.length}
+        <MasterTable table={table} columnCount={columns.length} hidePagination={true}
           emptyMessage={loading ? "Loading items…" : "No items found."} />
 
         {/* Server-side pagination footer */}

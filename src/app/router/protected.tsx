@@ -216,6 +216,17 @@ const protectedRoutes: RouteObject = {
                 },
               ],
             },
+            {
+              path: "b2b-stock-return",
+              children: [
+                {
+                  path: ":id",
+                  lazy: async () => ({
+                    Component: (await import("@/app/pages/b2b-inventory/stock-return/detail")).default,
+                  }),
+                },
+              ],
+            },
           ],
         },
 

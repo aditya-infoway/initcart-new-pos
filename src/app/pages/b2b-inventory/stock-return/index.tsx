@@ -19,6 +19,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ReturnListItem {
@@ -56,6 +57,7 @@ const STATUS_COLOR: Record<string, string> = {
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function B2BStockReturnPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/b2b-stock-return");
 
   const [rows, setRows] = useState<ReturnListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,9 @@ export default function B2BStockReturnPage() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<{ label: string; value: string } | null>(null);
+
+  // Branch view - same as old admin
+  const [view, setView] = useState<"list" | "create">("list");
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -204,6 +209,7 @@ export default function B2BStockReturnPage() {
               <p className="text-xs text-gray-500 dark:text-dark-400">Return branch-to-branch received items back to company</p>
             </div>
           </div>
+          {canAdd && (
           <Button
             onClick={() => navigate("/b2b-inventory/stock-return/create")}
             color="primary"
@@ -211,6 +217,7 @@ export default function B2BStockReturnPage() {
           >
             <PlusIcon className="size-4" /> New Return
           </Button>
+          )}
         </div>
 
         {/* Search & Filters */}

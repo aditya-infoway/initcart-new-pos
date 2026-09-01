@@ -22,6 +22,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 import { SalesBill, SalesBillLineItem, mapApiBill } from "./data";
 
 // ── Detail Drawer ─────────────────────────────────────────────────────────────
@@ -204,6 +205,8 @@ function DetailDrawer({ bill, onClose }: { bill: SalesBill | null; onClose: () =
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function SalesProfitReportPage() {
+  const { canView } = usePermission("/sales-profit-report");
+
   const [bills, setBills] = useState<SalesBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -459,25 +462,76 @@ export default function SalesProfitReportPage() {
 
         {/* Summary cards */}
         <div className="px-(--margin-x) mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Total Sales (Bill Amt)", value: totals.billAmount, bg: "bg-gradient-to-br from-primary-500 to-primary-700", Icon: ShoppingCartIcon },
-            { label: "Sales Net (Excl. GST)", value: totals.salesNet, bg: "bg-gradient-to-br from-blue-500 to-blue-700", Icon: CurrencyRupeeIcon },
-            { label: "Purchase Cost", value: totals.purchaseCost, bg: "bg-gradient-to-br from-amber-500 to-amber-600", Icon: ReceiptRefundIcon },
-            {
-              label: "Total Profit", value: totals.profit, bg: totals.profit >= 0
-                ? "bg-gradient-to-br from-emerald-500 to-emerald-700"
-                : "bg-gradient-to-br from-red-500 to-red-700", Icon: BanknotesIcon
-            },
-          ].map(({ label, value, bg, Icon }) => (
-            <div key={label} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bg)}>
-              <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
-              <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/20">
-                <Icon className="size-4 text-white" />
+          {/* Total Sales */}
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 p-4 text-white shadow-md">
+            <div className="pointer-events-none absolute -right-3 -top-3 size-20 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-4 -left-4 size-16 rounded-full bg-white/10" />
+            <div className="mb-3 flex items-center justify-between">
+              <div className="grid size-9 place-items-center rounded-lg bg-white/20">
+                <ShoppingCartIcon className="size-4 text-white" />
               </div>
-              <p className="text-xl font-bold tabular-nums">₹{value.toLocaleString()}</p>
-              <p className="mt-0.5 text-xs font-medium text-white/80">{label}</p>
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                {filtered.length} Bills
+              </span>
             </div>
-          ))}
+            <p className="text-2xl font-bold tabular-nums">₹{totals.billAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+            <p className="mt-1 text-xs font-medium text-white/75">Total Sales (Bill Amount)</p>
+          </div>
+
+          {/* Sales Net */}
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 p-4 text-white shadow-md">
+            <div className="pointer-events-none absolute -right-3 -top-3 size-20 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-4 -left-4 size-16 rounded-full bg-white/10" />
+            <div className="mb-3 flex items-center justify-between">
+              <div className="grid size-9 place-items-center rounded-lg bg-white/20">
+                <CurrencyRupeeIcon className="size-4 text-white" />
+              </div>
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                Excl. GST
+              </span>
+            </div>
+            <p className="text-2xl font-bold tabular-nums">₹{totals.salesNet.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+            <p className="mt-1 text-xs font-medium text-white/75">Sales Net Amount</p>
+          </div>
+
+          {/* Purchase Cost */}
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 p-4 text-white shadow-md">
+            <div className="pointer-events-none absolute -right-3 -top-3 size-20 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-4 -left-4 size-16 rounded-full bg-white/10" />
+            <div className="mb-3 flex items-center justify-between">
+              <div className="grid size-9 place-items-center rounded-lg bg-white/20">
+                <ReceiptRefundIcon className="size-4 text-white" />
+              </div>
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                Cost
+              </span>
+            </div>
+            <p className="text-2xl font-bold tabular-nums">₹{totals.purchaseCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+            <p className="mt-1 text-xs font-medium text-white/75">Total Purchase Cost</p>
+          </div>
+
+          {/* Profit */}
+          <div className={clsx(
+            "relative overflow-hidden rounded-xl p-4 text-white shadow-md",
+            totals.profit >= 0 ? "bg-gradient-to-br from-emerald-500 to-emerald-700" : "bg-gradient-to-br from-red-500 to-red-700",
+          )}>
+            <div className="pointer-events-none absolute -right-3 -top-3 size-20 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-4 -left-4 size-16 rounded-full bg-white/10" />
+            <div className="mb-3 flex items-center justify-between">
+              <div className="grid size-9 place-items-center rounded-lg bg-white/20">
+                <BanknotesIcon className="size-4 text-white" />
+              </div>
+              {totals.billAmount > 0 && (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                  {((totals.profit / totals.billAmount) * 100).toFixed(1)}%
+                </span>
+              )}
+            </div>
+            <p className="text-2xl font-bold tabular-nums">
+              {totals.profit >= 0 ? "+" : ""}₹{totals.profit.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            </p>
+            <p className="mt-1 text-xs font-medium text-white/75">Total Profit</p>
+          </div>
         </div>
 
         {/* Search */}

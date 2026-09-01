@@ -80,7 +80,8 @@
     "swiper": "^12.0.3",
     "tiny-invariant": "^1.3.3",
     "xlsx": "^0.18.5",
-    "yup": "^1.7.1"
+    "yup": "^1.7.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

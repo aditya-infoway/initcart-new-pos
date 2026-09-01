@@ -19,12 +19,15 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 import { LedgerAccount, GROUP_TABS, getDrCrColor, mapApiLedgerAccount } from "./data";
 
 const PAGE_SIZES = [10, 15, 25, 50, 100];
 
 export default function LedgerReportPage() {
   const navigate = useNavigate();
+  const { canView } = usePermission("/ledger-report");
+
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");

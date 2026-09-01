@@ -24,6 +24,7 @@ import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { EmployeeDrawer } from "./employee-drawer";
 import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Employee {
@@ -72,11 +73,15 @@ function EmployeeRowActions({
   onEdit,
   onDelete,
   onPermissions,
+  canEdit,
+  canDelete,
 }: {
   employee: Employee;
   onEdit: (e: Employee) => void;
   onDelete: (e: Employee) => void;
   onPermissions: (e: Employee) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -111,6 +116,7 @@ function EmployeeRowActions({
               </button>
             )}
           </MenuItem>
+          {canEdit && (
           <MenuItem>
             {({ focus }: { focus: boolean }) => (
               <button
@@ -126,6 +132,8 @@ function EmployeeRowActions({
               </button>
             )}
           </MenuItem>
+          )}
+          {canDelete && (
           <MenuItem>
             {({ focus }: { focus: boolean }) => (
               <button
@@ -141,6 +149,7 @@ function EmployeeRowActions({
               </button>
             )}
           </MenuItem>
+          )}
         </MenuItems>
       </Transition>
     </Menu>
@@ -150,6 +159,7 @@ function EmployeeRowActions({
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function EmployeeMasterPage() {
   const navigate = useNavigate();
+  const { canAdd, canEdit, canDelete } = usePermission("/employee-management");
 
   const [rows, setRows] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,11 +319,13 @@ export default function EmployeeMasterPage() {
             onEdit={onEdit}
             onDelete={onDelete}
             onPermissions={onPermissions}
+            canEdit={canEdit}
+            canDelete={canDelete}
           />
         </div>
       ),
     },
-  ], [onEdit, onDelete, onPermissions]);
+  ], [onEdit, onDelete, onPermissions, canEdit, canDelete]);
 
   const table = useReactTable({
     data: rows,
@@ -359,6 +371,7 @@ export default function EmployeeMasterPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button
               color="primary"
               className="h-9 gap-2 rounded-md px-4 text-sm"
@@ -370,6 +383,7 @@ export default function EmployeeMasterPage() {
               <PlusIcon className="size-4" />
               <span>Add Employee</span>
             </Button>
+            )}
           </div>
         </div>
 

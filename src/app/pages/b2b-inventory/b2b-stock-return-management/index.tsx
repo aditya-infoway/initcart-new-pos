@@ -9,6 +9,7 @@ import { useNavigate } from "react-router";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Card, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { safeGet, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
+import { usePermission } from "@/hooks/usePermissions";
 
 interface ReturnListItem {
   id: number;
@@ -61,6 +62,7 @@ function extractRows(res: any): ReturnListItem[] {
 
 export default function B2BStockReturnManagementPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/b2b-stock-return-management");
 
   const [returns, setReturns] = useState<ReturnListItem[]>([]);
   const [loading, setLoading] = useState(true);
