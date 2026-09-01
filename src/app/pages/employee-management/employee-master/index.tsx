@@ -1,6 +1,6 @@
 import {
   getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
-  getSortedRowModel, SortingState, useReactTable, flexRender,
+  getSortedRowModel, SortingState, useReactTable,
   ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
 import {
@@ -18,14 +18,12 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { SelectCell, SelectHeader } from "@/components/shared/table/SelectCheckbox";
-import { Get, Post, Delete, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { Get, Delete, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
-import { EmployeeDrawer } from "./employee-drawer";
 import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
 import { usePermission } from "@/hooks/usePermissions";
-
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Employee {
@@ -118,38 +116,38 @@ function EmployeeRowActions({
             )}
           </MenuItem>
           {canEdit && (
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button
-                type="button"
-                onClick={() => onEdit(employee)}
-                className={clsx(
-                  "flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100",
-                )}
-              >
-                <PencilIcon className="size-4.5 stroke-1" />
-                <span>Edit</span>
-              </button>
-            )}
-          </MenuItem>
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button
+                  type="button"
+                  onClick={() => onEdit(employee)}
+                  className={clsx(
+                    "flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100",
+                  )}
+                >
+                  <PencilIcon className="size-4.5 stroke-1" />
+                  <span>Edit</span>
+                </button>
+              )}
+            </MenuItem>
           )}
           {canDelete && (
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button
-                type="button"
-                onClick={() => onDelete(employee)}
-                className={clsx(
-                  "text-error-600 dark:text-error-400 flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-error-50 dark:bg-error-900/20",
-                )}
-              >
-                <TrashIcon className="size-4.5 stroke-1" />
-                <span>Delete</span>
-              </button>
-            )}
-          </MenuItem>
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button
+                  type="button"
+                  onClick={() => onDelete(employee)}
+                  className={clsx(
+                    "text-error-600 dark:text-error-400 flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-error-50 dark:bg-error-900/20",
+                  )}
+                >
+                  <TrashIcon className="size-4.5 stroke-1" />
+                  <span>Delete</span>
+                </button>
+              )}
+            </MenuItem>
           )}
         </MenuItems>
       </Transition>
@@ -167,8 +165,6 @@ export default function EmployeeMasterPage() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingEmployeeId, setEditingEmployeeId] = useState<number | undefined>();
 
   // Delete states
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -193,14 +189,17 @@ export default function EmployeeMasterPage() {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ──
   const onEdit = useCallback((emp: Employee) => {
-    setEditingEmployeeId(emp.id);
-    setDrawerOpen(true);
-  }, []);
+    navigate(`/Employees/edit/${emp.id}/`);
+  }, [navigate]);
+
+  const onAdd = useCallback(() => {
+    navigate("/Employees");
+  }, [navigate]);
 
   const onPermissions = useCallback((emp: Employee) => {
-    navigate(`/employee-management/employee-master/${emp.id}/permissions`);
+    navigate(`/employees/${emp.id}/permissions`);
   }, [navigate]);
 
   const onDelete = useCallback((emp: Employee) => {
@@ -217,7 +216,6 @@ export default function EmployeeMasterPage() {
 
     try {
       await Delete(`pos/employees/${deleteTarget.id}/`, {});
-
       toastsuccessmsg("Employee deleted successfully");
       setRows((prev) => prev.filter((e) => e.id !== deleteTarget.id));
       setDeleteSuccess(true);
@@ -373,17 +371,14 @@ export default function EmployeeMasterPage() {
               <span>Refresh</span>
             </Button>
             {canAdd && (
-            <Button
-              color="primary"
-              className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => {
-                setEditingEmployeeId(undefined);
-                setDrawerOpen(true);
-              }}
-            >
-              <PlusIcon className="size-4" />
-              <span>Add Employee</span>
-            </Button>
+              <Button
+                color="primary"
+                className="h-9 gap-2 rounded-md px-4 text-sm"
+                onClick={onAdd}
+              >
+                <PlusIcon className="size-4" />
+                <span>Add Employee</span>
+              </Button>
             )}
           </div>
         </div>
@@ -400,7 +395,7 @@ export default function EmployeeMasterPage() {
         </div>
 
         {/* Table */}
-        <div className=" pt-4">
+        <div className="px-(--margin-x) pt-4">
           <MasterTable
             table={table}
             columnCount={columns.length}
@@ -408,17 +403,6 @@ export default function EmployeeMasterPage() {
           />
         </div>
       </div>
-
-      {/* Employee Drawer */}
-      <EmployeeDrawer
-        isOpen={drawerOpen}
-        onClose={() => {
-          setDrawerOpen(false);
-          setEditingEmployeeId(undefined);
-        }}
-        employeeId={editingEmployeeId}
-        onSuccess={fetchRows}
-      />
 
       {/* Delete confirm modal */}
       <ConfirmModal

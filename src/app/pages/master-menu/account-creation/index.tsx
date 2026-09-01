@@ -31,6 +31,7 @@ import {
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
@@ -43,7 +44,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { SelectCell, SelectHeader } from "@/components/shared/table/SelectCheckbox";
-import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
+import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
+import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import {
@@ -52,7 +54,8 @@ import {
   ACCOUNT_TABS,
   mapApiAccount,
 } from "./data";
-import { AccountDrawer } from "./AccountDrawer";
+
+// ── No AccountDrawer import needed anymore ──
 
 // ----------------------------------------------------------------------
 
@@ -140,6 +143,7 @@ function AccountRowActions({
 
 // ── Main Page ───────────────────────────────────────────────────────────────
 export default function AccountCreationPage() {
+  const navigate = useNavigate(); // 👈 Add this
   const [data, setData] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AccountTabKey>("all");
@@ -147,11 +151,11 @@ export default function AccountCreationPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Drawer
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  // ── REMOVE these drawer states ──
+  // const [drawerOpen, setDrawerOpen] = useState(false);
+  // const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
-  // Delete
+  // Delete states (keep these)
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -193,11 +197,14 @@ export default function AccountCreationPage() {
     "Case In Hand": data.filter((d) => d.group === "Case In Hand").length,
   }), [data]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ── 👈 Updated to use navigate ──
   const onEdit = useCallback((a: Account) => {
-    setEditingAccount(a);
-    setDrawerOpen(true);
-  }, []);
+    navigate(`/accounts/edit/${a.id}`);
+  }, [navigate]);
+
+  const onAdd = useCallback(() => {
+    navigate("/accounts");
+  }, [navigate]);
 
   const onDelete = useCallback((a: Account) => {
     setDeleteTarget(a);
@@ -396,7 +403,7 @@ export default function AccountCreationPage() {
             <Button
               color="primary"
               className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => { setEditingAccount(null); setDrawerOpen(true); }}
+              onClick={onAdd}  // 👈 Updated
             >
               <PlusIcon className="size-4" />
               <span>Add Account</span>
@@ -419,7 +426,6 @@ export default function AccountCreationPage() {
         <div className="px-(--margin-x) pt-4">
           <WithIcon
             tabs={ACCOUNT_TABS.map((tab) => {
-              // Map appropriate icons based on tab type
               const getIcon = () => {
                 switch(tab.key) {
                   case "all": return HomeIcon;
@@ -452,15 +458,15 @@ export default function AccountCreationPage() {
         </div>
       </div>
 
-      {/* Add / Edit Drawer */}
-      <AccountDrawer
+      {/* ❌ REMOVE AccountDrawer - ab nahi chahiye */}
+      {/* <AccountDrawer
         isOpen={drawerOpen}
         close={() => setDrawerOpen(false)}
         account={editingAccount}
         onSaved={fetchAccounts}
-      />
+      /> */}
 
-      {/* Delete confirm modal */}
+      {/* Delete confirm modal - keep this */}
       <ConfirmModal
         show={deleteOpen}
         onClose={() => setDeleteOpen(false)}

@@ -8,20 +8,140 @@ import {
   InformationCircleIcon,
   CheckCircleIcon,
   DocumentIcon,
-  ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Swal from "sweetalert2";
+import jsPDF from "jspdf";
 
 import { Page } from "@/components/shared/Page";
 import { Button, Card } from "@/components/ui";
 import { Post, Get, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+
+// ── Helper: Download Error Report PDF ────────────────────────────────────
+const downloadErrorReportPdf = (errors: string[], title: string = "Purchase Import Errors") => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 14;
+  let y = 20;
+
+  doc.setFontSize(18);
+  doc.setTextColor(180, 30, 30);
+  doc.text("Import Errors — " + title, marginX, y);
+  y += 10;
+
+  doc.setFontSize(10);
+  doc.setTextColor(90, 90, 90);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
+  y += 8;
+  doc.text(`Total Errors: ${errors.length}`, marginX, y);
+  y += 12;
+
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Error Details:", marginX, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  errors.forEach((err, idx) => {
+    const lines = doc.splitTextToSize(`${idx + 1}. ${err}`, pageWidth - marginX * 2) as string[];
+    lines.forEach((line) => {
+      if (y > 280) { doc.addPage(); y = 20; }
+      doc.text(line, marginX, y);
+      y += 6;
+    });
+    y += 2;
+  });
+
+  doc.addPage();
+  y = 20;
+  doc.setFontSize(14);
+  doc.setTextColor(30, 100, 30);
+  doc.text("Common Fixes", marginX, y);
+  y += 10;
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  [
+    "PARTY_NAME, DATE, TERMS, ITEM_VARIANT, QTY, PRICE must be filled for every entry.",
+    "Credit terms: fill only DUE_DATE. Cash: fill only CASH_ACCOUNT. Bank: fill only BANK_ACCOUNT.",
+    "Item names must exactly match one of the dropdown options — don't type them manually.",
+    "DISCOUNT_PERCENT must be a number between 0 and 100.",
+    "A new PARTY_NAME row starts a new purchase entry — don't repeat items under a blank party row.",
+    "Make sure all mandatory fields (*) are filled.",
+  ].forEach((tip) => {
+    const lines = doc.splitTextToSize(`• ${tip}`, pageWidth - marginX * 2) as string[];
+    lines.forEach((line) => { doc.text(line, marginX, y); y += 6; });
+    y += 2;
+  });
+
+  doc.save(`purchase-import-errors-${Date.now()}.pdf`);
+};
+
+// ── Helper: normalize whatever shape the backend/ApiHelper gives us
+// into a flat string[]. Handles array, string, and { field: "msg" } object shapes.
+const normalizeErrors = (raw: any): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((e) => (typeof e === "string" ? e : JSON.stringify(e)));
+  }
+  if (typeof raw === "string") return [raw];
+  if (typeof raw === "object") {
+    const out: string[] = [];
+    for (const key in raw) {
+      const val = raw[key];
+      if (typeof val === "string") out.push(`${key}: ${val}`);
+      else if (Array.isArray(val)) out.push(...val.map((v: any) => `${key}: ${v}`));
+    }
+    return out;
+  }
+  return [];
+};
 
 export default function PurchaseExcelImportExport() {
   const navigate = useNavigate();
 
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // ── Single shared function that shows the SAME detailed validation modal
+  // no matter whether errors arrived via a thrown exception or via a
+  // { success: false, errors: [...] } response body.
+  const showImportErrors = (rawErrors: any, fallbackMessage?: string) => {
+    let errors = normalizeErrors(rawErrors);
+    if (errors.length === 0) {
+      errors = [fallbackMessage || "Import failed. Please check the file format and try again."];
+    }
+
+    const errorListHtml = errors
+      .map((err) => `<li class="text-red-600 text-sm">${err}</li>`)
+      .join("");
+
+    Swal.fire({
+      title: "Import Failed!",
+      width: 700,
+      html: `
+        <div class="text-left">
+          <p class="text-red-600 font-semibold text-sm mb-2">Found ${errors.length} error(s)</p>
+          <hr class="my-2">
+          <div class="max-h-60 overflow-y-auto bg-gray-50 dark:bg-dark-800 rounded-lg p-2">
+            <ul class="list-disc pl-4 space-y-1">${errorListHtml}</ul>
+          </div>
+          <div class="mt-4">
+            <button id="download-error-pdf-btn" type="button"
+              class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
+              Download Error Report (PDF)
+            </button>
+          </div>
+        </div>
+      `,
+      icon: "error",
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Close",
+      didOpen: () => {
+        document.getElementById("download-error-pdf-btn")
+          ?.addEventListener("click", () => downloadErrorReportPdf(errors, "Purchase Import"));
+      },
+    });
+  };
 
   const handleDownloadTemplate = async () => {
     setDownloading(true);
@@ -65,82 +185,75 @@ export default function PurchaseExcelImportExport() {
     formData.append("file", file);
 
     try {
-      // ✅ SAHI - Post(url, data) - headers automatically set for FormData
-      const response = await Post("pos/purchase-excel/import/", formData) as any;
-
+      const response = await Post("pos/purchase-excel/import/", formData, true) as any;
       const data = response?.data ?? response;
 
-      if (data?.success) {
-        const purchases = data.purchases || [];
-        const rows = purchases
-          .map(
-            (p: any) =>
-              `<tr>
-                <td class="border px-3 py-1.5 text-sm">${p.billNo || "—"}</td>
-                <td class="border px-3 py-1.5 text-sm">${p.party || "—"}</td>
-                <td class="border px-3 py-1.5 text-sm text-center">${p.items_count || 0}</td>
-                <td class="border px-3 py-1.5 text-sm text-right font-semibold">₹${(p.grand_total || 0).toFixed(2)}</td>
-              </tr>`
-          )
-          .join("");
-
-        await Swal.fire({
-          title: "✅ Import Successful!",
-          width: 700,
-          html: `
-            <div class="text-left">
-              <p class="text-emerald-600 font-semibold text-sm mb-3">${data.message || `${purchases.length} purchase(s) created successfully`}</p>
-              <div class="max-h-72 overflow-y-auto border rounded-lg">
-                <table class="w-full text-sm border-collapse">
-                  <thead class="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th class="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Bill No</th>
-                      <th class="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Party</th>
-                      <th class="border px-3 py-2 text-center text-xs font-semibold text-gray-600">Items</th>
-                      <th class="border px-3 py-2 text-right text-xs font-semibold text-gray-600">Grand Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>${rows || '<tr><td colspan="4" class="text-center py-4 text-gray-400">No purchases found</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          `,
-          icon: "success",
-          confirmButtonColor: "#22c55e",
-          confirmButtonText: "View Purchases",
-        });
-        navigate("/purchase/purchase-entry");
-      } else {
-        toasterrormsg(data?.message || "Import failed");
+      // ✅ CASE 1 — Post() resolved normally but backend says success:false
+      // with a validation `errors` payload. This is the path that was
+      // silently swallowed before — now it shows the SAME detailed modal.
+      if (!data?.success) {
+        showImportErrors(data?.errors, data?.message || data?.error || data?.detail);
+        return;
       }
+
+      const purchases = data.purchases || [];
+      const rows = purchases
+        .map(
+          (p: any) =>
+            `<tr>
+              <td class="border px-3 py-1.5 text-sm">${p.billNo || "—"}</td>
+              <td class="border px-3 py-1.5 text-sm">${p.party || "—"}</td>
+              <td class="border px-3 py-1.5 text-sm text-center">${p.items_count || 0}</td>
+              <td class="border px-3 py-1.5 text-sm text-right font-semibold">₹${(p.grand_total || 0).toFixed(2)}</td>
+            </tr>`
+        )
+        .join("");
+
+      await Swal.fire({
+        title: "Import Successful!",
+        width: 700,
+        html: `
+          <div class="text-left">
+            <p class="text-emerald-600 font-semibold text-sm mb-3">${data.message || `${purchases.length} purchase(s) created successfully`}</p>
+            <div class="max-h-72 overflow-y-auto border rounded-lg">
+              <table class="w-full text-sm border-collapse">
+                <thead class="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th class="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Bill No</th>
+                    <th class="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Party</th>
+                    <th class="border px-3 py-2 text-center text-xs font-semibold text-gray-600">Items</th>
+                    <th class="border px-3 py-2 text-right text-xs font-semibold text-gray-600">Grand Total</th>
+                  </tr>
+                </thead>
+                <tbody>${rows || '<tr><td colspan="4" class="text-center py-4 text-gray-400">No purchases found</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
+        `,
+        icon: "success",
+        confirmButtonColor: "#22c55e",
+        confirmButtonText: "View Purchases",
+      });
+      navigate("/purchase/purchase-entry");
     } catch (error: any) {
+      // ✅ CASE 2 — Post() actually threw (network / axios-style error).
       console.error("Purchase import error:", error);
 
-      const errData = error?.response?.data;
-      if (errData?.errors && Array.isArray(errData.errors)) {
-        const errors = errData.errors;
-        const errorList = errors
-          .map((err: string) => `<li class="text-red-600 text-sm">• ${err}</li>`)
-          .join("");
+      const raw =
+        error?.response?.data?.errors ??
+        error?.response?.data?.non_field_errors ??
+        error?.data?.errors ??
+        error?.errors ??
+        error?.response?.data ??
+        error?.data;
 
-        await Swal.fire({
-          title: "❌ Import Failed!",
-          html: `
-            <div class="text-left">
-              <p class="text-red-600 font-semibold text-sm">Found ${errors.length} error(s)</p>
-              <hr class="my-3">
-              <div class="max-h-60 overflow-y-auto">
-                <ul class="list-none pl-0 space-y-1">${errorList}</ul>
-              </div>
-            </div>
-          `,
-          icon: "error",
-          confirmButtonColor: "#ef4444",
-          confirmButtonText: "OK",
-        });
-      } else {
-        toasterrormsg(errData?.error || errData?.message || "Failed to import purchases");
-      }
+      const fallback =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.response?.data?.detail ||
+        error?.message;
+
+      showImportErrors(raw, fallback);
     } finally {
       setUploading(false);
       event.target.value = "";
