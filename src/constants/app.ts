@@ -8,7 +8,7 @@ export const APP_SELECT_COMPANY_BANNER = `${APP_BASE_URL}images/initcart/login.j
 
 // Redirect Paths
 export const REDIRECT_URL_KEY = "redirect";
-export const HOME_PATH = "/";
+export const HOME_PATH = "/dashboards/home";
 export const GHOST_ENTRY_PATH = "/login";
 export const SELECT_COMPANY_PATH = "/select-company";
 

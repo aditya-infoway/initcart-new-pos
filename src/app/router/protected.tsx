@@ -18,15 +18,21 @@ const protectedRoutes: RouteObject = {
       children: [
         {
           index: true,
-          element: <Navigate to="/" replace />,
+          element: <Navigate to="/dashboards/home" replace />,
         },
 
         // ── Dashboard ──────────────────────────────────────────────────
         {
-          path: "/",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/dashboards/home/crm-analytics")).default,
-          }),
+          path: "dashboards",
+          children: [
+            { index: true, element: <Navigate to="/dashboards/home" replace /> },
+            {
+              path: "home",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/dashboards/home/crm-analytics")).default,
+              }),
+            },
+          ],
         },
 
         // ── Logout ─────────────────────────────────────────────────────

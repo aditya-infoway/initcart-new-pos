@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
+import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import {
@@ -18,6 +19,7 @@ import {
 import { Card, Table, TBody, THead, Td, Th, Tr } from "@/components/ui";
 import { Page } from "@/components/shared/Page";
 import { dashboardData } from "./dashboardData";
+import { Get } from "@/ApiHelper";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -190,26 +192,125 @@ function DataTable({
   );
 }
 
+// ── Types ────────────────────────────────────────────────────────────────────
+interface DashboardSummary {
+  total_sales: number;
+  total_purchase: number;
+  total_salesreturn: number;
+  total_purchasereturn: number;
+  total_receipt: number;
+  total_payment: number;
+  total_items: number;
+  total_website_orders: number;
+  branch_name: string;
+  total_today_payment: number;
+  total_today_receipt: number;
+  total_orders: number;
+}
+
+interface SalesDashboardItem {
+  id: number;
+  bill_no: string;
+  customer_name: string;
+  grand_total: number;
+}
+
+const fmt = (n: number) =>
+  n >= 10_00_000
+    ? `₹${(n / 10_00_000).toFixed(1)}L`
+    : n >= 1_000
+    ? `₹${(n / 1_000).toFixed(1)}k`
+    : `₹${n.toLocaleString("en-IN")}`;
+
 export default function CRMAnalytics() {
-  const { metrics, orderStatus, revenue, salesCards, vendors, products, services } = dashboardData;
+  const { orderStatus, revenue, salesCards, vendors, products, services } = dashboardData;
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [recentSales, setRecentSales] = useState<SalesDashboardItem[]>([]);
+  const [salesTab, setSalesTab] = useState<"month" | "week" | "day">("month");
+  const [loading, setLoading] = useState(true);
+
+  // Fetch dashboard summary
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await Get("pos/dashboard-summary/") as any;
+        setSummary(res?.data ?? res);
+      } catch {
+        // keep null
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Fetch recent sales
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await Get(`pos/sales-dashboard/`, { period: salesTab }) as any;
+        const data: any[] = res?.data ?? res ?? [];
+        setRecentSales(
+          data.slice(0, 5).map((item: any) => ({
+            id: item.id,
+            bill_no: item.bill_no,
+            customer_name: item.customer_name,
+            grand_total: item.grand_total,
+          })),
+        );
+      } catch {
+        setRecentSales([]);
+      }
+    };
+    load();
+  }, [salesTab]);
+
+  // Dynamic metrics from API
+  const metrics = summary
+    ? [
+        { label: "Total Sales",      value: fmt(summary.total_sales),       change: "This period", tone: "primary" },
+        { label: "Total Purchase",   value: fmt(summary.total_purchase),    change: "This period", tone: "secondary" },
+        { label: "Total Items",      value: String(summary.total_items),    change: "In inventory", tone: "warning" },
+        { label: "Website Orders",   value: String(summary.total_website_orders), change: "Pending orders", tone: "success" },
+      ]
+    : dashboardData.metrics;
+
   const statusCounts: number[] = orderStatus.map((item) => item.value);
+
+  // Recent sales rows for the table
+  const recentSalesRows: readonly (readonly string[])[] = recentSales.map((s) => [
+    s.bill_no ?? "—",
+    s.customer_name ?? "—",
+    `₹${Number(s.grand_total).toLocaleString("en-IN")}`,
+  ]);
 
   return (
     <Page title="InitCart POS Dashboard">
       <div className="min-h-screen pb-8">
-        <main className="transition-content mx-auto max-w-[1600px] space-y-5 px-(--margin-x) pt-5 sm:pt-6">
+        <main className="transition-content mx-auto space-y-5 px-(--margin-x) pt-5 sm:pt-6">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-500">InitCart POS</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-dark-50">Business analytics</h1>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-dark-50">
+                Business analytics
+                {summary?.branch_name && (
+                  <span className="ml-2 text-base font-normal text-gray-500 dark:text-dark-300">— {summary.branch_name}</span>
+                )}
+              </h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-dark-300">Your marketplace performance at a glance.</p>
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-sm dark:border-dark-600 dark:bg-dark-700 dark:text-dark-200">
-              <span className="size-2 rounded-full bg-emerald-500" />
-              Live data <span className="border-l border-gray-200 pl-2 text-xs dark:border-dark-500">July 2026</span>
+              {loading ? (
+                <><ArrowPathIcon className="size-3.5 animate-spin" /> Loading…</>
+              ) : (
+                <><span className="size-2 rounded-full bg-emerald-500" /> Live data</>
+              )}
             </div>
           </header>
 
+          {/* ── Metric cards ── */}
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {metrics.map((metric, index) => {
               const MetricIcon = metricIcons[index] ?? FALLBACK_ICON;
@@ -240,9 +341,27 @@ export default function CRMAnalytics() {
             })}
           </section>
 
+          {/* ── Summary counters ── */}
+          {summary && (
+            <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+              {[
+                { label: "Sales Return",    value: fmt(summary.total_salesreturn),    tone: "rose" as Tone },
+                { label: "Purchase Return", value: fmt(summary.total_purchasereturn), tone: "error" as Tone },
+                { label: "Today Payment",   value: fmt(summary.total_today_payment),  tone: "warning" as Tone },
+                { label: "Today Receipt",   value: fmt(summary.total_today_receipt),  tone: "success" as Tone },
+              ].map(({ label, value, tone }) => (
+                <div key={label} className="rounded-xl border border-gray-100 p-4 transition-shadow hover:shadow-md dark:border-dark-600">
+                  <p className="text-xs font-medium text-gray-500 dark:text-dark-300">{label}</p>
+                  <p className={`mt-1 text-xl font-semibold ${statusText[tone]}`}>{value}</p>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Order status ── */}
           <Card className="p-5 sm:p-6" skin="shadow">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <SectionTitle title="Order status overview" subtitle="195 orders across all InitCart stores" />
+              <SectionTitle title="Order status overview" subtitle="Orders across all InitCart stores" />
               <div className="text-sm font-semibold text-gray-700 dark:text-dark-100">
                 {statusCounts.reduce((total: number, count) => total + count, 0)} <span className="text-xs font-normal text-gray-400">tracked</span>
               </div>
@@ -264,12 +383,15 @@ export default function CRMAnalytics() {
             </div>
           </Card>
 
+          {/* ── Revenue chart ── */}
           <section className="grid gap-5 xl:grid-cols-[1.65fr_0.85fr]">
             <Card className="p-5 sm:p-6" skin="shadow">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-dark-300">Total earnings</p>
-                  <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-dark-50">{revenue.total}</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-dark-50">
+                    {summary ? fmt(summary.total_sales + summary.total_receipt) : revenue.total}
+                  </p>
                 </div>
                 <select className="dark:border-dark-500 dark:bg-dark-700 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 outline-hidden focus:border-primary-500 dark:text-dark-100">
                   <option>Overall</option>
@@ -279,12 +401,12 @@ export default function CRMAnalytics() {
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-xs">
                 <div className="rounded-lg bg-primary-500/8 p-3">
-                  <p className="text-xs text-gray-500">Products</p>
-                  <p className="mt-1 font-semibold text-primary-600">{revenue.product}</p>
+                  <p className="text-xs text-gray-500">Sales</p>
+                  <p className="mt-1 font-semibold text-primary-600">{summary ? fmt(summary.total_sales) : revenue.product}</p>
                 </div>
                 <div className="rounded-lg bg-cyan-500/8 p-3">
-                  <p className="text-xs text-gray-500">Services</p>
-                  <p className="mt-1 font-semibold text-cyan-600">{revenue.service}</p>
+                  <p className="text-xs text-gray-500">Purchase</p>
+                  <p className="mt-1 font-semibold text-cyan-600">{summary ? fmt(summary.total_purchase) : revenue.service}</p>
                 </div>
               </div>
               <div className="mt-2 cursor-crosshair">
@@ -329,6 +451,7 @@ export default function CRMAnalytics() {
             </Card>
           </section>
 
+          {/* ── Sales cards ── */}
           <section className="grid gap-5 xl:grid-cols-2">
             {salesCards.map((card) => (
               <Card key={card.title} className="overflow-hidden p-5" skin="shadow">
@@ -360,12 +483,57 @@ export default function CRMAnalytics() {
             ))}
           </section>
 
+          {/* ── Recent sales (live) ── */}
           <section className="grid gap-5 xl:grid-cols-2">
-            <DataTable title="Top product vendors" subtitle="Ranked by total revenue" headings={["Vendor", "Company", "Revenue", "Commission"]} rows={vendors} />
+            <Card className="overflow-hidden" skin="shadow">
+              <div className="table-toolbar flex items-start justify-between border-b border-gray-100 px-5 py-4 dark:border-dark-600">
+                <SectionTitle title="Recent Sales" subtitle="Live from API" />
+                <div className="flex rounded-lg bg-gray-100 p-1 text-xs font-medium dark:bg-dark-600">
+                  {(["month", "week", "day"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSalesTab(t)}
+                      className={`rounded-md px-3 py-1.5 capitalize transition-colors ${
+                        salesTab === t
+                          ? "bg-white text-primary-600 shadow-sm dark:bg-dark-700 dark:text-primary-400"
+                          : "text-gray-500 dark:text-dark-200"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <Table className="w-full text-left text-sm">
+                  <THead className="bg-gray-50/80 dark:bg-dark-700/60">
+                    <Tr>
+                      {["Bill No", "Customer", "Amount"].map((h) => (
+                        <Th key={h} className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-300">{h}</Th>
+                      ))}
+                      <Th className="w-10 px-3 py-3" />
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    {recentSalesRows.length === 0 ? (
+                      <Tr><Td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">No sales data</Td></Tr>
+                    ) : recentSalesRows.map((row, i) => (
+                      <Tr key={i} className="group border-b border-gray-100 transition-colors last:border-b-0 hover:bg-primary-500/[0.045] dark:border-dark-600 dark:hover:bg-primary-500/10">
+                        {row.map((cell, j) => (
+                          <Td key={j} className={`whitespace-nowrap px-5 py-3.5 ${j === 0 ? "font-semibold text-gray-800 dark:text-dark-100" : "text-gray-500 dark:text-dark-300"}`}>{cell}</Td>
+                        ))}
+                        <Td className="px-3 text-right text-gray-300 transition-colors group-hover:text-primary-500 dark:text-dark-400">→</Td>
+                      </Tr>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            </Card>
             <DataTable title="Top selling products" subtitle="Based on recent sales" headings={["Product", "Vendor", "Sales"]} rows={products} />
           </section>
+
           <section className="grid gap-5 xl:grid-cols-2">
-            <DataTable title="Top service vendors" subtitle="Ranked by total revenue" headings={["Vendor", "Company", "Revenue", "Commission"]} rows={vendors} />
+            <DataTable title="Top product vendors" subtitle="Ranked by total revenue" headings={["Vendor", "Company", "Revenue", "Commission"]} rows={vendors} />
             <DataTable title="Top services" subtitle="Based on customer consumption" headings={["Service", "Customers", "Trend"]} rows={services} showArrow={false} />
           </section>
         </main>
