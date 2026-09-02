@@ -409,7 +409,7 @@ export default function NewSalePage() {
         {/* ── Top Bar ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-4">
           <Button variant="outlined" className="h-9 gap-2 px-4 text-sm"
-            onClick={() => navigate("/sales/sales-entry-report")}>
+            onClick={() => navigate("/Addsalesitem")}>
             <ChevronLeftIcon className="size-4" />
             Back
           </Button>
@@ -850,7 +850,7 @@ export default function NewSalePage() {
             <ArrowDownOnSquareIcon className="size-5" />
             {saving ? "Saving Sale..." : "Save Entry"}
           </Button>
-          <Button variant="outlined" onClick={() => navigate("/sales/sales-entry-report")} disabled={saving}>
+          <Button variant="outlined" onClick={() => navigate("/Addsalesitem")} disabled={saving}>
             List
           </Button>
         </div>
@@ -891,7 +891,7 @@ export default function NewSalePage() {
                     <PrinterIcon className="size-4" /> Yes, Print
                   </Button>
                   <Button variant="outlined"
-                    onClick={() => { setShowConfirmModal(false); navigate("/sales/sales-entry-report"); }}>
+                    onClick={() => { setShowConfirmModal(false); navigate("/Addsalesitem"); }}>
                     No, Close
                   </Button>
                 </div>
@@ -904,7 +904,7 @@ export default function NewSalePage() {
       <SaleReceiptModal
         saleId={savedSaleId}
         open={showReceiptModal}
-        onClose={() => { setShowReceiptModal(false); navigate("/sales/sales-entry-report"); }}
+        onClose={() => { setShowReceiptModal(false); navigate("/Addsalesitem"); }}
       />
     </Page>
   );

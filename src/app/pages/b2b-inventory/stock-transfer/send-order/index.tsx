@@ -18,6 +18,7 @@ import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface OrderListItem {
@@ -54,6 +55,7 @@ const STATUS_OPTIONS = [
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function B2BOrderRequestPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/b2b-order-request");
 
   const [rows, setRows] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +196,7 @@ export default function B2BOrderRequestPage() {
               <p className="text-xs text-gray-500 dark:text-dark-400">Order stock directly from another branch</p>
             </div>
           </div>
+          {canAdd && (
           <Button
             onClick={() => navigate("/b2b-inventory/stock-transfer/send-order/create")}
             color="primary"
@@ -201,6 +204,7 @@ export default function B2BOrderRequestPage() {
           >
             <PlusIcon className="size-4" /> New Order
           </Button>
+          )}
         </div>
 
         {/* Search & Filters */}

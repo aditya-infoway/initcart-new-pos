@@ -25,6 +25,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type ContraType = "Cash Deposit" | "Cash Withdrawal" | "Bank Transfer";
@@ -356,6 +357,8 @@ function AddContraDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function ContraPage() {
+  const { canAdd, canView } = usePermission("/contra");
+
   const [rows, setRows]                 = useState<ContraRow[]>([]);
   const [loading, setLoading]           = useState(true);
   const [drawerOpen, setDrawerOpen]     = useState(false);
@@ -520,9 +523,11 @@ export default function ContraPage() {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={fetchRows} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={() => setDrawerOpen(true)}>
               <PlusIcon className="size-4" /><span>Add Contra</span>
             </Button>
+            )}
           </div>
         </div>
 

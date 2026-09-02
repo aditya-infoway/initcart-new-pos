@@ -409,7 +409,7 @@ const isSuperAdmin = useMemo(() => {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/master-menu/add-items/new")}>
+              onClick={() => navigate("/AddItems")}>
               <PlusIcon className="size-4" /><span>Add Item</span>
             </Button>
           </div>
@@ -490,7 +490,7 @@ const isSuperAdmin = useMemo(() => {
         </div>
 
         {/* Table */}
-        <MasterTable table={table} columnCount={columns.length}
+        <MasterTable table={table} columnCount={columns.length} hidePagination={true}
           emptyMessage={loading ? "Loading items…" : "No items found."} />
 
         {/* Server-side pagination footer */}

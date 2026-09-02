@@ -1,5 +1,5 @@
 // Import Dependencies
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 
 // Local Imports
@@ -18,9 +18,7 @@ export type SegmentPath = string | undefined;
 
 /**
  * Recursively checks whether `pathname` matches the item itself
- * or ANY descendant child path. This is needed because group segments
- * (e.g. groupMLM) contain children under multiple base paths
- * (e.g. /agents-management/* AND /commissions-mlm/*).
+ * or ANY descendant child path.
  */
 function isSegmentActive(item: NavigationTree, pathname: string): boolean {
   if (isRouteActive(item.path, pathname)) return true;
@@ -39,32 +37,24 @@ export function Sidebar() {
   const { name, lgAndDown } = useBreakpointsContext();
   const { isExpanded, close } = useSidebarContext();
 
-  // ✅ Har render pe fresh compute — role-based filtering ab stale nahi hoga
   const navigation = useMemo(() => getNavigation(), []);
 
-  const initialSegment = useMemo(
-    () => navigation.find((item) => isSegmentActive(item, pathname)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
+  // Initialise from a lazy state function so it runs once with the correct pathname
   const [activeSegmentPath, setActiveSegmentPath] = useState<SegmentPath>(
-    initialSegment?.path,
+    () => findActiveSegmentPath(navigation, pathname),
   );
 
   const currentSegment = useMemo(() => {
     return navigation.find((item) => item.path === activeSegmentPath);
   }, [navigation, activeSegmentPath]);
 
-  useDidUpdate(() => {
+  // Keep active segment in sync on every navigation (including initial mount)
+  useEffect(() => {
     const activePath = findActiveSegmentPath(navigation, pathname);
-    // Only update when a definitive match is found.
-    // If no match (e.g. transition to a sub-route not yet indexed),
-    // keep the current segment so the panel stays open.
     if (activePath !== undefined) {
       setActiveSegmentPath(activePath);
     }
-  }, [pathname]);
+  }, [navigation, pathname]);
 
   useDidUpdate(() => {
     if (lgAndDown && isExpanded) close();

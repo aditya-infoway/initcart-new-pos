@@ -79,6 +79,15 @@ export async function safeGet<T = unknown>(
   return res.data as T;
 }
 
+/** POST without clearing session on 401/403/404 — use for pages that should show empty state instead of logging out. */
+export async function safePost<T = unknown>(
+  path: string,
+  data: unknown = {},
+): Promise<T> {
+  const res = await axios.post(endpoint(path), data, requestConfig());
+  return res.data as T;
+}
+
 export const formatDateDDMMYYYY = (value: string | null | undefined): string => {
   if (!value) return "—";
   const date = new Date(value);

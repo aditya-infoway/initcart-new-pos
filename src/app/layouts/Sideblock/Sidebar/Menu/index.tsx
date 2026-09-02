@@ -5,7 +5,7 @@ import SimpleBar from "simplebar-react";
 
 // Local Imports
 import { useDidUpdate } from "@/hooks";
-import { navigation } from "@/app/navigation";
+import { getNavigation } from "@/app/navigation";
 import { Accordion } from "@/components/ui";
 import { isRouteActive } from "@/utils/isRouteActive";
 import { Group } from "./Group";
@@ -15,11 +15,8 @@ import { LogoutMenuItem } from "./LogoutMenuItem";
 
 // ----------------------------------------------------------------------
 
-const mainNav = navigation.filter((item) => item.id !== "logout");
-const logoutNav = navigation.filter((item) => item.id === "logout");
-
-function getActiveCollapsiblePath(pathname: string) {
-  return mainNav.find(
+function getActiveCollapsiblePath(nav: ReturnType<typeof getNavigation>, pathname: string) {
+  return nav.find(
     (item) =>
       item.type === "collapse" &&
       item.childs?.some(
@@ -32,7 +29,12 @@ export function Menu() {
   const { pathname } = useLocation();
   const ref = useRef<HTMLDivElement | null>(null);
 
-  const activeCollapsible = getActiveCollapsiblePath(pathname);
+  // Always get fresh navigation (role-based filtering reads localStorage)
+  const nav = getNavigation();
+  const mainNav = nav.filter((item) => item.id !== "logout");
+  const logoutNav = nav.filter((item) => item.id === "logout");
+
+  const activeCollapsible = getActiveCollapsiblePath(mainNav, pathname);
 
   const [expanded, setExpanded] = useState<string | null>(
     activeCollapsible || null,
@@ -74,6 +76,8 @@ export function Menu() {
 
 // Pinned logout — rendered separately in Sidebar at the bottom
 export function LogoutMenu() {
+  const nav = getNavigation();
+  const logoutNav = nav.filter((item) => item.id === "logout");
   return (
     <div className="px-2 py-2">
       {logoutNav.map((nav) => (

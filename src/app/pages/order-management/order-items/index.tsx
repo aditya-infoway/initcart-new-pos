@@ -18,6 +18,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 import {
   BranchOrder, mapApiBranchOrder,
   ORDER_STATUS_FILTERS, getOrderStatusStyle,
@@ -27,6 +28,8 @@ const PAGE_SIZE = 15;
 
 export default function OrderItemsPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/order-items");
+
   const [orders, setOrders] = useState<BranchOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -183,11 +186,13 @@ export default function OrderItemsPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
               onClick={() => navigate("/order-management/order-items/new")}>
               <PlusIcon className="size-4" />
               <span>New Order</span>
             </Button>
+            )}
           </div>
         </div>
 

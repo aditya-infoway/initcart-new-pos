@@ -377,7 +377,7 @@ export default function SalesReturnPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/sales/sales-return-report/new")}>
+              onClick={() => navigate("/sales-return")}>
               <PlusIcon className="size-4" /><span>New Return</span>
             </Button>
           </div>

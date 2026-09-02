@@ -1,11 +1,10 @@
-// segments/posMybranchMaster.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posMyBranches: NavigationTree = {
   id: "posMyBranches",
   type: "item",
-  path: "/mybranches",
+  path: "/myBranches",
   title: "My Branches",
   icon: "myBranches",
-  franchiseOnly: true,  // ✅ Only franchise users
+  franchiseOnly: true,
 };

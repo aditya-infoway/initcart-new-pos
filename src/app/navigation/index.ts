@@ -39,6 +39,7 @@ const isFranchise = () => {
   return false;
 };
 
+
 function filterNavigationByRole(items: NavigationTree[]): NavigationTree[] {
   const superAdmin = isSuperAdmin();
   const franchise = isFranchise();

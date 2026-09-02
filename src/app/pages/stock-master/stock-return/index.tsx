@@ -19,6 +19,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 import {
   STATUS_LABEL, STATUS_COLOR, ReturnListItem, extractListRows,
 } from "./data";
@@ -26,6 +27,7 @@ import {
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function StockReturnPage() {
   const navigate = useNavigate();
+  const { canAdd, canView } = usePermission("/stock-return");
 
   const [rows, setRows]                 = useState<ReturnListItem[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -198,11 +200,13 @@ export default function StockReturnPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
               onClick={() => navigate("/order-management/stock-return")}>
               <PlusIcon className="size-4" />
               <span>New Return</span>
             </Button>
+            )}
           </div>
         </div>
 

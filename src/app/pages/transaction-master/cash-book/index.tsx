@@ -19,6 +19,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EntryType = "payment" | "receipt";
@@ -91,6 +92,8 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CashBookPage() {
+  const { canView } = usePermission("/cash-book");
+
   const [allEntries, setAllEntries]     = useState<CashEntry[]>([]);
   const [loading, setLoading]           = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");

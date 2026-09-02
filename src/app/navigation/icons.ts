@@ -79,6 +79,9 @@ export const navigationIcons: Record<string, ElementType> = {
   "dashboards.home": HomeIcon,
   "myBranches": HomeModernIcon,
 
+
+  
+
   "registration.new": DocumentPlusIcon,
   "registration.expired": ClockIcon,
 

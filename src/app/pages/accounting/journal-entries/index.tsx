@@ -24,6 +24,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface JournalEntry {
@@ -445,6 +446,8 @@ function AddJournalDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function JournalEntriesPage() {
+  const { canAdd, canView } = usePermission("/journal-entries");
+
   const [vouchers, setVouchers]         = useState<JournalVoucher[]>([]);
   const [loading, setLoading]           = useState(true);
   const [drawerOpen, setDrawerOpen]     = useState(false);
@@ -658,9 +661,11 @@ export default function JournalEntriesPage() {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={fetchRows} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
+            {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={() => setDrawerOpen(true)}>
               <PlusIcon className="size-4" /><span>Add Journal</span>
             </Button>
+            )}
           </div>
         </div>
 
