@@ -675,7 +675,7 @@ export default function CreateB2BSalesPage() {
       const res = await Post("pos/b2b-sales/", payload) as any;
       if (res?.data?.success) {
         toastsuccessmsg(res.data.message || "B2B Sale created successfully");
-        navigate("/sales/b2b-sales");
+        navigate("/b2bsales");
       } else {
         toasterrormsg(res?.data?.message || "Error while saving B2B sale");
       }
@@ -696,7 +696,7 @@ export default function CreateB2BSalesPage() {
         {/* Header */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/sales/b2b-sales")}>
+            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2bsales")}>
               <ArrowLeftIcon className="size-4" /> Back to Sales
             </Button>
             <div>

@@ -1,12 +1,11 @@
 import {
-  ArrowLeftIcon, CheckIcon, ArrowPathIcon, KeyIcon,
+  ArrowLeftIcon, CheckIcon, ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import clsx from "clsx";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
+import { Button, Card, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { Checkbox } from "@/components/ui/Form";
 import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 
@@ -28,67 +27,61 @@ type ActionField = "can_view" | "can_add" | "can_edit" | "can_delete";
 type AllowedActions = Record<ActionField, boolean>;
 
 // ── Page-wise allowed actions map ───────────────────────────────────────────
+// NOTE: keys here MUST exactly match the `page_key` values stored in the
+// backend / returned by GET /employees/:id/permissions/ (see API response).
 const PAGE_ALLOWED_ACTIONS: Record<string, AllowedActions> = {
   // ── Master ──────────────────────────────
-  "/master-menu/account-creation": { can_view: true, can_add: true, can_edit: true, can_delete: false },
-  "/master-menu/branch-master": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/master-menu/add-items": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/master-menu/website-items": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/master-menu/item-barcodes": { can_view: true, can_add: true, can_edit: true, can_delete: false },
-  "/master-menu/orders": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/master-menu/group": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/master-menu/item-import": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/addAccounts": { can_view: true, can_add: true, can_edit: true, can_delete: false },
+  "/branchMaster": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/AddItems": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/WebItems": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/PendingBarcodes": { can_view: true, can_add: true, can_edit: true, can_delete: false },
+  "/Orders": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/createGroup": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/ExcelImportExport": { can_view: true, can_add: true, can_edit: false, can_delete: false },
 
-  // ── Order Management ────────────────────
-  "/order-management/order-items": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/order-management/stock-verification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/order-management/stock-return": { can_view: true, can_add: true, can_edit: false, can_delete: true },
-  "/order-management/stock-transfer": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  // ── Stock related ───────────────────────
+  "/stockReturnverification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/b2bstockReturnverification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/stockTransfer": { can_view: true, can_add: true, can_edit: false, can_delete: false },
 
-  // ── Purchase Master ─────────────────────
-  "/purchase/purchase-entry": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/purchase/purchase-return": { can_view: true, can_add: true, can_edit: false, can_delete: true },
-  "/purchase/b2b-purchase-verification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  // ── Purchase ─────────────────────────────
+  "/Addpurchaseitem": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/purchaseimport": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/purchaseReturnList": { can_view: true, can_add: true, can_edit: false, can_delete: true },
 
-  // ── Sales Master ────────────────────────
-  "/sales/sales-entry-report": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/sales/sales-entry2": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/sales/b2b-sales": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/sales/sales-return-report": { can_view: true, can_add: true, can_edit: false, can_delete: true },
+  // ── Sales ────────────────────────────────
+  "/Addsalesitem": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/salesentry2": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/b2bsales": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/salesReturnList": { can_view: true, can_add: true, can_edit: false, can_delete: true },
 
-  // ── Stock Master ────────────────────────
-  "/stock/stock-report": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  // ── Payment ──────────────────────────────
+  "/Bank-payment": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/Bank-receipt": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/Cash-Payment": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/Cash-receipt": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/Contra": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/JournalEntries": { can_view: false, can_add: false, can_edit: false, can_delete: false },
 
-  // ── B2B Inventory ───────────────────────
-  "/b2b-inventory/stock-return": { can_view: true, can_add: true, can_edit: false, can_delete: true },
-  "/b2b-inventory/stock-transfer/send-order": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/b2b-inventory/stock-transfer/received-orders": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/b2b-inventory/stock-return-management": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/b2b-inventory/b2b-stock-return-management": { can_view: true, can_add: true, can_edit: true, can_delete: true },
-  "/b2b-inventory/scheme-offer": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  // ── Standalone reports ───────────────────
+  "/stock-report": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/SchemeOffer": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/ledger-report": { can_view: true, can_add: false, can_edit: false, can_delete: false },
 
-  // ── Transaction Master ───────────────────
-  "/transaction/day-book": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/transaction/cash-book": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/transaction/bank-book": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/transaction/ledger-report": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  // ── Report group ─────────────────────────
+  "/outStandingReport": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/salesEntryRegister": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/purchaseRegister": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/salesReturnRegister": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/purchaseReturnRegister": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/duePaymentReport": { can_view: true, can_add: false, can_edit: false, can_delete: false },
 
-  // ── Accounting ─────────────────────────
-  "/accounting/bank-payment": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/accounting/bank-receipt": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/accounting/cash-payment": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/accounting/cash-receipt": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/accounting/contra": { can_view: true, can_add: true, can_edit: false, can_delete: false },
-  "/accounting/journal-entries": { can_view: false, can_add: false, can_edit: false, can_delete: false },
-  "/accounting/sales-profit-report": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-
-  // ── Reporting ─────────────────────────
-  "/reporting/outstanding": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/reporting/sales-register": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/reporting/purchase-register": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/reporting/sales-return-register": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/reporting/purchase-return-register": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/reporting/due-payment": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  // ── Books / other ────────────────────────
+  "/dayBook": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/salesProfitReport": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/cashBook": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/bankBook": { can_view: true, can_add: false, can_edit: false, can_delete: false },
 };
 
 const DEFAULT_ALLOWED: AllowedActions = { can_view: true, can_add: true, can_edit: true, can_delete: true };
@@ -99,72 +92,72 @@ const isActionAllowed = (page_key: string, field: ActionField): boolean => {
 };
 
 // ── Flatten menu for permissions ───────────────────────────────────────────
+// page_key values below MUST match the backend page_key exactly (see note above).
 const flattenMenu = (): FlatPage[] => {
   const pages: FlatPage[] = [
     // Master
-    { page_key: "/master-menu/account-creation", page_label: "Account Creation", group: "Master" },
-    { page_key: "/master-menu/branch-master", page_label: "Branch Master", group: "Master" },
-    { page_key: "/master-menu/add-items", page_label: "Add Items", group: "Master" },
-    { page_key: "/master-menu/website-items", page_label: "Website Items", group: "Master" },
-    { page_key: "/master-menu/item-barcodes", page_label: "Item Barcodes", group: "Master" },
-    { page_key: "/master-menu/orders", page_label: "Orders", group: "Master" },
-    { page_key: "/master-menu/group", page_label: "Group", group: "Master" },
-    { page_key: "/master-menu/item-import", page_label: "Item Import", group: "Master" },
+    { page_key: "/addAccounts", page_label: "Account Creation", group: "Master" },
+    { page_key: "/branchMaster", page_label: "Branch Master", group: "Master" },
+    { page_key: "/AddItems", page_label: "Add Items", group: "Master" },
+    { page_key: "/WebItems", page_label: "Website Items", group: "Master" },
+    { page_key: "/PendingBarcodes", page_label: "Item Barcodes", group: "Master" },
+    { page_key: "/Orders", page_label: "Orders", group: "Master" },
+    { page_key: "/createGroup", page_label: "Group", group: "Master" },
+    { page_key: "/ExcelImportExport", page_label: "Item Import", group: "Master" },
 
-    // Order Management
-    { page_key: "/order-management/order-items", page_label: "Order Items", group: "Order Management" },
-    { page_key: "/order-management/stock-verification", page_label: "Stock Verification", group: "Order Management" },
-    { page_key: "/order-management/stock-return", page_label: "Stock Return", group: "Order Management" },
-    { page_key: "/order-management/stock-transfer", page_label: "Stock Transfer", group: "Order Management" },
+    // Stock related
+    { page_key: "/stockReturnverification", page_label: "Stock Return Verification", group: "Order Management" },
+    { page_key: "/b2bstockReturnverification", page_label: "B2B Stock Returns", group: "B2B Inventory" },
+    { page_key: "/stockTransfer", page_label: "Stock Transfer", group: "Order Management" },
 
     // Purchase Master
-    { page_key: "/purchase/purchase-entry", page_label: "Purchase Entry", group: "Purchase Master" },
-    { page_key: "/purchase/purchase-return", page_label: "Purchase Return", group: "Purchase Master" },
-    { page_key: "/purchase/b2b-purchase-verification", page_label: "B2B Purchase Verification", group: "Purchase Master" },
+    { page_key: "/Addpurchaseitem", page_label: "Purchase Entry", group: "Purchase Master" },
+    { page_key: "/purchaseimport", page_label: "Purchase Import", group: "Purchase Master" },
+    { page_key: "/purchaseReturnList", page_label: "Purchase Return", group: "Purchase Master" },
 
     // Sales Master
-    { page_key: "/sales/sales-entry-report", page_label: "Sales Entry Report", group: "Sales Master" },
-    { page_key: "/sales/sales-entry2", page_label: "Sales Entry 2", group: "Sales Master" },
-    { page_key: "/sales/b2b-sales", page_label: "B2B Sales", group: "Sales Master" },
-    { page_key: "/sales/sales-return-report", page_label: "Sales Return Report", group: "Sales Master" },
+    { page_key: "/Addsalesitem", page_label: "Sales Entry & Report", group: "Sales Master" },
+    { page_key: "/salesentry2", page_label: "Sales Entry 2", group: "Sales Master" },
+    { page_key: "/b2bsales", page_label: "B2B Sales", group: "Sales Master" },
+    { page_key: "/salesReturnList", page_label: "Sales Return & Report", group: "Sales Master" },
 
     // Stock Master
-    { page_key: "/stock/stock-report", page_label: "Stock Report", group: "Stock Master" },
+    { page_key: "/stock-report", page_label: "Stock Report", group: "Stock Master" },
 
     // B2B Inventory
-    { page_key: "/b2b-inventory/stock-return", page_label: "Stock Return", group: "B2B Inventory" },
-    { page_key: "/b2b-inventory/stock-transfer/send-order", page_label: "Send Order", group: "B2B Inventory" },
-    { page_key: "/b2b-inventory/stock-transfer/received-orders", page_label: "Received Orders", group: "B2B Inventory" },
-    { page_key: "/b2b-inventory/stock-return-management", page_label: "Stock Return Management", group: "B2B Inventory" },
-    { page_key: "/b2b-inventory/b2b-stock-return-management", page_label: "B2B Stock Return Management", group: "B2B Inventory" },
-    { page_key: "/b2b-inventory/scheme-offer", page_label: "Scheme Offer", group: "B2B Inventory" },
+    { page_key: "/SchemeOffer", page_label: "Scheme Offer", group: "B2B Inventory" },
 
     // Transaction Master
-    { page_key: "/transaction/day-book", page_label: "Day Book", group: "Transaction Master" },
-    { page_key: "/transaction/cash-book", page_label: "Cash Book", group: "Transaction Master" },
-    { page_key: "/transaction/bank-book", page_label: "Bank Book", group: "Transaction Master" },
-    { page_key: "/transaction/ledger-report", page_label: "Ledger Report", group: "Transaction Master" },
+    { page_key: "/dayBook", page_label: "Day Book", group: "Transaction Master" },
+    { page_key: "/cashBook", page_label: "Cash Book", group: "Transaction Master" },
+    { page_key: "/bankBook", page_label: "Bank Book", group: "Transaction Master" },
+    { page_key: "/ledger-report", page_label: "Ledger Report", group: "Transaction Master" },
 
     // Accounting
-    { page_key: "/accounting/bank-payment", page_label: "Bank Payment", group: "Accounting" },
-    { page_key: "/accounting/bank-receipt", page_label: "Bank Receipt", group: "Accounting" },
-    { page_key: "/accounting/cash-payment", page_label: "Cash Payment", group: "Accounting" },
-    { page_key: "/accounting/cash-receipt", page_label: "Cash Receipt", group: "Accounting" },
-    { page_key: "/accounting/contra", page_label: "Contra", group: "Accounting" },
-    { page_key: "/accounting/journal-entries", page_label: "Journal Entries", group: "Accounting" },
-    { page_key: "/accounting/sales-profit-report", page_label: "Sales Profit Report", group: "Accounting" },
+    { page_key: "/Bank-payment", page_label: "Bank Payment", group: "Accounting" },
+    { page_key: "/Bank-receipt", page_label: "Bank Receipt", group: "Accounting" },
+    { page_key: "/Cash-Payment", page_label: "Cash Payment", group: "Accounting" },
+    { page_key: "/Cash-receipt", page_label: "Cash Receipt", group: "Accounting" },
+    { page_key: "/Contra", page_label: "Contra", group: "Accounting" },
+    { page_key: "/JournalEntries", page_label: "Journal Entries", group: "Accounting" },
+    { page_key: "/salesProfitReport", page_label: "Sales Profit Report", group: "Accounting" },
 
     // Reporting
-    { page_key: "/reporting/outstanding", page_label: "Outstanding", group: "Reporting" },
-    { page_key: "/reporting/sales-register", page_label: "Sales Register", group: "Reporting" },
-    { page_key: "/reporting/purchase-register", page_label: "Purchase Register", group: "Reporting" },
-    { page_key: "/reporting/sales-return-register", page_label: "Sales Return Register", group: "Reporting" },
-    { page_key: "/reporting/purchase-return-register", page_label: "Purchase Return Register", group: "Reporting" },
-    { page_key: "/reporting/due-payment", page_label: "Due Payment", group: "Reporting" },
+    { page_key: "/outStandingReport", page_label: "Outstanding", group: "Reporting" },
+    { page_key: "/salesEntryRegister", page_label: "Sales Register", group: "Reporting" },
+    { page_key: "/purchaseRegister", page_label: "Purchase Register", group: "Reporting" },
+    { page_key: "/salesReturnRegister", page_label: "Sales Return Register", group: "Reporting" },
+    { page_key: "/purchaseReturnRegister", page_label: "Purchase Return Register", group: "Reporting" },
+    { page_key: "/duePaymentReport", page_label: "Due Payment", group: "Reporting" },
   ];
 
-  // Filter out Employee Management pages - employees shouldn't have access to manage other employees
-  return pages.filter(p => !p.page_key.includes("/employee-management"));
+  // Employee Management / Employee Master pages are excluded — employees
+  // should never be able to manage other employees.
+  return pages.filter(
+    (p) => !p.page_key.includes("/employee-management")
+      && p.page_key !== "/allEmployees"
+      && p.page_key !== "/Employees",
+  );
 };
 
 // ── Main permissions page ───────────────────────────────────────────────────
@@ -231,7 +224,7 @@ export default function EmployeePermissionsPage() {
           ({ page_key, page_label, can_view, can_add, can_edit, can_delete })),
       });
       toastsuccessmsg("Permissions updated successfully");
-      navigate("/employee-management/employee-master");
+      navigate("/allEmployees");
     } catch {
       toasterrormsg("Failed to update permissions");
     } finally {
@@ -281,7 +274,7 @@ export default function EmployeePermissionsPage() {
             <Button
               variant="outlined"
               className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/employee-management/employee-master")}
+              onClick={() => navigate("/allEmployees")}
             >
               <ArrowLeftIcon className="size-4" />
               <span>Back</span>
@@ -382,7 +375,7 @@ export default function EmployeePermissionsPage() {
           <Button
             variant="outlined"
             className="h-9 gap-2 rounded-md px-3 text-sm"
-            onClick={() => navigate("/employee-management/employee-master")}
+            onClick={() => navigate("/allEmployees")}
           >
             <ArrowLeftIcon className="size-4" />
             <span>Back</span>

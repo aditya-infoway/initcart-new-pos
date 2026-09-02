@@ -532,7 +532,7 @@ export default function PurchaseEntryPage() {
             </Button>
             {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/purchase/purchase-entry/new")}>
+              onClick={() => navigate("/purchases")}>
               <PlusIcon className="size-4" /><span>Add Purchase</span>
             </Button>
             )}

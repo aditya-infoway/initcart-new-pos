@@ -1,6 +1,6 @@
 /**
  * New Purchase Entry page
- * Route: /purchase/purchase-entry/new
+ * Route: /Addpurchaseitem/new
  *
  * API endpoints:
  *   GET  pos/voucher/generate/?type=PI
@@ -702,7 +702,7 @@ const onSubmit = async (values: FormValues) => {
       };
       await Post("pos/purchase-create/", payload);
       toastsuccessmsg("Purchase saved successfully.");
-      navigate("/purchase/purchase-entry");
+      navigate("/Addpurchaseitem");
     } catch (e: any) {
       const d = e?.response?.data;
       toasterrormsg(d?.non_field_errors?.[0] ?? d?.detail ?? Object.values(d ?? {}).flat().join(", ") ?? "Failed to save purchase.");
@@ -718,7 +718,7 @@ const onSubmit = async (values: FormValues) => {
           <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
             <div className="flex items-center gap-3">
               <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-                onClick={() => navigate("/purchase/purchase-entry")}>
+                onClick={() => navigate("/Addpurchaseitem")}>
                 <ArrowLeftIcon className="size-4" /> Back
               </Button>
               <div>
@@ -1139,7 +1139,7 @@ const onSubmit = async (values: FormValues) => {
             <PrinterIcon className="size-4" /> Print
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-            onClick={() => navigate("/purchase/purchase-entry")}>
+            onClick={() => navigate("/Addpurchaseitem")}>
             <ArrowLeftIcon className="size-4" /> Cancel
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"
