@@ -18,15 +18,21 @@ const protectedRoutes: RouteObject = {
       children: [
         {
           index: true,
-          element: <Navigate to="/" replace />,
+          element: <Navigate to="/dashboards/home" replace />,
         },
 
         // ── Dashboard ──────────────────────────────────────────────────
         {
-          path: "/",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/dashboards/home/crm-analytics")).default,
-          }),
+          path: "dashboards",
+          children: [
+            { index: true, element: <Navigate to="/dashboards/home" replace /> },
+            {
+              path: "home",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/dashboards/home/crm-analytics")).default,
+              }),
+            },
+          ],
         },
 
         // ── Logout ─────────────────────────────────────────────────────
@@ -104,7 +110,7 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
-          path: "barcodes",
+          path: "PendingBarcodes",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/item-barcodes")).default,
           }),
@@ -176,27 +182,27 @@ const protectedRoutes: RouteObject = {
 
         // ── Purchase Master ────────────────────────────────────────────
         {
-          path: "purchases",
+          path: "Addpurchaseitem",
           lazy: async () => ({
             Component: (await import("@/app/pages/purchase-master/purchase-entry")).default,
           }),
         },
         {
-          path: "Addpurchaseitem",
+          path: "purchases",
           lazy: async () => ({
             Component: (await import("@/app/pages/purchase-master/purchase-entry/new-purchase")).default,
-          }),
-        },
-        {
-          path: "purchase-return",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/purchase-master/purchase-return")).default,
           }),
         },
         {
           path: "purchaseReturnList",
           lazy: async () => ({
             Component: (await import("@/app/pages/purchase-master/purchase-return")).default,
+          }),
+        },
+        {
+          path: "purchase-return",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/purchase-master/purchase-return/new-return")).default,
           }),
         },
         {
@@ -214,27 +220,27 @@ const protectedRoutes: RouteObject = {
 
         // ── Sales Master ───────────────────────────────────────────────
         {
-          path: "sales",
+          path: "Addsalesitem",
           lazy: async () => ({
             Component: (await import("@/app/pages/sales-master/sales-entry")).default,
           }),
         },
         {
-          path: "Addsalesitem",
+          path: "sales",
           lazy: async () => ({
             Component: (await import("@/app/pages/sales-master/sales-entry/new-sale")).default,
-          }),
-        },
-        {
-          path: "sales-return",
-          lazy: async () => ({
-            Component: (await import("@/app/pages/sales-master/sales-return")).default,
           }),
         },
         {
           path: "salesReturnList",
           lazy: async () => ({
             Component: (await import("@/app/pages/sales-master/sales-return")).default,
+          }),
+        },
+        {
+          path: "sales-return",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/sales-master/sales-return/new-return")).default,
           }),
         },
         {

@@ -38,6 +38,7 @@ interface CashReceiptRow {
   partyName: string;
   amount: number;
   narration: string;
+  createdByName?: string;
 }
 
 function mapRow(raw: any): CashReceiptRow {
@@ -50,6 +51,7 @@ function mapRow(raw: any): CashReceiptRow {
     partyName:       String(raw.party_name ?? raw.op_account ?? ""),
     amount:          Number(raw.amount ?? 0),
     narration:       String(raw.narration ?? ""),
+    createdByName:   String(raw.created_by_name ?? ""),
   };
 }
 
@@ -79,10 +81,40 @@ function mapBill(raw: any): BillResult {
   };
 }
 
+interface StockTransferBill {
+  id: number;
+  transfer_no: string;
+  to_branch_name: string;
+  pending_amount: number;
+  linked_account_id: number | null;
+  linked_account_name: string | null;
+  linked_account_type: string | null;
+}
+
+interface B2BSaleBill {
+  id: number;
+  sale_no: string;
+  to_branch_name: string;
+  pending_amount: number;
+  linked_account_id: number | null;
+  linked_account_name: string | null;
+  linked_account_type: string | null;
+}
+
+interface StockReturnReceiptBill {
+  id: number;
+  return_no: string;
+  to_branch_name: string;
+  pending_amount: number;
+  linked_account_id: number | null;
+  linked_account_name: string | null;
+  linked_account_type: string | null;
+}
+
 const today = new Date().toISOString().split("T")[0];
 
 interface FormValues {
-  receiptType: "manual" | "salesEntry" | "purchaseReturn";
+  receiptType: "manual" | "salesEntry" | "purchaseReturn" | "stockTransfer" | "b2bSale" | "stockReturn";
   cashAccount: number | null;
   voucherNo: string;
   date: string;
@@ -90,7 +122,7 @@ interface FormValues {
   amount: string;
   narration: string;
   billNo: string;
-  selectedBill: BillResult | null;
+  selectedBill: BillResult | StockTransferBill | B2BSaleBill | StockReturnReceiptBill | null;
 }
 
 const DEFAULT_VALUES: FormValues = {
@@ -106,14 +138,466 @@ const DEFAULT_VALUES: FormValues = {
 };
 
 // ── Type badge ─────────────────────────────────────────────────────────────
-const TYPE_COLOR: Record<string, "success" | "info" | "warning" | "primary"> = {
-  CR: "success", SCR: "info", PRCR: "warning",
+const TYPE_COLOR: Record<string, "success" | "info" | "warning" | "primary" | "secondary"> = {
+  CR: "success",
+  SCR: "info",
+  PRCR: "warning",
+  STCR: "primary",
+  B2BSCR: "secondary",
+  STRCR: "secondary",
 };
+
 function TypeBadge({ type }: { type: string }) {
   return (
     <Badge color={TYPE_COLOR[type] ?? "primary"} variant="soft">
       {type || "CR"}
     </Badge>
+  );
+}
+
+// ── Stock Transfer Dropdown ──────────────────────────────────────────────
+function StockTransferDropdown({
+  onSelectBill,
+  refreshKey,
+  disabled = false,
+}: {
+  onSelectBill: (bill: StockTransferBill) => void;
+  refreshKey: number;
+  disabled?: boolean;
+}) {
+  const [bills, setBills] = useState<StockTransferBill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    const loadBills = async () => {
+      setLoading(true);
+      try {
+        const res = await Get("pos/stock-transfer-credit-bills/") as any;
+        const body = res?.data ?? res;
+        const data = Array.isArray(body?.bills) ? body.bills : Array.isArray(body) ? body : [];
+        setBills(data.map((b: any) => ({
+          id: Number(b.id),
+          transfer_no: String(b.transfer_no ?? ""),
+          to_branch_name: String(b.to_branch_name ?? ""),
+          pending_amount: Number(b.pending_amount ?? 0),
+          linked_account_id: b.linked_account_id ? Number(b.linked_account_id) : null,
+          linked_account_name: b.linked_account_name ?? null,
+          linked_account_type: b.linked_account_type ?? null,
+        })));
+      } catch {
+        toasterrormsg("Failed to load stock transfer bills");
+        setBills([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBills();
+  }, [refreshKey]);
+
+  const selectedBill = bills.find((b) => String(b.id) === selectedId);
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium mb-1">Select Stock Transfer Bill</label>
+      <div
+        className={clsx(
+          "w-full p-2 border rounded bg-white cursor-pointer flex justify-between items-center",
+          disabled ? "opacity-60 cursor-not-allowed" : "",
+          "border-gray-300 dark:border-dark-500"
+        )}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className={selectedBill ? "text-gray-900 dark:text-dark-100" : "text-gray-500 dark:text-dark-400"}>
+          {selectedBill
+            ? `${selectedBill.transfer_no} — ${selectedBill.linked_account_name || " No account linked"} — ₹${selectedBill.pending_amount.toFixed(2)}`
+            : loading ? "Loading..." : bills.length === 0 ? "No pending bills" : "-- Select Transfer --"}
+        </span>
+        <span className="text-gray-400">▼</span>
+      </div>
+
+      {isOpen && !disabled && !loading && bills.length > 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 overflow-hidden">
+          <div className="overflow-y-auto max-h-[200px]">
+            {bills.map((bill) => (
+              <div
+                key={bill.id}
+                className={clsx(
+                  "p-2 border-b last:border-b-0 text-sm",
+                  bill.linked_account_id ? "hover:bg-primary/10 cursor-pointer" : "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-dark-800",
+                  "dark:border-dark-600"
+                )}
+                onClick={() => {
+                  if (!bill.linked_account_id) {
+                    toasterrormsg(`${bill.to_branch_name} ka Sundry account link nahi hai. Branch Master mein pehle link karo.`);
+                    return;
+                  }
+                  setSelectedId(String(bill.id));
+                  onSelectBill(bill);
+                  setIsOpen(false);
+                }}
+              >
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-800 dark:text-dark-100">{bill.transfer_no}</span>
+                  <span className={bill.linked_account_id ? "text-gray-600 dark:text-dark-300" : "text-red-500 font-medium"}>
+                    {bill.linked_account_name || " No account linked"}
+                  </span>
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">
+                  Pending: ₹{bill.pending_amount.toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOpen && !disabled && !loading && bills.length === 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 p-4 text-center text-gray-500 dark:text-dark-400 text-sm">
+          No pending stock transfer bills
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── B2B Sale Dropdown ─────────────────────────────────────────────────────
+function B2BSaleDropdown({
+  onSelectBill,
+  refreshKey,
+  disabled = false,
+}: {
+  onSelectBill: (bill: B2BSaleBill) => void;
+  refreshKey: number;
+  disabled?: boolean;
+}) {
+  const [bills, setBills] = useState<B2BSaleBill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    const loadBills = async () => {
+      setLoading(true);
+      try {
+        const res = await Get("pos/b2b-sale-credit-bills/") as any;
+        const body = res?.data ?? res;
+        const data = Array.isArray(body?.bills) ? body.bills : Array.isArray(body) ? body : [];
+        setBills(data.map((b: any) => ({
+          id: Number(b.id),
+          sale_no: String(b.sale_no ?? ""),
+          to_branch_name: String(b.to_branch_name ?? ""),
+          pending_amount: Number(b.pending_amount ?? 0),
+          linked_account_id: b.linked_account_id ? Number(b.linked_account_id) : null,
+          linked_account_name: b.linked_account_name ?? null,
+          linked_account_type: b.linked_account_type ?? null,
+        })));
+      } catch {
+        toasterrormsg("Failed to load B2B sale bills");
+        setBills([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBills();
+  }, [refreshKey]);
+
+  const selectedBill = bills.find((b) => String(b.id) === selectedId);
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium mb-1">Select B2B Sale Bill</label>
+      <div
+        className={clsx(
+          "w-full p-2 border rounded bg-white cursor-pointer flex justify-between items-center",
+          disabled ? "opacity-60 cursor-not-allowed" : "",
+          "border-gray-300 dark:border-dark-500"
+        )}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className={selectedBill ? "text-gray-900 dark:text-dark-100" : "text-gray-500 dark:text-dark-400"}>
+          {selectedBill
+            ? `${selectedBill.sale_no} — ${selectedBill.linked_account_name || "⚠ No account linked"} — ₹${selectedBill.pending_amount.toFixed(2)}`
+            : loading ? "Loading..." : bills.length === 0 ? "No pending bills" : "-- Select Sale --"}
+        </span>
+        <span className="text-gray-400">▼</span>
+      </div>
+
+      {isOpen && !disabled && !loading && bills.length > 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 overflow-hidden">
+          <div className="overflow-y-auto max-h-[200px]">
+            {bills.map((bill) => (
+              <div
+                key={bill.id}
+                className={clsx(
+                  "p-2 border-b last:border-b-0 text-sm",
+                  bill.linked_account_id ? "hover:bg-primary/10 cursor-pointer" : "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-dark-800",
+                  "dark:border-dark-600"
+                )}
+                onClick={() => {
+                  if (!bill.linked_account_id) {
+                    toasterrormsg(`${bill.to_branch_name} Sundry account not linked.`);
+                    return;
+                  }
+                  setSelectedId(String(bill.id));
+                  onSelectBill(bill);
+                  setIsOpen(false);
+                }}
+              >
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-800 dark:text-dark-100">{bill.sale_no}</span>
+                  <span className={bill.linked_account_id ? "text-gray-600 dark:text-dark-300" : "text-red-500 font-medium"}>
+                    {bill.linked_account_name || "⚠ No account linked"}
+                  </span>
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">
+                  Pending: ₹{bill.pending_amount.toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOpen && !disabled && !loading && bills.length === 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 p-4 text-center text-gray-500 dark:text-dark-400 text-sm">
+          No pending B2B sale bills
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Stock Return Receipt Dropdown ─────────────────────────────────────────
+function StockReturnReceiptDropdown({
+  onSelectBill,
+  refreshKey,
+  disabled = false,
+}: {
+  onSelectBill: (bill: StockReturnReceiptBill) => void;
+  refreshKey: number;
+  disabled?: boolean;
+}) {
+  const [bills, setBills] = useState<StockReturnReceiptBill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    const loadBills = async () => {
+      setLoading(true);
+      try {
+        const res = await Get("pos/stock-return-credit-bills/") as any;
+        const body = res?.data ?? res;
+        const data = Array.isArray(body?.bills) ? body.bills : Array.isArray(body) ? body : [];
+        setBills(data.map((b: any) => ({
+          id: Number(b.id),
+          return_no: String(b.return_no ?? ""),
+          to_branch_name: String(b.to_branch_name ?? ""),
+          pending_amount: Number(b.pending_amount ?? 0),
+          linked_account_id: b.linked_account_id ? Number(b.linked_account_id) : null,
+          linked_account_name: b.linked_account_name ?? null,
+          linked_account_type: b.linked_account_type ?? null,
+        })));
+      } catch {
+        toasterrormsg("Failed to load stock return bills");
+        setBills([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBills();
+  }, [refreshKey]);
+
+  const selectedBill = bills.find((b) => String(b.id) === selectedId);
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium mb-1">Select Stock Return Bill</label>
+      <div
+        className={clsx(
+          "w-full p-2 border rounded bg-white cursor-pointer flex justify-between items-center",
+          disabled ? "opacity-60 cursor-not-allowed" : "",
+          "border-gray-300 dark:border-dark-500"
+        )}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className={selectedBill ? "text-gray-900 dark:text-dark-100" : "text-gray-500 dark:text-dark-400"}>
+          {selectedBill
+            ? `${selectedBill.return_no} — ${selectedBill.linked_account_name || "⚠ No account linked"} — ₹${selectedBill.pending_amount.toFixed(2)}`
+            : loading ? "Loading..." : bills.length === 0 ? "No pending returns" : "-- Select Return --"}
+        </span>
+        <span className="text-gray-400">▼</span>
+      </div>
+
+      {isOpen && !disabled && !loading && bills.length > 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 overflow-hidden">
+          <div className="overflow-y-auto max-h-[200px]">
+            {bills.map((bill) => (
+              <div
+                key={bill.id}
+                className={clsx(
+                  "p-2 border-b last:border-b-0 text-sm",
+                  bill.linked_account_id ? "hover:bg-primary/10 cursor-pointer" : "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-dark-800",
+                  "dark:border-dark-600"
+                )}
+                onClick={() => {
+                  if (!bill.linked_account_id) {
+                    toasterrormsg("Aapki branch ka Sundry Creditor(Main) account nahi bana hai. Pehle account banao.");
+                    return;
+                  }
+                  setSelectedId(String(bill.id));
+                  onSelectBill(bill);
+                  setIsOpen(false);
+                }}
+              >
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-800 dark:text-dark-100">{bill.return_no}</span>
+                  <span className={bill.linked_account_id ? "text-gray-600 dark:text-dark-300" : "text-red-500 font-medium"}>
+                    {bill.linked_account_name || "⚠ No account linked"}
+                  </span>
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">
+                  Pending: ₹{bill.pending_amount.toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOpen && !disabled && !loading && bills.length === 0 && (
+        <div className="absolute right-0 mt-1 w-full bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-600 rounded shadow-lg z-50 p-4 text-center text-gray-500 dark:text-dark-400 text-sm">
+          No pending stock return bills
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Bill Search Modal ─────────────────────────────────────────────────────
+function BillSearchModal({
+  isOpen,
+  onClose,
+  onSelectBill,
+  billType,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectBill: (bill: BillResult) => void;
+  billType: "salesEntry" | "purchaseReturn";
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [bills, setBills] = useState<BillResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadBills("");
+    }
+  }, [isOpen, billType]);
+
+  const loadBills = async (search: string) => {
+    setLoading(true);
+    try {
+      const url = billType === "salesEntry"
+        ? `pos/sales-credit-bills/?query=${search}`
+        : `pos/purchase-return-credit-bills/?query=${search}`;
+      const res = await Get(url) as any;
+      const body = res?.data ?? res;
+      const data = Array.isArray(body?.bills) ? body.bills : Array.isArray(body) ? body : [];
+      setBills(data.map(mapBill));
+    } catch {
+      toasterrormsg("Failed to search bills");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    loadBills(value);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-dark-700 rounded-2xl shadow-lg w-full max-w-4xl max-h-[85vh] overflow-hidden">
+        <div className="flex justify-between items-center px-4 py-3 border-b bg-primary-600 text-white dark:bg-primary-700">
+          <h3 className="text-base font-semibold">
+            Search {billType === "salesEntry" ? "Sales Entry Credit" : "Purchase Return Credit"} Bills
+          </h3>
+          <button onClick={onClose} className="text-white hover:text-gray-200 text-xl">✕</button>
+        </div>
+        <div className="p-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by Bill No or Party Name..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-full p-2 pl-8 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-dark-800 dark:border-dark-600 dark:text-dark-100"
+            />
+            <MagnifyingGlassIcon className="absolute left-2 top-2.5 text-gray-400 size-4" />
+          </div>
+          <div className="mt-4 overflow-y-auto max-h-[60vh]">
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <p className="mt-2 text-gray-500 dark:text-dark-400">Loading bills...</p>
+              </div>
+            ) : bills.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 dark:text-dark-400">
+                <p>No credit bills found</p>
+                {searchTerm && <p className="text-xs mt-1">Try a different search term</p>}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 dark:bg-dark-800 sticky top-0">
+                    <tr>
+                      <th className="p-2 text-left text-xs font-semibold text-gray-600 dark:text-dark-300">Bill No</th>
+                      <th className="p-2 text-left text-xs font-semibold text-gray-600 dark:text-dark-300">Party</th>
+                      <th className="p-2 text-left text-xs font-semibold text-gray-600 dark:text-dark-300">Date</th>
+                      <th className="p-2 text-right text-xs font-semibold text-gray-600 dark:text-dark-300">Total</th>
+                      <th className="p-2 text-right text-xs font-semibold text-gray-600 dark:text-dark-300">Paid</th>
+                      <th className="p-2 text-right text-xs font-semibold text-gray-600 dark:text-dark-300">Pending</th>
+                      <th className="p-2 text-center text-xs font-semibold text-gray-600 dark:text-dark-300">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bills.map((bill) => (
+                      <tr key={bill.id} className="border-b dark:border-dark-600 hover:bg-primary/5 cursor-pointer">
+                        <td className="p-2 font-medium text-primary-600 dark:text-primary-400">{bill.billNo}</td>
+                        <td className="p-2 text-gray-700 dark:text-dark-200">{bill.partyName}</td>
+                        <td className="p-2 text-gray-600 dark:text-dark-300">{bill.date}</td>
+                        <td className="p-2 text-right text-gray-700 dark:text-dark-200">₹{bill.grandTotal.toFixed(2)}</td>
+                        <td className="p-2 text-right text-emerald-600 dark:text-emerald-400">₹{bill.paidAmount.toFixed(2)}</td>
+                        <td className="p-2 text-right text-amber-600 dark:text-amber-400 font-semibold">₹{bill.pendingAmount.toFixed(2)}</td>
+                        <td className="p-2 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectBill(bill);
+                            }}
+                            className="bg-emerald-600 text-white px-3 py-1 rounded text-xs hover:bg-emerald-700 transition-colors"
+                          >
+                            Select
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -131,6 +615,14 @@ function AddCashReceiptDrawer({
   const [salesEntryBills, setSalesEntryBills] = useState<BillResult[]>([]);
   const [purchaseReturnBills, setPurchaseReturnBills] = useState<BillResult[]>([]);
   const [loadingBills, setLoadingBills]   = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billModalType, setBillModalType] = useState<"salesEntry" | "purchaseReturn">("salesEntry");
+
+  // ── Role detection ──────────────────────────────────────────────────
+  const isSuperAdminOrEmployee = useMemo(() => {
+    const role = localStorage.getItem("role");
+    return role === "superadmin" || role === "employee";
+  }, []);
 
   const {
     control, register, handleSubmit, reset, setValue, watch,
@@ -209,6 +701,36 @@ function AddCashReceiptDrawer({
           date:                    values.date,
         });
         toastsuccessmsg("Purchase return credit bill received successfully.");
+      }
+      // ── Stock Transfer ──────────────────────────────────────────────
+      else if (values.receiptType === "stockTransfer" && values.selectedBill) {
+        await Post("pos/receive-stock-transfer-bill-cash/", {
+          stock_transfer_bill_id: values.selectedBill.id,
+          cash_account: values.cashAccount,
+          amount: values.amount,
+          date: values.date,
+        });
+        toastsuccessmsg("Stock transfer payment received successfully.");
+      }
+      // ── B2B Sale ────────────────────────────────────────────────────
+      else if (values.receiptType === "b2bSale" && values.selectedBill) {
+        await Post("pos/receive-b2b-sale-bill-cash/", {
+          b2b_sale_bill_id: values.selectedBill.id,
+          cash_account: values.cashAccount,
+          amount: values.amount,
+          date: values.date,
+        });
+        toastsuccessmsg("B2B Sale payment received successfully.");
+      }
+      // ── Stock Return ─────────────────────────────────────────────────
+      else if (values.receiptType === "stockReturn" && values.selectedBill) {
+        await Post("pos/receive-stock-return-bill-cash/", {
+          stock_return_bill_id: values.selectedBill.id,
+          cash_account: values.cashAccount,
+          amount: values.amount,
+          date: values.date,
+        });
+        toastsuccessmsg("Stock return payment received successfully.");
       }
       // ── Manual Entry ────────────────────────────────────────────────
       else {
@@ -294,6 +816,69 @@ function AddCashReceiptDrawer({
                         )}
                       />
                     ))}
+
+                    {/* ✅ Stock Transfer - Superadmin OR Employee */}
+                    {isSuperAdminOrEmployee && (
+                      <Controller control={control} name="receiptType"
+                        render={({ field }) => (
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <Radio color="primary"
+                              checked={field.value === "stockTransfer"}
+                              onChange={() => {
+                                field.onChange("stockTransfer");
+                                setValue("billNo", "");
+                                setValue("selectedBill", null);
+                                setValue("opAccount", null);
+                                setValue("amount", "");
+                              }}
+                            />
+                            <span className="text-sm text-gray-700 dark:text-dark-200">Stock Transfer</span>
+                          </label>
+                        )}
+                      />
+                    )}
+
+                    {/* ✅ B2B Sale - Superadmin OR Employee */}
+                    {isSuperAdminOrEmployee && (
+                      <Controller control={control} name="receiptType"
+                        render={({ field }) => (
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <Radio color="primary"
+                              checked={field.value === "b2bSale"}
+                              onChange={() => {
+                                field.onChange("b2bSale");
+                                setValue("billNo", "");
+                                setValue("selectedBill", null);
+                                setValue("opAccount", null);
+                                setValue("amount", "");
+                              }}
+                            />
+                            <span className="text-sm text-gray-700 dark:text-dark-200">B2B Sale</span>
+                          </label>
+                        )}
+                      />
+                    )}
+
+                    {/* ✅ Stock Return - Normal branch users only */}
+                    {!isSuperAdminOrEmployee && (
+                      <Controller control={control} name="receiptType"
+                        render={({ field }) => (
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <Radio color="primary"
+                              checked={field.value === "stockReturn"}
+                              onChange={() => {
+                                field.onChange("stockReturn");
+                                setValue("billNo", "");
+                                setValue("selectedBill", null);
+                                setValue("opAccount", null);
+                                setValue("amount", "");
+                              }}
+                            />
+                            <span className="text-sm text-gray-700 dark:text-dark-200">Stock Return</span>
+                          </label>
+                        )}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -304,67 +889,44 @@ function AddCashReceiptDrawer({
                       <DocumentTextIcon className="size-4" />
                       {receiptType === "salesEntry" ? "Sales Entry Credit Bill" : "Purchase Return Credit Bill"}
                     </h4>
-                    <Controller
-                      control={control}
-                      name="selectedBill"
-                      rules={{ required: `${receiptType === "salesEntry" ? "Sales Entry" : "Purchase Return"} bill is required` }}
-                      render={({ field: { value, onChange } }) => (
-                        <Combobox
-                          data={receiptType === "salesEntry" ? salesEntryBills : purchaseReturnBills}
-                          displayField="billNo"
-                          searchFields={["billNo", "partyName"]}
-                          placeholder="Search Bill No or Party Name..."
-                          value={value}
-                          onChange={(item: any) => {
-                            onChange(item);
-                            setValue("billNo", item?.billNo ?? "");
-                            setValue("opAccount", item?.partyId ?? null);
-                            setValue("amount", item?.pendingAmount ? String(item.pendingAmount) : "");
-                          }}
-                          renderItem={(item: BillResult, selected, query) => (
-                            <div className="px-4 py-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="font-medium text-gray-900 dark:text-white">
-                                    {item.billNo}
-                                  </div>
-                                  <div className="text-xs text-gray-500 dark:text-dark-300">
-                                    {item.partyName}
-                                  </div>
-                                </div>
-                                <div className="ml-4 text-right">
-                                  <div className="text-xs text-gray-500 dark:text-dark-300">
-                                    {formatDateDDMMYYYY(item.date)}
-                                  </div>
-                                  <div className="flex items-center gap-3 text-sm">
-                                    <span className="text-emerald-600 dark:text-emerald-400">
-                                      Paid: ₹{item.paidAmount.toFixed(2)}
-                                    </span>
-                                    <span className="font-semibold text-amber-600 dark:text-amber-400">
-                                      Pending: ₹{item.pendingAmount.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          inputProps={{ className: "h-9 text-sm" }}
-                          error={(errors.selectedBill as any)?.message}
-                          disabled={loadingBills}
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={watch("billNo")}
+                          onChange={(e) => setValue("billNo", e.target.value)}
+                          placeholder="Search by Bill No..."
+                          className="w-full p-2 border border-gray-300 dark:border-dark-500 rounded bg-white dark:bg-dark-800 text-gray-800 dark:text-dark-100 text-sm"
                         />
-                      )}
-                    />
-                    {selectedBill && (
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBillModalType(receiptType === "salesEntry" ? "salesEntry" : "purchaseReturn");
+                          setShowBillModal(true);
+                        }}
+                        className="bg-primary-600 text-white px-4 py-2 rounded text-sm hover:bg-primary-700 transition-colors"
+                      >
+                        Search Bill
+                      </button>
+                    </div>
+
+                    {/* Selected bill card */}
+                    {selectedBill && (receiptType === "salesEntry" || receiptType === "purchaseReturn") && (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800/40 dark:bg-emerald-900/20">
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{selectedBill.billNo}</p>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400">{selectedBill.partyName}</p>
+                            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                              {(selectedBill as BillResult).billNo}
+                            </p>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                              {(selectedBill as BillResult).partyName}
+                            </p>
                           </div>
                           <div className="text-right space-y-1">
                             <p className="text-xs text-gray-500 dark:text-dark-300">Pending</p>
                             <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                              ₹{selectedBill.pendingAmount.toFixed(2)}
+                              ₹{(selectedBill as BillResult).pendingAmount.toFixed(2)}
                             </p>
                           </div>
                           <Button type="button" isIcon variant="flat"
@@ -378,6 +940,87 @@ function AddCashReceiptDrawer({
                             <XMarkIcon className="size-4" />
                           </Button>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Stock Transfer ────────────────────────────────── */}
+                {receiptType === "stockTransfer" && (
+                  <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/10 space-y-3">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-primary-700 dark:text-primary-400">
+                      <BuildingLibraryIcon className="size-4" />
+                      Stock Transfer Payment Receipt
+                    </h4>
+                    <StockTransferDropdown
+                      refreshKey={isOpen ? 1 : 0}
+                      onSelectBill={(bill: StockTransferBill) => {
+                        setValue("billNo", bill.transfer_no);
+                        setValue("selectedBill", bill);
+                        setValue("amount", String(bill.pending_amount));
+                        toastsuccessmsg(`Transfer ${bill.transfer_no} selected. Pending: ₹${bill.pending_amount}`);
+                      }}
+                    />
+                    {selectedBill && receiptType === "stockTransfer" && (
+                      <div className="mt-3 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800/40 text-sm">
+                        <p><strong className="text-gray-700 dark:text-dark-200">Transfer No:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockTransferBill).transfer_no}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">To Branch:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockTransferBill).to_branch_name}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Party:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockTransferBill).linked_account_name || "⚠ Not linked"} {(selectedBill as StockTransferBill).linked_account_type && <span className="text-xs text-gray-400 dark:text-dark-400">({(selectedBill as StockTransferBill).linked_account_type})</span>}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Pending Amount:</strong> <span className="text-amber-600 dark:text-amber-400 font-semibold">₹{(selectedBill as StockTransferBill).pending_amount.toFixed(2)}</span></p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── B2B Sale ───────────────────────────────────────── */}
+                {receiptType === "b2bSale" && (
+                  <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/10 space-y-3">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-primary-700 dark:text-primary-400">
+                      <BuildingLibraryIcon className="size-4" />
+                      B2B Sale Payment Receipt
+                    </h4>
+                    <B2BSaleDropdown
+                      refreshKey={isOpen ? 1 : 0}
+                      onSelectBill={(bill: B2BSaleBill) => {
+                        setValue("billNo", bill.sale_no);
+                        setValue("selectedBill", bill);
+                        setValue("amount", String(bill.pending_amount));
+                        toastsuccessmsg(`Sale ${bill.sale_no} selected. Pending: ₹${bill.pending_amount}`);
+                      }}
+                    />
+                    {selectedBill && receiptType === "b2bSale" && (
+                      <div className="mt-3 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800/40 text-sm">
+                        <p><strong className="text-gray-700 dark:text-dark-200">Sale No:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as B2BSaleBill).sale_no}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">To Branch:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as B2BSaleBill).to_branch_name}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Party:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as B2BSaleBill).linked_account_name || "⚠ Not linked"} {(selectedBill as B2BSaleBill).linked_account_type && <span className="text-xs text-gray-400 dark:text-dark-400">({(selectedBill as B2BSaleBill).linked_account_type})</span>}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Pending Amount:</strong> <span className="text-amber-600 dark:text-amber-400 font-semibold">₹{(selectedBill as B2BSaleBill).pending_amount.toFixed(2)}</span></p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Stock Return ───────────────────────────────────── */}
+                {receiptType === "stockReturn" && (
+                  <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/10 space-y-3">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-primary-700 dark:text-primary-400">
+                      <BuildingLibraryIcon className="size-4" />
+                      Stock Return Payment Receipt
+                    </h4>
+                    <StockReturnReceiptDropdown
+                      refreshKey={isOpen ? 1 : 0}
+                      onSelectBill={(bill: StockReturnReceiptBill) => {
+                        setValue("billNo", bill.return_no);
+                        setValue("selectedBill", bill);
+                        setValue("amount", String(bill.pending_amount));
+                        toastsuccessmsg(`Return ${bill.return_no} selected. Pending: ₹${bill.pending_amount}`);
+                      }}
+                    />
+                    {selectedBill && receiptType === "stockReturn" && (
+                      <div className="mt-3 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800/40 text-sm">
+                        <p><strong className="text-gray-700 dark:text-dark-200">Return No:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockReturnReceiptBill).return_no}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">To Branch:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockReturnReceiptBill).to_branch_name}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Party:</strong> <span className="text-gray-600 dark:text-dark-300">{(selectedBill as StockReturnReceiptBill).linked_account_name || "⚠ Not linked"}</span></p>
+                        <p><strong className="text-gray-700 dark:text-dark-200">Pending Amount:</strong> <span className="text-amber-600 dark:text-amber-400 font-semibold">₹{(selectedBill as StockReturnReceiptBill).pending_amount.toFixed(2)}</span></p>
                       </div>
                     )}
                   </div>
@@ -427,21 +1070,32 @@ function AddCashReceiptDrawer({
 
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div className="sm:col-span-2">
-                      <Controller control={control} name="opAccount"
-                        rules={{ required: receiptType === "manual" ? "Party is required" : false }}
-                        render={({ field: { value, onChange } }) => (
-                          <Listbox
-                            data={allAccounts}
-                            placeholder="Select Party *"
-                            label={<>Party Name {receiptType === "manual" && <span className="text-red-500">*</span>}</>}
-                            displayField="label"
-                            value={allAccounts.find(a => a.id === value) ?? null}
-                            onChange={(item: any) => onChange(item?.id ?? null)}
-                            error={(errors.opAccount as any)?.message}
-                            inputProps={{ disabled: receiptType !== "manual" }}
-                          />
-                        )}
-                      />
+                      {receiptType === "stockTransfer" || receiptType === "stockReturn" || receiptType === "b2bSale" ? (
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Party Name (Linked Account)</label>
+                          <div className="w-full p-2 border border-gray-300 dark:border-dark-500 rounded bg-gray-100 dark:bg-dark-800 text-gray-700 dark:text-dark-200 text-sm">
+                            {selectedBill
+                              ? ((selectedBill as StockTransferBill).linked_account_name || "⚠ No account linked")
+                              : "Select a bill to auto-fill party"}
+                          </div>
+                        </div>
+                      ) : (
+                        <Controller control={control} name="opAccount"
+                          rules={{ required: receiptType === "manual" ? "Party is required" : false }}
+                          render={({ field: { value, onChange } }) => (
+                            <Listbox
+                              data={allAccounts}
+                              placeholder="Select Party *"
+                              label={<>Party Name {receiptType === "manual" && <span className="text-red-500">*</span>}</>}
+                              displayField="label"
+                              value={allAccounts.find(a => a.id === value) ?? null}
+                              onChange={(item: any) => onChange(item?.id ?? null)}
+                              error={(errors.opAccount as any)?.message}
+                              inputProps={{ disabled: receiptType !== "manual" }}
+                            />
+                          )}
+                        />
+                      )}
                     </div>
                     <Input
                       {...register("amount", {
@@ -487,6 +1141,21 @@ function AddCashReceiptDrawer({
           </TransitionChild>
         </Dialog>
       </Transition>
+
+      {/* ── Bill Search Modal ────────────────────────────────────────────── */}
+      <BillSearchModal
+        isOpen={showBillModal}
+        onClose={() => setShowBillModal(false)}
+        onSelectBill={(bill: BillResult) => {
+          setValue("billNo", bill.billNo);
+          setValue("selectedBill", bill);
+          setValue("opAccount", bill.partyId ?? null);
+          setValue("amount", String(bill.pendingAmount));
+          setShowBillModal(false);
+          toastsuccessmsg(`Bill ${bill.billNo} selected. Pending amount: ₹${bill.pendingAmount}`);
+        }}
+        billType={billModalType}
+      />
     </>
   );
 }
@@ -568,7 +1237,7 @@ export default function CashReceiptPage() {
       cell: ({ getValue, table }: CellContext<CashReceiptRow, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
         return (
-          <span className="whitespace-nowrap  text-xs font-medium text-primary-600 dark:text-primary-400">
+          <span className="whitespace-nowrap text-xs font-medium text-primary-600 dark:text-primary-400">
             <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
         );
@@ -614,6 +1283,14 @@ export default function CashReceiptPage() {
       id: "narration", accessorKey: "narration", header: "Narration",
       cell: ({ getValue }: CellContext<CashReceiptRow, unknown>) => (
         <span className="block max-w-[200px] truncate text-gray-500 dark:text-dark-300">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "createdByName", accessorKey: "createdByName", header: "Created By",
+      cell: ({ getValue }: CellContext<CashReceiptRow, unknown>) => (
+        <span className="text-xs text-gray-500 dark:text-dark-300">
           {String(getValue() ?? "") || "—"}
         </span>
       ),
@@ -686,7 +1363,7 @@ export default function CashReceiptPage() {
         </div>
 
         {/* ── Summary cards ─────────────────────────────────────────── */}
-        <div className="px-(--margin-x) mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="px-(--margin-x) mt-2 grid grid-cols-2 gap-3 sm:grid-cols-6">
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 text-white shadow-md">
             <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
             <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/20">
@@ -695,15 +1372,18 @@ export default function CashReceiptPage() {
             <p className="text-xl font-bold tabular-nums">₹{grandTotal.toLocaleString()}</p>
             <p className="mt-0.5 text-xs font-medium text-white/80">Total Amount</p>
           </div>
-          {(["CR","SCR","PRCR"] as const).map(t => {
+          {(["CR","SCR","PRCR","STCR","B2BSCR","STRCR"] as const).map(t => {
             const count = rows.filter(r => r.type === t).length;
             const bgMap: Record<string, string> = {
-              CR:   "bg-gradient-to-br from-primary-500 to-primary-700",
-              SCR:  "bg-gradient-to-br from-sky-500 to-sky-700",
-              PRCR: "bg-gradient-to-br from-amber-500 to-amber-600",
+              CR:     "bg-gradient-to-br from-primary-500 to-primary-700",
+              SCR:    "bg-gradient-to-br from-sky-500 to-sky-700",
+              PRCR:   "bg-gradient-to-br from-amber-500 to-amber-600",
+              STCR:   "bg-gradient-to-br from-cyan-500 to-cyan-700",
+              B2BSCR: "bg-gradient-to-br from-blue-500 to-blue-700",
+              STRCR:  "bg-gradient-to-br from-purple-500 to-purple-700",
             };
             return (
-              <div key={t} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bgMap[t])}>
+              <div key={t} className={clsx("relative overflow-hidden rounded-xl p-4 text-white shadow-md", bgMap[t] || "bg-gray-500")}>
                 <div className="pointer-events-none absolute -right-2 -top-2 size-14 rounded-full bg-white/10" />
                 <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/20">
                   <CurrencyRupeeIcon className="size-4 text-white" />

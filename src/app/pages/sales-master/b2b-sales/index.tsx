@@ -282,7 +282,7 @@ export default function B2BSalesPage() {
             <Button variant="outlined" className="gap-2" onClick={fetchRows}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
             </Button>
-            <Button color="primary" className="gap-2" onClick={() => navigate("/sales/b2b-sales/create")}>
+            <Button color="primary" className="gap-2" onClick={() => navigate("//b2bsalescreate")}>
               <PlusIcon className="size-4" /> New B2B Sale
             </Button>
           </div>

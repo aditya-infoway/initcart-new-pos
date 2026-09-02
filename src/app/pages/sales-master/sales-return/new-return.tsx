@@ -1,6 +1,6 @@
 /**
  * Sales Return Form
- * Route: /sales/sales-return-report/new
+ * Route: /salesReturnList/new
  * APIs:
  *   GET  pos/sales-return-voucher/
  *   GET  pos/sales-bill-search/?type=sales&query=
@@ -421,7 +421,7 @@ export default function NewSalesReturnPage() {
       if (body?.stock_alerts?.length) body.stock_alerts.forEach((msg: string) => toasterrormsg(msg));
       toastsuccessmsg(`Sales Return ${body?.return_no ?? ""} created successfully.`);
       clearForm();
-      setTimeout(() => navigate("/sales/sales-return-report"), 1200);
+      setTimeout(() => navigate("/salesReturnList"), 1200);
     } catch (e: any) {
       const d = e?.response?.data;
       const msg = d?.error ?? d?.message ?? d?.detail ?? "Failed to save sales return.";
@@ -439,7 +439,7 @@ export default function NewSalesReturnPage() {
           <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
             <div className="flex items-center gap-3">
               <Button type="button" variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-                onClick={() => navigate("/sales/sales-return-report")}>
+                onClick={() => navigate("/salesReturnList")}>
                 <ArrowLeftIcon className="size-4" /> Back
               </Button>
               <div>
@@ -703,7 +703,7 @@ export default function NewSalesReturnPage() {
             <TrashIcon className="size-4" /> Clear All
           </Button>
           <Button type="button" variant="outlined" className="h-9 gap-2 rounded-lg px-4 text-sm"
-            onClick={() => navigate("/sales/sales-return-report")}>
+            onClick={() => navigate("/salesReturnList")}>
             <ArrowLeftIcon className="size-4" /> List
           </Button>
           <Button type="submit" color="primary" className="h-9 gap-2 rounded-lg px-8 text-sm font-semibold"

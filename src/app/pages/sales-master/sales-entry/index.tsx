@@ -493,7 +493,7 @@ export default function SalesRegisterPage() {
             </Button>
             {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/sales/sales-entry-report/new")}>
+              onClick={() => navigate("/sales")}>
               <PlusIcon className="size-4" />
               <span>Add Sales</span>
             </Button>

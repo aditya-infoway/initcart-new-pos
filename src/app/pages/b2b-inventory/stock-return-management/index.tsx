@@ -122,6 +122,117 @@ function StageBadge({ stage }: { stage: Stage }) {
   return <Badge color={c.color} variant="soft" className="text-xs font-semibold">{c.label}</Badge>;
 }
 
+// ── GST helpers ───────────────────────────────────────────
+const safeNum = (val: any): number => {
+  if (val === null || val === undefined || val === "") return 0;
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  return isNaN(n) ? 0 : n;
+};
+
+interface GstTotals {
+  basic: number;
+  tax: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  net: number;
+}
+
+// ── Reusable GST Summary Card ──────────────────────────────
+const GstSummaryCard: React.FC<{ totals: GstTotals; title?: string }> = ({
+  totals,
+  title = "GST Summary",
+}) => (
+  <Card className="p-4 bg-primary/5 border-primary/200">
+    <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100 mb-4">{title}</h3>
+    <div className="space-y-1 text-sm">
+      <div className="flex justify-between py-1.5 border-b border-primary/200 dark:border-dark-600">
+        <span className="text-gray-600 dark:text-dark-300">Total Basic Amount</span>
+        <span className="font-medium text-gray-800 dark:text-dark-100">₹ {totals.basic.toFixed(2)}</span>
+      </div>
+      {totals.cgst > 0 || totals.sgst > 0 ? (
+        <>
+          <div className="flex justify-between py-1.5 border-b border-primary/200 dark:border-dark-600">
+            <span className="text-gray-600 dark:text-dark-300">CGST</span>
+            <span className="font-medium text-gray-800 dark:text-dark-100">₹ {totals.cgst.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-primary/200 dark:border-dark-600">
+            <span className="text-gray-600 dark:text-dark-300">SGST</span>
+            <span className="font-medium text-gray-800 dark:text-dark-100">₹ {totals.sgst.toFixed(2)}</span>
+          </div>
+        </>
+      ) : totals.igst > 0 ? (
+        <div className="flex justify-between py-1.5 border-b border-primary/200 dark:border-dark-600">
+          <span className="text-gray-600 dark:text-dark-300">IGST</span>
+          <span className="font-medium text-gray-800 dark:text-dark-100">₹ {totals.igst.toFixed(2)}</span>
+        </div>
+      ) : null}
+      <div className="flex justify-between pt-2 text-base font-bold">
+        <span className="text-gray-700 dark:text-dark-200">Total Tax Amount</span>
+        <span className="text-primary-700 dark:text-primary-400">₹ {totals.tax.toFixed(2)}</span>
+      </div>
+      <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/300 dark:border-dark-600">
+        <span className="text-gray-700 dark:text-dark-200">Net Total (incl. GST)</span>
+        <span className="text-primary-700 dark:text-primary-400">₹ {totals.net.toFixed(2)}</span>
+      </div>
+    </div>
+  </Card>
+);
+
+// ── Reusable Branch Info Card ──────────────────────────────
+const BranchInfoCard: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  details: BranchDetails | null;
+}> = ({ title, icon, details }) => {
+  if (!details) return null;
+
+  return (
+    <Card className="p-4 bg-primary/5 border-primary/200">
+      <div className="flex items-center gap-2 mb-3">
+        {icon}
+        <span className="text-sm font-semibold text-primary-800 dark:text-primary-400">{title}</span>
+      </div>
+      <div className="mb-3">
+        <div className="font-semibold text-gray-800 dark:text-dark-100 text-sm">{details.name}</div>
+        {(details.city || details.state) && (
+          <div className="text-xs text-gray-400 dark:text-dark-400 mt-0.5">
+            {details.city}{details.city && details.state ? ', ' : ''}{details.state} {details.pincode}
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="text-xs">
+          <label className="flex items-center gap-1.5 font-medium text-gray-500 dark:text-dark-400 mb-1">
+            <PhoneIcon className="size-3" /> Phone
+          </label>
+          <div className="px-2.5 py-1.5 border border-primary/200 dark:border-dark-600 rounded-lg text-xs bg-white dark:bg-dark-800 text-gray-700 dark:text-dark-200">
+            {details.phone || "—"}
+          </div>
+        </div>
+        <div className="text-xs">
+          <label className="flex items-center gap-1.5 font-medium text-gray-500 dark:text-dark-400 mb-1">
+            <UserIcon className="size-3" /> Owner
+          </label>
+          <div className="px-2.5 py-1.5 border border-primary/200 dark:border-dark-600 rounded-lg text-xs bg-white dark:bg-dark-800 text-gray-700 dark:text-dark-200">
+            {details.owner_name || "—"}
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="flex items-center gap-1.5 font-medium text-gray-500 dark:text-dark-400 mb-1">
+            <MapPinIcon className="size-3" /> Address
+          </label>
+          <div className="px-2.5 py-1.5 border border-primary/200 dark:border-dark-600 rounded-lg text-xs bg-white dark:bg-dark-800 text-gray-700 dark:text-dark-200">
+            {details.address || "—"}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// ── Main Component ──────────────────────────────────────────
+
 export default function StockReturnManagementPage() {
   const navigate = useNavigate();
   const { canAdd, canView } = usePermission("/stock-return-management");
@@ -142,30 +253,39 @@ export default function StockReturnManagementPage() {
 
   const PAGE_SIZE = 15;
 
-  const loadAllReturns = useCallback(async () => {
-    setLoading(true);
-    try {
-      let page = 1;
-      let all: ReturnListItem[] = [];
-      while (true) {
-        const res = await safeGet("pos/admin/b2b-stock-returns/", { page, page_size: 1000 }) as any;
-        const results = res?.data?.results ?? res?.data ?? res;
-        const arr: ReturnListItem[] = results.data || results || [];
-        all = all.concat(arr);
-        const hasNext = res?.data?.next;
-        if (!hasNext || arr.length === 0) break;
-        page++;
-        if (page > 200) break;
-      }
-      setReturns(all);
-    } catch (e: any) {
-      setReturns([]);
-      const status = e?.response?.status ?? 0;
-      if (status >= 500) toasterrormsg("Could not load returns");
-    } finally {
-      setLoading(false);
+  // ✅ OLD FILE API PATH: "admin/stock-returns/"
+// ✅ FIXED: loadAllReturns function
+const loadAllReturns = useCallback(async () => {
+  setLoading(true);
+  try {
+    let page = 1;
+    let all: ReturnListItem[] = [];
+    while (true) {
+      const res = await safeGet("pos/admin/stock-returns/", { page, page_size: 1000 }) as any;
+      
+      // ✅ FIX: root level se count/next/previous lo
+      const count = res?.data?.count ?? res?.count ?? 0;
+      const next = res?.data?.next ?? res?.next ?? null;
+      
+      // ✅ FIX: results object se data array lo
+      const resultsObj = res?.data?.results ?? res?.results ?? {};
+      const arr: ReturnListItem[] = resultsObj.data || resultsObj || [];
+      
+      all = all.concat(arr);
+      
+      if (!next || arr.length === 0) break;
+      page++;
+      if (page > 200) break;
     }
-  }, []);
+    setReturns(all);
+  } catch (e: any) {
+    setReturns([]);
+    const status = e?.response?.status ?? 0;
+    if (status >= 500) toasterrormsg("Could not load returns");
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => { loadAllReturns(); }, [loadAllReturns]);
 
@@ -206,10 +326,11 @@ export default function StockReturnManagementPage() {
 
   const stageColKeys = STAGE_COLUMNS.map(s => s.key);
 
+  // ✅ OLD FILE API PATH: "stock-returns/${id}/"
   const loadReturnDetail = async (id: number) => {
     setDetailLoading(true);
     try {
-      const res = await safeGet(`admin/b2b-stock-returns/${id}/`) as any;
+      const res = await safeGet(`pos/stock-returns/${id}/`) as any;
       if (res?.data?.success) setSelectedReturn(res.data.data);
     } catch (e: any) {
       toasterrormsg("Could not load return detail");
@@ -217,14 +338,15 @@ export default function StockReturnManagementPage() {
     setDetailLoading(false);
   };
 
+  // ✅ OLD FILE API PATH: "admin/stock-returns/${id}/process/"
   const handleApprove = async (id: number) => {
-    const confirmed = window.confirm("Approve B2B return request? This will allow the branch to package items for this return.");
+    const confirmed = window.confirm("Approve return request? This will allow the branch to package items for this return.");
     if (!confirmed) return;
     setProcessing(true);
     try {
-      const res = await safePost(`admin/b2b-stock-returns/${id}/process/`, { action: "approve", note: "" }) as any;
+      const res = await safePost(`pos/admin/stock-returns/${id}/process/`, { action: "approve", note: "" }) as any;
       if (res?.data?.success) {
-        toastsuccessmsg("Return approved successfully");
+        toastsuccessmsg(res?.data?.message || "Return approved successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
@@ -236,18 +358,19 @@ export default function StockReturnManagementPage() {
     setProcessing(false);
   };
 
+  // ✅ OLD FILE API PATH: "admin/stock-returns/${id}/process/"
   const handleReject = async (id: number, note: string) => {
     if (!note.trim()) {
       toasterrormsg("Please provide a reason for rejection.");
       return;
     }
-    const confirmed = window.confirm(`Reject B2B return request? Reason: "${note}"`);
+    const confirmed = window.confirm(`Reject return request? Reason: "${note}"`);
     if (!confirmed) return;
     setProcessing(true);
     try {
-      const res = await safePost(`admin/b2b-stock-returns/${id}/process/`, { action: "reject", note }) as any;
+      const res = await safePost(`pos/admin/stock-returns/${id}/process/`, { action: "reject", note }) as any;
       if (res?.data?.success) {
-        toastsuccessmsg("Return rejected successfully");
+        toastsuccessmsg(res?.data?.message || "Return rejected successfully");
         setSelectedReturn(null);
         setShowRejectModal(false);
         setRejectNote("");
@@ -261,14 +384,15 @@ export default function StockReturnManagementPage() {
     setProcessing(false);
   };
 
+ 
   const handleReceive = async (id: number) => {
-    const confirmed = window.confirm("Confirm receive B2B return? This will increase stock in the company branch for all packaged items.");
+    const confirmed = window.confirm("Confirm receive return? This will increase stock in the company branch for all packaged items.");
     if (!confirmed) return;
     setProcessing(true);
     try {
-      const res = await safePost(`admin/b2b-stock-returns/${id}/receive/`) as any;
+      const res = await safePost(`pos/admin/stock-returns/${id}/receive/`) as any;
       if (res?.data?.success) {
-        toastsuccessmsg("Stock received successfully");
+        toastsuccessmsg(res?.data?.message || "Stock received successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
@@ -279,6 +403,8 @@ export default function StockReturnManagementPage() {
     }
     setProcessing(false);
   };
+
+  // ── Branch Summary View ──────────────────────────────────
 
   if (view === "branches") {
     return (
@@ -379,6 +505,8 @@ export default function StockReturnManagementPage() {
     );
   }
 
+  // ── List View ────────────────────────────────────────────
+
   return (
     <Page title="Stock Return Management">
       <div className="transition-content w-full pb-8 space-y-4">
@@ -429,7 +557,7 @@ export default function StockReturnManagementPage() {
                   suffix={search ? (
                     <button
                       onClick={() => { setSearch(""); setListPage(1); }}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       <XMarkIcon className="size-4" />
                     </button>
@@ -539,7 +667,8 @@ export default function StockReturnManagementPage() {
         </div>
       </div>
 
-      {/* Detail View Modal */}
+      {/* ── Detail View Modal ──────────────────────────────── */}
+
       <Transition appear show={!!selectedReturn} as={Fragment}>
         <Dialog
           as="div"
@@ -604,308 +733,9 @@ export default function StockReturnManagementPage() {
           </TransitionChild>
         </Dialog>
       </Transition>
-    </Page>
-  );
-}
 
-// GST helpers
-const safeNum = (val: any): number => {
-  if (val === null || val === undefined || val === "") return 0;
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return isNaN(n) ? 0 : n;
-};
+      {/* ── Reject Modal ────────────────────────────────────── */}
 
-interface GstTotals { basic: number; tax: number; cgst: number; sgst: number; igst: number; net: number; }
-
-interface ReturnDetailViewProps {
-  returnData: ReturnDetail;
-  onBack: () => void;
-  onApprove: (id: number) => void;
-  onReject: (id: number, note: string) => void;
-  onReceive: (id: number) => void;
-  processing: boolean;
-  rejectNote: string;
-  setRejectNote: (note: string) => void;
-  showRejectModal: boolean;
-  setShowRejectModal: (show: boolean) => void;
-}
-
-function ReturnDetailView({
-  returnData, onBack, onApprove, onReject, onReceive, processing,
-  rejectNote, setRejectNote, showRejectModal, setShowRejectModal
-}: ReturnDetailViewProps) {
-  const canApprove = returnData.status === "pending";
-  const canReceive = returnData.status === "approved" || returnData.status === "packaging_ready";
-  const isCompleted = returnData.status === "received" || returnData.status === "rejected";
-
-  const totalPackaged = returnData.items.filter(i => i.is_packaging_ready).length;
-  const totalItems = returnData.items.length;
-  const allPackaged = totalPackaged === totalItems && totalItems > 0;
-
-  const gstTotals: GstTotals = useMemo(() => {
-    return returnData.items.reduce(
-      (acc, i) => ({
-        basic: acc.basic + safeNum(i.basic_amount), tax: acc.tax + safeNum(i.tax_amount),
-        cgst: acc.cgst + safeNum(i.cgst), sgst: acc.sgst + safeNum(i.sgst),
-        igst: acc.igst + safeNum(i.igst), net: acc.net + safeNum(i.net_amount),
-      }),
-      { basic: 0, tax: 0, cgst: 0, sgst: 0, igst: 0, net: 0 }
-    );
-  }, [returnData.items]);
-
-  const hasGst = gstTotals.basic > 0 || gstTotals.tax > 0;
-
-  return (
-    <div className="space-y-4">
-      {/* Header Info */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-3">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Return Date</div>
-          <div className="font-semibold text-gray-800 text-sm">{formatDateDDMMYYYY(returnData.return_date)}</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Source B2B Transfer</div>
-          <div className="font-semibold text-primary-600 text-sm">{returnData.source_b2b_transfer_no || "—"}</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Items</div>
-          <div className="font-semibold text-gray-800 text-sm">{totalItems}</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Quantity</div>
-          <div className="font-semibold text-gray-800 text-sm">{returnData.items.reduce((sum, i) => sum + i.quantity, 0)}</div>
-        </Card>
-      </div>
-
-      {/* Branch Info */}
-      <Card className="p-4 bg-primary/5 border-primary/200">
-        <div className="flex items-center gap-2 mb-3">
-          <BuildingStorefrontIcon className="text-primary size-4" />
-          <span className="text-sm font-semibold text-primary-800">From Branch (Returning)</span>
-        </div>
-        <div className="mb-3">
-          <div className="font-semibold text-gray-800 text-sm">{returnData.branch_details?.name}</div>
-          {(returnData.branch_details?.city || returnData.branch_details?.state) && (
-            <div className="text-xs text-gray-400 mt-0.5">
-              {returnData.branch_details.city}{returnData.branch_details.city && returnData.branch_details.state ? ', ' : ''}{returnData.branch_details.state} {returnData.branch_details.pincode}
-            </div>
-          )}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div className="text-xs">
-            <label className="flex items-center gap-1.5 font-medium text-gray-500 mb-1"><PhoneIcon className="size-3" /> Phone</label>
-            <div className="px-2.5 py-1.5 border border-primary/200 rounded-lg text-xs bg-white text-gray-700">{returnData.branch_details?.phone || "—"}</div>
-          </div>
-          <div className="text-xs">
-            <label className="flex items-center gap-1.5 font-medium text-gray-500 mb-1"><UserIcon className="size-3" /> Owner</label>
-            <div className="px-2.5 py-1.5 border border-primary/200 rounded-lg text-xs bg-white text-gray-700">{returnData.branch_details?.owner_name || "—"}</div>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-1.5 font-medium text-gray-500 mb-1"><MapPinIcon className="size-3" /> Address</label>
-            <div className="px-2.5 py-1.5 border border-primary/200 rounded-lg text-xs bg-white text-gray-700">{returnData.branch_details?.address || "—"}</div>
-          </div>
-        </div>
-      </Card>
-
-      {returnData.note && (
-        <Card className="p-3 bg-primary/5 border-primary/200 flex items-start gap-2">
-          <DocumentTextIcon className="text-primary size-4 mt-0.5" />
-          <span className="text-xs text-primary-700">{returnData.note}</span>
-        </Card>
-      )}
-
-      {/* Status Info */}
-      <div className="flex flex-wrap gap-2 items-center justify-between px-2">
-        <div className="flex flex-wrap gap-2">
-          <Badge color="neutral" variant="soft" className="text-xs font-semibold">
-            <CubeIcon className="inline size-3 mr-1" /> Total Items: {totalItems}
-          </Badge>
-          <Badge color="primary" variant="soft" className="text-xs font-semibold">
-            <ChartBarIcon className="inline size-3 mr-1" /> Packaged: {totalPackaged}
-          </Badge>
-          <Badge color="warning" variant="soft" className="text-xs font-semibold">
-            <ExclamationTriangleIcon className="inline size-3 mr-1" /> Pending: {totalItems - totalPackaged}
-          </Badge>
-        </div>
-        <div className="text-xs text-gray-400">Created: {new Date(returnData.created_at).toLocaleString()}</div>
-      </div>
-
-      {/* Status Alerts */}
-      {returnData.status === "pending" && (
-        <Card className="p-3 bg-warning/5 border-warning/200 text-warning-700 text-sm flex items-center gap-2">
-          <BuildingStorefrontIcon className="text-warning size-4" />
-          <span>Awaiting approval. Branch cannot package until approved.</span>
-        </Card>
-      )}
-      {returnData.status === "approved" && (
-        <Card className="p-3 bg-success/5 border-success/200 text-success-700 text-sm flex items-center gap-2">
-          <CheckCircleIcon className="text-success size-4" />
-          <span>Approved. Waiting for branch to mark items as packaged.</span>
-        </Card>
-      )}
-      {returnData.status === "packaging_ready" && (
-        <Card className="p-3 bg-primary/5 border-primary/200 text-primary-700 text-sm flex items-center gap-2">
-          <ChartBarIcon className="text-primary size-4" />
-          <span>All items packaged by branch. Ready for final receipt.</span>
-        </Card>
-      )}
-
-      {/* Actions */}
-      {!isCompleted && (
-        <Card className="p-4 flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Actions:</span>
-            {canApprove && (
-              <>
-                <Button color="success" variant="filled" className="text-sm font-semibold" onClick={() => onApprove(returnData.id)} disabled={processing}>
-                  <CheckIcon className="inline size-4 mr-1" /> Approve
-                </Button>
-                <Button color="error" variant="filled" className="text-sm font-semibold" onClick={() => setShowRejectModal(true)} disabled={processing}>
-                  <XMarkIcon className="inline size-4 mr-1" /> Reject
-                </Button>
-              </>
-            )}
-            {canReceive && (
-              <Button
-                color="primary"
-                variant="filled"
-                className="text-sm font-semibold"
-                onClick={() => onReceive(returnData.id)}
-                disabled={processing || !allPackaged}
-              >
-                <CheckCircleIcon className="inline size-4 mr-1" /> Receive Stock
-                {!allPackaged && <span className="text-xs ml-1">({totalPackaged}/{totalItems})</span>}
-              </Button>
-            )}
-          </div>
-          {canReceive && !allPackaged && (
-            <span className="text-xs text-warning-600 font-medium flex items-center gap-1.5">
-              <ExclamationTriangleIcon className="size-4" /> Waiting for branch to package all items ({totalPackaged}/{totalItems})
-            </span>
-          )}
-          {canReceive && allPackaged && (
-            <span className="text-xs text-success-600 font-medium flex items-center gap-1.5">
-              <CheckCircleIcon className="size-4" /> All items packaged. Ready to receive.
-            </span>
-          )}
-        </Card>
-      )}
-
-      {/* Items Table */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table className="w-full text-sm min-w-[1150px]">
-            <THead>
-              <Tr>
-                <Th className="text-left text-xs font-semibold text-gray-500">#</Th>
-                <Th className="text-left text-xs font-semibold text-gray-500">Item Name</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">Variant</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">HSN</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">GST</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">Qty</Th>
-                <Th className="text-right text-xs font-semibold text-gray-500">Rate ₹</Th>
-                <Th className="text-right text-xs font-semibold text-gray-500">Net ₹</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">Branch Stock</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">Company Stock</Th>
-                <Th className="text-center text-xs font-semibold text-gray-500">Status</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {returnData.items.map((item, idx) => {
-                const isPackaged = item.is_packaging_ready;
-                const isReturned = item.is_returned_to_company;
-                return (
-                  <Tr key={item.id} className={clsx(
-                    isReturned ? "bg-success/10" : isPackaged ? "bg-primary/10" : ""
-                  )}>
-                    <Td className="text-gray-400 text-xs">{idx + 1}</Td>
-                    <Td className="font-semibold text-gray-800">{item.item_name}</Td>
-                    <Td className="text-center">
-                      <Badge color="primary" variant="soft" className="text-xs">{item.variant_info || "Default"}</Badge>
-                    </Td>
-                    <Td className="text-center font-mono text-xs text-gray-500">{item.hsnCode || "—"}</Td>
-                    <Td className="text-center">
-                      <Badge color="primary" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge>
-                    </Td>
-                    <Td className="text-center">
-                      <Badge color="primary" variant="soft" className="text-xs font-semibold">{item.quantity}</Badge>
-                    </Td>
-                    <Td className="text-right font-mono text-xs font-semibold text-primary-600">
-                      ₹{item.rate?.toFixed(2) || "0.00"}
-                    </Td>
-                    <Td className="text-right font-mono text-xs font-semibold text-primary-600">
-                      ₹{safeNum(item.net_amount).toFixed(2)}
-                    </Td>
-                    <Td className="text-center">
-                      <span className={clsx("text-xs font-semibold", (item.branch_stock || 0) <= 0 ? "text-error-500" : "text-gray-700")}>
-                        {item.branch_stock || 0}
-                      </span>
-                    </Td>
-                    <Td className="text-center">
-                      <span className="text-xs font-semibold text-gray-700">{item.company_stock || 0}</span>
-                    </Td>
-                    <Td className="text-center">
-                      {isReturned ? (
-                        <Badge color="success" variant="soft" className="text-xs font-semibold">
-                          <CheckCircleIcon className="inline size-3 mr-1" /> Returned
-                        </Badge>
-                      ) : isPackaged ? (
-                        <Badge color="primary" variant="soft" className="text-xs font-semibold">
-                          <ChartBarIcon className="inline size-3 mr-1" /> Packaged
-                        </Badge>
-                      ) : (
-                        <Badge color="warning" variant="soft" className="text-xs font-semibold">
-                          <ExclamationTriangleIcon className="inline size-3 mr-1" /> Pending
-                        </Badge>
-                      )}
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-        </div>
-      </Card>
-
-      {/* GST Summary */}
-      {hasGst && (
-        <Card className="p-4 bg-primary/5 border-primary/200">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">GST Summary</h3>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between py-1.5 border-b border-primary/200">
-              <span className="text-gray-600">Total Basic Amount</span>
-              <span className="font-medium">₹ {gstTotals.basic.toFixed(2)}</span>
-            </div>
-            {gstTotals.cgst > 0 || gstTotals.sgst > 0 ? (
-              <>
-                <div className="flex justify-between py-1.5 border-b border-primary/200">
-                  <span className="text-gray-600">CGST</span>
-                  <span className="font-medium">₹ {gstTotals.cgst.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b border-primary/200">
-                  <span className="text-gray-600">SGST</span>
-                  <span className="font-medium">₹ {gstTotals.sgst.toFixed(2)}</span>
-                </div>
-              </>
-            ) : gstTotals.igst > 0 ? (
-              <div className="flex justify-between py-1.5 border-b border-primary/200">
-                <span className="text-gray-600">IGST</span>
-                <span className="font-medium">₹ {gstTotals.igst.toFixed(2)}</span>
-              </div>
-            ) : null}
-            <div className="flex justify-between pt-2 text-base font-bold">
-              <span>Total Tax Amount</span>
-              <span className="text-primary-700">₹ {gstTotals.tax.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/300">
-              <span>Net Total (incl. GST)</span>
-              <span className="text-primary-700">₹ {gstTotals.net.toFixed(2)}</span>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Reject Modal */}
       <Transition appear show={showRejectModal} as={Fragment}>
         <Dialog
           as="div"
@@ -939,7 +769,7 @@ function ReturnDetailView({
                   as="h3"
                   className="text-base font-medium text-gray-800 dark:text-dark-100"
                 >
-                  Reject B2B Return
+                  Reject Return
                 </DialogTitle>
                 <Button
                   onClick={() => setShowRejectModal(false)}
@@ -954,12 +784,12 @@ function ReturnDetailView({
                 <Card className="p-3 bg-error/5 border-error/200 text-error-600 text-sm flex items-center gap-2">
                   <XMarkIcon className="size-4" /> This will reject the return request.
                 </Card>
-                <p className="text-sm text-gray-600 mt-4 mb-3">Please provide a reason for rejection:</p>
+                <p className="text-sm text-gray-600 dark:text-dark-300 mt-4 mb-3">Please provide a reason for rejection:</p>
                 <textarea
                   value={rejectNote}
                   onChange={(e) => setRejectNote(e.target.value)}
                   placeholder="Reason for rejection..."
-                  className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-error-500 min-h-[100px] resize-none"
+                  className="w-full border-2 border-gray-200 dark:border-dark-600 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-error-500 min-h-[100px] resize-none bg-white dark:bg-dark-800 text-gray-800 dark:text-dark-100"
                 />
                 <div className="flex gap-3 justify-end mt-4">
                   <Button
@@ -971,8 +801,12 @@ function ReturnDetailView({
                   </Button>
                   <Button
                     color="error"
-                    onClick={() => { onReject(returnData.id, rejectNote); }}
-                    disabled={processing}
+                    onClick={() => {
+                      if (selectedReturn) {
+                        handleReject(selectedReturn.id, rejectNote);
+                      }
+                    }}
+                    disabled={processing || !selectedReturn}
                     className="min-w-[7rem] rounded-full"
                   >
                     {processing ? "Processing..." : "Reject"}
@@ -983,6 +817,318 @@ function ReturnDetailView({
           </TransitionChild>
         </Dialog>
       </Transition>
+    </Page>
+  );
+}
+
+// ── ReturnDetailView Component ─────────────────────────────
+
+interface ReturnDetailViewProps {
+  returnData: ReturnDetail;
+  onBack: () => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number, note: string) => void;
+  onReceive: (id: number) => void;
+  processing: boolean;
+  rejectNote: string;
+  setRejectNote: (note: string) => void;
+  showRejectModal: boolean;
+  setShowRejectModal: (show: boolean) => void;
+}
+
+function ReturnDetailView({
+  returnData,
+  onBack,
+  onApprove,
+  onReject,
+  onReceive,
+  processing,
+  rejectNote,
+  setRejectNote,
+  showRejectModal,
+  setShowRejectModal,
+}: ReturnDetailViewProps) {
+  const canApprove = returnData.status === "pending";
+  const canReceive = returnData.status === "approved" || returnData.status === "packaging_ready";
+  const isCompleted = returnData.status === "received" || returnData.status === "rejected";
+
+  const totalPackaged = returnData.items.filter(i => i.is_packaging_ready).length;
+  const totalItems = returnData.items.length;
+  const allPackaged = totalPackaged === totalItems && totalItems > 0;
+
+  const totalQty = returnData.items.reduce((sum, i) => sum + i.quantity, 0);
+  const totalAmount = returnData.items.reduce((sum, i) => sum + (i.quantity * i.rate), 0);
+
+  const gstTotals: GstTotals = useMemo(() => {
+    return returnData.items.reduce(
+      (acc, i) => ({
+        basic: acc.basic + safeNum(i.basic_amount),
+        tax: acc.tax + safeNum(i.tax_amount),
+        cgst: acc.cgst + safeNum(i.cgst),
+        sgst: acc.sgst + safeNum(i.sgst),
+        igst: acc.igst + safeNum(i.igst),
+        net: acc.net + safeNum(i.net_amount),
+      }),
+      { basic: 0, tax: 0, cgst: 0, sgst: 0, igst: 0, net: 0 }
+    );
+  }, [returnData.items]);
+
+  const hasGst = gstTotals.basic > 0 || gstTotals.tax > 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Header Info */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="p-3">
+          <div className="text-xs text-gray-400 dark:text-dark-400 uppercase tracking-wide mb-1">Return Date</div>
+          <div className="font-semibold text-gray-800 dark:text-dark-100 text-sm">{formatDateDDMMYYYY(returnData.return_date)}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs text-gray-400 dark:text-dark-400 uppercase tracking-wide mb-1">Source Transfer</div>
+          <div className="font-semibold text-primary-600 dark:text-primary-400 text-sm">{returnData.source_b2b_transfer_no || "—"}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs text-gray-400 dark:text-dark-400 uppercase tracking-wide mb-1">Total Items</div>
+          <div className="font-semibold text-gray-800 dark:text-dark-100 text-sm">{totalItems}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs text-gray-400 dark:text-dark-400 uppercase tracking-wide mb-1">Total Quantity</div>
+          <div className="font-semibold text-gray-800 dark:text-dark-100 text-sm">{totalQty}</div>
+        </Card>
+      </div>
+
+      {/* Branch Info - From Branch */}
+      <BranchInfoCard
+        title="From Branch"
+        icon={<BuildingStorefrontIcon className="text-primary size-4" />}
+        details={returnData.branch_details}
+      />
+
+      {/* Note */}
+      {returnData.note && (
+        <Card className="p-3 bg-primary/5 border-primary/200 dark:border-dark-600 flex items-start gap-2">
+          <DocumentTextIcon className="text-primary size-4 mt-0.5" />
+          <span className="text-xs text-primary-700 dark:text-primary-400">{returnData.note}</span>
+        </Card>
+      )}
+
+      {/* Status Info */}
+      <div className="flex flex-wrap gap-2 items-center justify-between px-2">
+        <div className="flex flex-wrap gap-2">
+          <Badge color="neutral" variant="soft" className="text-xs font-semibold">
+            <CubeIcon className="inline size-3 mr-1" /> Total Items: {totalItems}
+          </Badge>
+          <Badge color="primary" variant="soft" className="text-xs font-semibold">
+            <ChartBarIcon className="inline size-3 mr-1" /> Packaged: {totalPackaged}
+          </Badge>
+          <Badge color="warning" variant="soft" className="text-xs font-semibold">
+            <ExclamationTriangleIcon className="inline size-3 mr-1" /> Pending: {totalItems - totalPackaged}
+          </Badge>
+        </div>
+        <div className="text-xs text-gray-400 dark:text-dark-400">Created: {new Date(returnData.created_at).toLocaleString()}</div>
+      </div>
+
+      {/* Status Alerts */}
+      {returnData.status === "pending" && (
+        <Card className="p-3 bg-warning/5 border-warning/200 dark:border-dark-600 text-warning-700 dark:text-warning-400 text-sm flex items-center gap-2">
+          <BuildingStorefrontIcon className="text-warning size-4" />
+          <span>Awaiting approval. Branch cannot package until approved.</span>
+        </Card>
+      )}
+      {returnData.status === "approved" && (
+        <Card className="p-3 bg-success/5 border-success/200 dark:border-dark-600 text-success-700 dark:text-success-400 text-sm flex items-center gap-2">
+          <CheckCircleIcon className="text-success size-4" />
+          <span>Approved. Waiting for branch to mark items as packaged.</span>
+        </Card>
+      )}
+      {returnData.status === "packaging_ready" && (
+        <Card className="p-3 bg-primary/5 border-primary/200 dark:border-dark-600 text-primary-700 dark:text-primary-400 text-sm flex items-center gap-2">
+          <ChartBarIcon className="text-primary size-4" />
+          <span>All items packaged by branch. Ready for final receipt.</span>
+        </Card>
+      )}
+
+      {/* Actions */}
+      {!isCompleted && (
+        <Card className="p-4 flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-dark-200">Actions:</span>
+            {canApprove && (
+              <>
+                <Button
+                  color="success"
+                  variant="filled"
+                  className="text-sm font-semibold"
+                  onClick={() => onApprove(returnData.id)}
+                  disabled={processing}
+                >
+                  <CheckIcon className="inline size-4 mr-1" /> Approve
+                </Button>
+                <Button
+                  color="error"
+                  variant="filled"
+                  className="text-sm font-semibold"
+                  onClick={() => setShowRejectModal(true)}
+                  disabled={processing}
+                >
+                  <XMarkIcon className="inline size-4 mr-1" /> Reject
+                </Button>
+              </>
+            )}
+            {canReceive && (
+              <Button
+                color="primary"
+                variant="filled"
+                className="text-sm font-semibold"
+                onClick={() => onReceive(returnData.id)}
+                disabled={processing || !allPackaged}
+              >
+                <CheckCircleIcon className="inline size-4 mr-1" /> Receive Stock
+                {!allPackaged && <span className="text-xs ml-1">({totalPackaged}/{totalItems})</span>}
+              </Button>
+            )}
+          </div>
+          {canApprove && (
+            <span className="text-xs text-gray-500 dark:text-dark-400 flex items-center gap-1.5">
+              {allPackaged ? (
+                <><CheckCircleIcon className="size-3.5 text-success" /> All items packaged</>
+              ) : (
+                <><ExclamationTriangleIcon className="size-3.5 text-warning" /> {totalItems - totalPackaged} items not packaged yet</>
+              )}
+            </span>
+          )}
+          {canReceive && !allPackaged && (
+            <span className="text-xs text-warning-600 dark:text-warning-400 font-medium flex items-center gap-1.5">
+              <ExclamationTriangleIcon className="size-4" /> Waiting for branch to package all items ({totalPackaged}/{totalItems})
+            </span>
+          )}
+          {canReceive && allPackaged && (
+            <span className="text-xs text-success-600 dark:text-success-400 font-medium flex items-center gap-1.5">
+              <CheckCircleIcon className="size-4" /> All items packaged. Ready to receive.
+            </span>
+          )}
+        </Card>
+      )}
+
+      {/* Items Table */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="w-full text-sm min-w-[1250px]">
+            <THead>
+              <Tr>
+                <Th className="text-left text-xs font-semibold text-gray-500 dark:text-dark-300">#</Th>
+                <Th className="text-left text-xs font-semibold text-gray-500 dark:text-dark-300">Item Name</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Variant</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Barcode</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">HSN</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">GST</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Qty</Th>
+                <Th className="text-right text-xs font-semibold text-gray-500 dark:text-dark-300">Rate ₹</Th>
+                <Th className="text-right text-xs font-semibold text-gray-500 dark:text-dark-300">Net ₹</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Branch Stock</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Company Stock</Th>
+                <Th className="text-center text-xs font-semibold text-gray-500 dark:text-dark-300">Status</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {returnData.items.map((item, idx) => {
+                const isPackaged = item.is_packaging_ready;
+                const isReturned = item.is_returned_to_company;
+                return (
+                  <Tr key={item.id} className={clsx(
+                    isReturned ? "bg-success/10" : isPackaged ? "bg-primary/10" : ""
+                  )}>
+                    <Td className="text-gray-400 dark:text-dark-400 text-xs">{idx + 1}</Td>
+                    <Td className="font-semibold text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                    <Td className="text-center">
+                      <Badge color="primary" variant="soft" className="text-xs">{item.variant_info || "Default"}</Badge>
+                    </Td>
+                    <Td className="text-center font-mono text-xs text-gray-400 dark:text-dark-400">{item.barcode || "—"}</Td>
+                    <Td className="text-center font-mono text-xs text-gray-500 dark:text-dark-400">{item.hsnCode || "—"}</Td>
+                    <Td className="text-center">
+                      <Badge color="primary" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge>
+                    </Td>
+                    <Td className="text-center">
+                      <Badge color="primary" variant="soft" className="text-xs font-semibold">{item.quantity}</Badge>
+                    </Td>
+                    <Td className="text-right font-mono text-xs font-semibold text-primary-600 dark:text-primary-400">
+                      ₹{item.rate?.toFixed(2) || "0.00"}
+                    </Td>
+                    <Td className="text-right font-mono text-xs font-semibold text-primary-600 dark:text-primary-400">
+                      ₹{safeNum(item.net_amount).toFixed(2)}
+                    </Td>
+                    <Td className="text-center">
+                      <span className={clsx("text-xs font-semibold", (item.branch_stock || 0) <= 0 ? "text-error-500" : "text-gray-700 dark:text-dark-200")}>
+                        {item.branch_stock || 0}
+                      </span>
+                    </Td>
+                    <Td className="text-center">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-dark-200">{item.company_stock || 0}</span>
+                    </Td>
+                    <Td className="text-center">
+                      {isReturned ? (
+                        <Badge color="success" variant="soft" className="text-xs font-semibold">
+                          <CheckCircleIcon className="inline size-3 mr-1" /> Returned
+                        </Badge>
+                      ) : isPackaged ? (
+                        <Badge color="primary" variant="soft" className="text-xs font-semibold">
+                          <ChartBarIcon className="inline size-3 mr-1" /> Packaged
+                        </Badge>
+                      ) : (
+                        <Badge color="warning" variant="soft" className="text-xs font-semibold">
+                          <ExclamationTriangleIcon className="inline size-3 mr-1" /> Pending
+                        </Badge>
+                      )}
+                    </Td>
+                  </Tr>
+                );
+              })}
+              {/* Totals row */}
+              <Tr className="bg-gray-50 dark:bg-dark-800 border-t-2 border-gray-200 dark:border-dark-600">
+                <Td colSpan={6} className="text-right font-semibold text-gray-600 dark:text-dark-200">
+                  Total:
+                </Td>
+                <Td className="text-center font-bold text-primary-600 dark:text-primary-400">{totalQty}</Td>
+                <Td className="text-right font-bold text-primary-600 dark:text-primary-400">₹{totalAmount.toFixed(2)}</Td>
+                <Td className="text-right font-bold text-primary-700 dark:text-primary-400">₹{gstTotals.net.toFixed(2)}</Td>
+                <Td colSpan={3} className="text-center text-xs text-gray-400 dark:text-dark-400">
+                  {totalPackaged} of {totalItems} items packaged
+                </Td>
+              </Tr>
+            </TBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* GST Summary */}
+      {hasGst && <GstSummaryCard totals={gstTotals} />}
+
+      {/* Footer Status Messages */}
+      {returnData.status === "received" && (
+        <Card className="p-3.5 bg-success/5 border-success/200 dark:border-dark-600 text-success-700 dark:text-success-400 text-sm flex items-center gap-2">
+          <CheckCircleIcon className="size-5" /> Return fully received. Stock increased in company branch.
+        </Card>
+      )}
+      {returnData.status === "rejected" && (
+        <Card className="p-3.5 bg-error/5 border-error/200 dark:border-dark-600 text-error-600 dark:text-error-400 text-sm flex items-center gap-2">
+          <XMarkIcon className="size-5" /> Return request rejected.
+        </Card>
+      )}
+      {returnData.status === "approved" && (
+        <Card className="p-3.5 bg-success/5 border-success/200 dark:border-dark-600 text-success-700 dark:text-success-400 text-sm flex items-center gap-2">
+          <CheckCircleIcon className="size-5" /> Return approved. Waiting for branch packaging.
+        </Card>
+      )}
+      {returnData.status === "packaging_ready" && (
+        <Card className="p-3.5 bg-primary/5 border-primary/200 dark:border-dark-600 text-primary-700 dark:text-primary-400 text-sm flex items-center gap-2">
+          <ChartBarIcon className="size-5" /> All items packaged. Click "Receive Stock" to complete.
+        </Card>
+      )}
+      {returnData.status === "pending" && (
+        <Card className="p-3.5 bg-warning/5 border-warning/200 dark:border-dark-600 text-warning-700 dark:text-warning-400 text-sm flex items-center gap-2">
+          <ExclamationTriangleIcon className="size-5" /> Pending approval. Review items and approve or reject.
+        </Card>
+      )}
     </div>
   );
 }
