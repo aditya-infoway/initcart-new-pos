@@ -1,3 +1,4 @@
+// new theme page
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
@@ -23,6 +24,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ItemRow {
@@ -200,6 +202,7 @@ function VariantsDrawer({
 // ── Main List Page ─────────────────────────────────────────────────────────
 export default function ItemsListPage() {
   const navigate = useNavigate();
+  const { canAdd, canEdit, canDelete } = usePermission("/AddItems");
   const searchRef = useRef<HTMLInputElement>(null);
 
 const isSuperAdmin = useMemo(() => {
@@ -347,31 +350,35 @@ const isSuperAdmin = useMemo(() => {
     },
     {
       id: "actions", header: "Actions", enableSorting: false, enableGlobalFilter: false,
-      cell: ({ row }: CellContext<ItemRow, unknown>) => (
-        <div className="flex items-center gap-1.5">
-          <Button isIcon variant="flat" className="size-7 rounded-full" title="View Variants"
-            onClick={() => setVariantItem(row.original)}>
-            <EyeIcon className="size-3.5" />
+cell: ({ row }: CellContext<ItemRow, unknown>) => (
+  <div className="flex items-center gap-1.5">
+    <Button isIcon variant="flat" className="size-7 rounded-full" title="View Variants"
+      onClick={() => setVariantItem(row.original)}>
+      <EyeIcon className="size-3.5" />
+    </Button>
+    {canEditDelete(row.original) && (
+      <>
+        {canEdit && (
+          <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
+            onClick={() => navigate(`/master-menu/add-items/${row.original.id}/edit`)}>
+            <PencilSquareIcon className="size-3.5 text-primary-600" />
           </Button>
-          {canEditDelete(row.original) && (
-            <>
-              <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
-                onClick={() => navigate(`/master-menu/add-items/${row.original.id}/edit`)}>
-                <PencilSquareIcon className="size-3.5 text-primary-600" />
-              </Button>
-              <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
-                title="Delete" onClick={() => handleDelete(row.original)}>
-                <TrashIcon className="size-3.5 text-error-600" />
-              </Button>
-            </>
-          )}
-          {!isSuperAdmin && row.original.createdBySuperadmin && (
-            <span className="text-xs italic text-gray-400 dark:text-dark-500">Main</span>
-          )}
-        </div>
-      ),
+        )}
+        {canDelete && (
+          <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+            title="Delete" onClick={() => handleDelete(row.original)}>
+            <TrashIcon className="size-3.5 text-error-600" />
+          </Button>
+        )}
+      </>
+    )}
+    {!isSuperAdmin && row.original.createdBySuperadmin && (
+      <span className="text-xs italic text-gray-400 dark:text-dark-500">Main</span>
+    )}
+  </div>
+),
     },
-  ], [navigate, page, pageSize, isSuperAdmin]);
+ ], [navigate, page, pageSize, isSuperAdmin, canEdit, canDelete]);
 
   const table = useReactTable({
     data: rows, columns,
@@ -408,10 +415,12 @@ const isSuperAdmin = useMemo(() => {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={() => fetchRows(1)} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
-            <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/AddItems")}>
-              <PlusIcon className="size-4" /><span>Add Item</span>
-            </Button>
+{canAdd && (
+  <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
+    onClick={() => navigate("/Items")}>
+    <PlusIcon className="size-4" /><span>Add Item</span>
+  </Button>
+)}
           </div>
         </div>
 
