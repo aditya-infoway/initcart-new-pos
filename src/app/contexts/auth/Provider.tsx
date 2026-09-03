@@ -1,3 +1,4 @@
+//auth/provider.tsx
 import { useEffect, useReducer, ReactNode } from "react";
 import { Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
 import { setSession } from "@/utils/jwt";
@@ -120,47 +121,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async (credentials: { identifier: string; password: string }) => {
-    dispatch({ type: "LOGIN_REQUEST" });
-    try {
-      const response = await Post(
-        "pos/auth/login/",
-        { identifier: credentials.identifier, password: credentials.password },
-        false,
-      );
-      // API returns: { success, message, access, refresh, user: { id, username, email, role }, branch, prefixes }
-      const { access, refresh, user, message } = response.data;
-      const email = user?.email;
-      const role = user?.role;
+const login = async (credentials: { identifier: string; password: string }) => {
+  dispatch({ type: "LOGIN_REQUEST" });
+  try {
+    const response = await Post(
+      "pos/auth/login/",
+      { identifier: credentials.identifier, password: credentials.password },
+      false,
+    );
+    const { access, refresh, user, message } = response.data;
+    const email = user?.email;
+    const role = user?.role;
 
-      if (!access || !email) {
-        throw new Error(message || "Login response did not include an access token.");
-      }
-
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
-      localStorage.setItem("email", email);
-      localStorage.setItem("role", role);
-      localStorage.setItem("branch", JSON.stringify(response.data.branch ?? {}));
-      localStorage.setItem("prefixes", JSON.stringify(response.data.prefixes ?? {}));
-
-      setSession(access);
-
-      toastsuccessmsg(message || "Login successful");
-
-      dispatch({
-        type: "LOGIN_SUCCESS",
-        payload: {
-          user: { email, access, refresh, role } as unknown as User,
-        },
-      });
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err.message || "Login failed";
-      toasterrormsg(message);
-      dispatch({ type: "LOGIN_ERROR", payload: { errorMessage: message } });
-      throw err;
+    if (!access || !email) {
+      throw new Error(message || "Login response did not include an access token.");
     }
-  };
+
+    localStorage.setItem("access", access);
+    localStorage.setItem("refresh", refresh);
+    localStorage.setItem("email", email);
+    localStorage.setItem("role", role);
+    localStorage.setItem("branch", JSON.stringify(response.data.branch ?? {}));
+    localStorage.setItem("prefixes", JSON.stringify(response.data.prefixes ?? {}));
+    // ✅ naya add
+    localStorage.setItem("employee", JSON.stringify(response.data.employee ?? null));
+    localStorage.setItem("permissions", JSON.stringify(response.data.permissions ?? []));
+
+    setSession(access);
+    toastsuccessmsg(message || "Login successful");
+
+    dispatch({
+      type: "LOGIN_SUCCESS",
+      payload: { user: { email, access, refresh, role } as unknown as User },
+    });
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err.message || "Login failed";
+    toasterrormsg(message);
+    dispatch({ type: "LOGIN_ERROR", payload: { errorMessage: message } });
+    throw err;
+  }
+};
 
   const completeAuth = (companyId: string) => {
     const token = state.pendingToken || window.sessionStorage.getItem(PENDING_TOKEN_KEY);
@@ -179,15 +179,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     dispatch({ type: "SESSION_ESTABLISHED", payload: { user: state.user } });
   };
-
-  async function logout() {
-    setSession(null);
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    dispatch({ type: "LOGOUT" });
-  }
+async function logout() {
+  setSession(null);
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  localStorage.removeItem("email");
+  localStorage.removeItem("role");
+  localStorage.removeItem("branch");
+  localStorage.removeItem("prefixes");
+  localStorage.removeItem("employee");   // ✅
+  localStorage.removeItem("permissions"); // ✅
+  dispatch({ type: "LOGOUT" });
+}
 
   if (!children) return null;
 
