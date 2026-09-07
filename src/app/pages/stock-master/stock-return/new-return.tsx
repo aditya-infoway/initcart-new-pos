@@ -268,7 +268,7 @@ export default function NewStockReturnPage() {
       const body = res?.data ?? res;
       if (body?.success !== false) {
         toastsuccessmsg(body?.message ?? "Return created successfully.");
-        navigate("/order-management/stock-return");
+        navigate("/stockReturn");
       } else {
         toasterrormsg(body?.message ?? "Failed to create return.");
       }
@@ -290,7 +290,7 @@ export default function NewStockReturnPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/order-management/stock-return")}>
+              onClick={() => navigate("/stockReturn")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -473,3 +473,4 @@ export default function NewStockReturnPage() {
     </Page>
   );
 }
+

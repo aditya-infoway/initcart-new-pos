@@ -173,7 +173,7 @@ export default function B2BStockReturnPage() {
       cell: ({ row }: CellContext<ReturnListItem, unknown>) => (
         <Button isIcon variant="flat" className="size-8 rounded-full"
           title="View Detail"
-          onClick={() => navigate(`/b2b-inventory/stock-return/detail/${row.original.id}`)}>
+          onClick={() => navigate(`/b2bstockReturn/${row.original.id}`)}>
           <EyeIcon className="size-4" />
         </Button>
       ),
@@ -211,7 +211,7 @@ export default function B2BStockReturnPage() {
           </div>
           {canAdd && (
           <Button
-            onClick={() => navigate("/b2b-inventory/stock-return/create")}
+            onClick={() => navigate("/b2bstockReturn/create")}
             color="primary"
             className="flex items-center gap-2"
           >
@@ -302,3 +302,4 @@ export default function B2BStockReturnPage() {
     </Page>
   );
 }
+

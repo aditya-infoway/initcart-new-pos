@@ -241,7 +241,7 @@ export default function B2BPurchaseVerificationPage() {
             variant={isVerified ? "flat" : "soft"} 
             color={isVerified ? "neutral" : "primary"}
             className="h-7 px-3 text-xs gap-1.5 rounded-lg"
-            onClick={() => navigate(`/purchase/b2b-purchase-verification/detail/${row.original.id}`)}
+            onClick={() => navigate(`/b2bpurchaseverify/${row.original.id}`)}
           >
             {isVerified ? (
               <>
@@ -438,3 +438,4 @@ export default function B2BPurchaseVerificationPage() {
     </Page>
   );
 }
+

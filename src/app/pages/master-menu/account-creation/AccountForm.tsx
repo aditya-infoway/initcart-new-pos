@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router";
 import { Country, State, City } from "country-state-city";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 import { Button, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
@@ -132,7 +133,7 @@ export function AccountFormPage() {
         await Post("pos/account-create/", payload);
         toastsuccessmsg("Account created successfully.");
       }
-      navigate("/accounts");
+      navigate("/Addaccounts");
     } catch (e: any) {
       toasterrormsg(
         e?.response?.data?.detail ||
@@ -168,8 +169,8 @@ export function AccountFormPage() {
             {isEdit ? "Update account details" : "Fill in the details to create a new account"}
           </p>
         </div>
-        <Button variant="outlined" onClick={() => navigate("/Addaccounts")}>
-          Back to Accounts
+        <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/Addaccounts")}>
+          <ArrowLeftIcon className="size-4" /> Back to Accounts
         </Button>
       </div>
 
@@ -412,10 +413,11 @@ export function AccountFormPage() {
           <Button
             type="button"
             variant="outlined"
-            onClick={() => navigate("/accounts")}
+            className="h-9 gap-2 rounded-md px-3 text-sm"
+            onClick={() => navigate("/Addaccounts")}
             disabled={saving}
           >
-            Cancel
+            <ArrowLeftIcon className="size-4" /> Cancel
           </Button>
         </div>
       </form>
@@ -423,3 +425,4 @@ export function AccountFormPage() {
   );
 }
 export default AccountFormPage;
+
