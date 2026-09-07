@@ -284,7 +284,7 @@ export default function StockVerificationDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/order-management/stock-verification")}>
+              onClick={() => navigate("/stock-verification")}>
               <ArrowLeftIcon className="size-4" /> Back to Verifications
             </Button>
             <div className="flex flex-wrap items-center gap-2">
@@ -630,3 +630,4 @@ export default function StockVerificationDetailPage() {
     </Page>
   );
 }
+

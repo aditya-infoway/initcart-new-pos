@@ -68,7 +68,7 @@ export default function StockReturnDetailPage() {
       const res  = await Post(`pos/stock-returns/${detail.id}/cancel/`, {}) as any;
       const body = res?.data ?? res;
       body?.success !== false
-        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/order-management/stock-return"))
+        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/stockReturn"))
         : toasterrormsg(body?.message ?? "Failed.");
     } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error."); }
   };
@@ -188,7 +188,7 @@ export default function StockReturnDetailPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/order-management/stock-return")}>
+              onClick={() => navigate("/stockReturn")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -299,3 +299,4 @@ export default function StockReturnDetailPage() {
     </Page>
   );
 }
+

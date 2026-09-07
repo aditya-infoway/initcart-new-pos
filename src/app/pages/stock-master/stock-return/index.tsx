@@ -139,7 +139,7 @@ export default function StockReturnPage() {
       cell: ({ row }: CellContext<ReturnListItem, unknown>) => (
         <Button isIcon variant="flat" className="size-8 rounded-full"
           title="View Detail"
-          onClick={() => navigate(`/order-management/stock-return/${row.original.id}`)}>
+          onClick={() => navigate(`/stockReturn/${row.original.id}`)}>
           <EyeIcon className="size-4" />
         </Button>
       ),
@@ -202,7 +202,7 @@ export default function StockReturnPage() {
             </Button>
             {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/order-management/stock-return")}>
+              onClick={() => navigate("/stockReturn/new")}>
               <PlusIcon className="size-4" />
               <span>New Return</span>
             </Button>
@@ -266,3 +266,4 @@ export default function StockReturnPage() {
     </Page>
   );
 }
+

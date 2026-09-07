@@ -252,7 +252,7 @@ export default function SchemeOfferCreatePage() {
       const res = await Post("pos/scheme-offers/", payload) as any;
       if (res?.data?.success) {
         toastsuccessmsg(res.data.message || "Scheme offer created successfully");
-        navigate("/b2b-inventory/scheme-offer");
+        navigate("/SchemeOffer");
       } else {
         toasterrormsg(res?.data?.message || "Failed to create scheme offer");
       }
@@ -291,7 +291,7 @@ export default function SchemeOfferCreatePage() {
         {/* Header */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2b-inventory/scheme-offer")}>
+            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/SchemeOffer")}>
               <ArrowLeftIcon className="size-4" /> Back to Schemes
             </Button>
             <div>
@@ -423,7 +423,7 @@ export default function SchemeOfferCreatePage() {
 
         {/* Action Buttons */}
         <div className="px-(--margin-x) flex flex-wrap gap-3 justify-end">
-          <Button variant="outlined" onClick={() => navigate("/b2b-inventory/scheme-offer")}>
+          <Button variant="outlined" onClick={() => navigate("/SchemeOffer")}>
             Cancel
           </Button>
           <Button color="primary" onClick={handleSubmit} disabled={creating}>
@@ -434,3 +434,4 @@ export default function SchemeOfferCreatePage() {
     </Page>
   );
 }
+

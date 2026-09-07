@@ -199,7 +199,7 @@ export default function MySchemeOffersPage() {
         <div className="flex items-center gap-1.5">
           <button
             title="View Report"
-            onClick={() => navigate(`/b2b-inventory/scheme-offer/my-offers/${row.original.id}/report`)}
+            onClick={() => navigate(`/SchemeOfferRegister/${row.original.id}/report`)}
             className="p-1.5 rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors dark:text-dark-300"
           >
             <EyeIcon className="size-4" />
