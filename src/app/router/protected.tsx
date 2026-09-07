@@ -162,15 +162,51 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "order-items/new",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/order-management/order-items/new-order")).default,
+          }),
+        },
+        {
+          path: "order-items/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/order-management/order-items/detail")).default,
+          }),
+        },
+        {
           path: "stock-verification",
           lazy: async () => ({
             Component: (await import("@/app/pages/order-management/stock-verification")).default,
           }),
         },
         {
+          path: "stock-verification/:id/verify-items",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/order-management/stock-verification/detail")).default,
+          }),
+        },
+        {
+          path: "stock-verification/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/order-management/stock-verification/detail")).default,
+          }),
+        },
+        {
           path: "stockReturn",
           lazy: async () => ({
             Component: (await import("@/app/pages/stock-master/stock-return")).default,
+          }),
+        },
+        {
+          path: "stockReturn/new",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/stock-master/stock-return/new-return")).default,
+          }),
+        },
+        {
+          path: "stockReturn/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/stock-master/stock-return/detail")).default,
           }),
         },
         {
@@ -230,6 +266,12 @@ const protectedRoutes: RouteObject = {
             Component: (await import("@/app/pages/purchase-master/b2b-purchase-verification")).default,
           }),
         },
+        {
+          path: "b2bpurchaseverify/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/purchase-master/b2b-purchase-verification/detail")).default,
+          }),
+        },
 
         // ── Sales Master ───────────────────────────────────────────────
         {
@@ -275,6 +317,12 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "b2bsales/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/sales-master/b2b-sales/detail")).default,
+          }),
+        },
+        {
           path: "b2bsalescreate",
           lazy: async () => ({
             Component: (await import("@/app/pages/sales-master/b2b-sales/create")).default,
@@ -303,6 +351,18 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "b2bstockReturn/create",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/b2b-inventory/stock-return/create")).default,
+          }),
+        },
+        {
+          path: "b2bstockReturn/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/b2b-inventory/stock-return/detail")).default,
+          }),
+        },
+        {
           path: "B2BStockTransfer",
           lazy: async () => ({
             Component: (await import("@/app/pages/b2b-inventory/stock-transfer/send-order")).default,
@@ -324,6 +384,12 @@ const protectedRoutes: RouteObject = {
           path: "b2bstockReturnverification",
           lazy: async () => ({
             Component: (await import("@/app/pages/b2b-inventory/b2b-stock-return-management/index")).default,
+          }),
+        },
+        {
+          path: "b2bstockReturnverification/:id",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/b2b-inventory/stock-return/detail")).default,
           }),
         },
         {

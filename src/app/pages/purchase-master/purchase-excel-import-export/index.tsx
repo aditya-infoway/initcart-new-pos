@@ -234,7 +234,7 @@ export default function PurchaseExcelImportExport() {
         confirmButtonColor: "#22c55e",
         confirmButtonText: "View Purchases",
       });
-      navigate("/purchase/purchase-entry");
+      navigate("/Addpurchaseitem");
     } catch (error: any) {
       // ✅ CASE 2 — Post() actually threw (network / axios-style error).
       console.error("Purchase import error:", error);

@@ -180,7 +180,7 @@ export default function B2BPurchaseVerificationDetailPage() {
       const res = await Post(`pos/b2b-sales/${id}/verify-all/`, { website_display: websiteDisplay }) as any;
       if (res?.data?.success) {
         toastsuccessmsg(res.data.message || "All items verified!");
-        navigate("/purchase/b2b-purchase-verification");
+        navigate("/b2bpurchaseverify");
       } else {
         toasterrormsg(res?.data?.message || "Verification failed");
       }
@@ -276,7 +276,7 @@ export default function B2BPurchaseVerificationDetailPage() {
         {/* Toolbar */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/purchase/b2b-purchase-verification")}>
+            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2bpurchaseverify")}>
               <ArrowLeftIcon className="size-4" /> Back to Verifications
             </Button>
             <div>
@@ -545,3 +545,4 @@ export default function B2BPurchaseVerificationDetailPage() {
     </Page>
   );
 }
+

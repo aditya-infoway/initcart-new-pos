@@ -438,7 +438,7 @@ export default function CreateB2BStockReturnPage() {
       }) as any;
       if (res?.data?.success) {
         toastsuccessmsg(res.data.message || "Return created successfully");
-        navigate("/b2b-inventory/stock-return");
+        navigate("/b2bstockReturn");
       } else {
         toasterrormsg(res?.data?.message || "Failed to create return");
       }
@@ -465,7 +465,7 @@ export default function CreateB2BStockReturnPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/b2b-inventory/stock-return")}>
+              onClick={() => navigate("/b2bstockReturn")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -644,3 +644,4 @@ export default function CreateB2BStockReturnPage() {
     </Page>
   );
 }
+

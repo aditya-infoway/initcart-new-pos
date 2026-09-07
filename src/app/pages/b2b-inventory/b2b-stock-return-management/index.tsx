@@ -354,7 +354,7 @@ export default function B2BStockReturnManagementPage() {
                               color="primary"
                               variant="soft"
                               className="h-7 px-3 text-xs font-semibold"
-                              onClick={() => navigate(`/order-management/b2b-stock-return/${r.id}`)}
+                              onClick={() => navigate(`/b2bstockReturnverification/${r.id}`)}
                             >
                               <EyeIcon className="inline mr-1 size-3" /> View
                             </Button>

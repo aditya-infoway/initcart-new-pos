@@ -1138,7 +1138,7 @@ const mapped = r.data.map((item: any) => ({
       toastsuccessmsg("Sale saved successfully!");
       if (r.data.stock_alerts) r.data.stock_alerts.forEach((m: any) => toasterrormsg(m));
       setAddedItems([]); setIdCounter(1);
-      navigate("/sales/sales-entry-report");
+      navigate("/Addsalesitem");
     } catch {
       toasterrormsg("Error saving sale");
     } finally {
@@ -1192,7 +1192,7 @@ const handlePrint = async () => {
           <div className="flex items-center justify-between px-4 py-3 lg:px-6">
             <div className="flex items-center gap-3">
               <Button variant="outlined"
-                onClick={() => navigate("/sales/sales-entry-report")}>
+                onClick={() => navigate("/Addsalesitem")}>
                 <ChevronLeftIcon className="size-4" /> Back
               </Button>
               <div className="flex items-center gap-3">
@@ -1639,10 +1639,11 @@ const handlePrint = async () => {
           <ReceiptComponent
             savedSaleId={savedSaleId}
             showReceiptModal={showReceiptModal}
-            handleCloseReceipt={() => { setShowReceiptModal(false); navigate("/sales/sales-entry-report"); }}
+            handleCloseReceipt={() => { setShowReceiptModal(false); navigate("/Addsalesitem"); }}
           />
         )}
       </div>
     </Page>
   );
 }
+

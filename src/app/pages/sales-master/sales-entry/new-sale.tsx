@@ -10,9 +10,9 @@ import {
   ShoppingCartIcon,
   TrashIcon,
   TruckIcon,
+  ArrowLeftIcon,
   PrinterIcon,
   CheckCircleIcon,
-  ChevronLeftIcon,
    XMarkIcon, 
 } from "@heroicons/react/24/outline";
 import {
@@ -410,7 +410,7 @@ export default function NewSalePage() {
         <div className="flex items-center justify-between gap-4">
           <Button variant="outlined" className="h-9 gap-2 px-4 text-sm"
             onClick={() => navigate("/Addsalesitem")}>
-            <ChevronLeftIcon className="size-4" />
+            <ArrowLeftIcon className="size-4" />
             Back
           </Button>
           <div className="flex items-center gap-2.5 rounded-full bg-primary px-6 py-2">

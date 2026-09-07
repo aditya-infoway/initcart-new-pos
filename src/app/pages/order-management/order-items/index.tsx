@@ -129,7 +129,7 @@ export default function OrderItemsPage() {
       cell: ({ row }: CellContext<BranchOrder, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/order-management/order-items/${row.original.id}`)}
+            onClick={() => navigate(`/order-items/${row.original.id}`)}
             title="View Detail">
             <EyeIcon className="size-4" />
           </Button>
@@ -188,7 +188,7 @@ export default function OrderItemsPage() {
             </Button>
             {canAdd && (
             <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/order-management/order-items/new")}>
+              onClick={() => navigate("/order-items/new")}>
               <PlusIcon className="size-4" />
               <span>New Order</span>
             </Button>
@@ -254,3 +254,4 @@ export default function OrderItemsPage() {
     </Page>
   );
 }
+

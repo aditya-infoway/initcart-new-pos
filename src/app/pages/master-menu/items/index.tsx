@@ -360,7 +360,7 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
       <>
         {canEdit && (
           <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
-            onClick={() => navigate(`/master-menu/add-items/${row.original.id}/edit`)}>
+            onClick={() => navigate(`/Additems/${row.original.id}/edit`)}>
             <PencilSquareIcon className="size-3.5 text-primary-600" />
           </Button>
         )}
@@ -540,3 +540,4 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
     </Page>
   );
 }
+
