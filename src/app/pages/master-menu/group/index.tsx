@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { usePermission } from "@/hooks/usePermissions";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
@@ -38,10 +39,12 @@ const confirmMessages: ConfirmMessages = {
 };
 
 // ── Row actions ─────────────────────────────────────────────────────────────
-function GroupRowActions({ group, onEdit, onDelete }: {
+function GroupRowActions({ group, onEdit, onDelete, canEdit, canDelete }: {
   group: Group;
   onEdit: (g: Group) => void;
   onDelete: (g: Group) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -57,24 +60,28 @@ function GroupRowActions({ group, onEdit, onDelete }: {
           anchor={{ to: "bottom end", gap: 8 }}
           className="dark:border-dark-500 dark:bg-dark-750 absolute z-100 w-36 rounded-lg border border-gray-300 bg-white py-1 shadow-lg outline-hidden"
         >
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button type="button" onClick={() => onEdit(group)}
-                className={clsx("flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100")}>
-                <PencilIcon className="size-4.5 stroke-1" /><span>Edit</span>
-              </button>
-            )}
-          </MenuItem>
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button type="button" onClick={() => onDelete(group)}
-                className={clsx("this:error text-this dark:text-this-light flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-this/10 dark:bg-this-light/10")}>
-                <TrashIcon className="size-4.5 stroke-1" /><span>Delete</span>
-              </button>
-            )}
-          </MenuItem>
+          {canEdit && (
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button type="button" onClick={() => onEdit(group)}
+                  className={clsx("flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100")}>
+                  <PencilIcon className="size-4.5 stroke-1" /><span>Edit</span>
+                </button>
+              )}
+            </MenuItem>
+          )}
+          {canDelete && (
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button type="button" onClick={() => onDelete(group)}
+                  className={clsx("this:error text-this dark:text-this-light flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-this/10 dark:bg-this-light/10")}>
+                  <TrashIcon className="size-4.5 stroke-1" /><span>Delete</span>
+                </button>
+              )}
+            </MenuItem>
+          )}
         </MenuItems>
       </Transition>
     </Menu>
@@ -83,7 +90,9 @@ function GroupRowActions({ group, onEdit, onDelete }: {
 
 // ── Main Page ───────────────────────────────────────────────────────────────
 export default function GroupPage() {
+  const { canAdd, canEdit, canDelete } = usePermission("/createGroup");
   const [data, setData] = useState<Group[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -189,11 +198,17 @@ export default function GroupPage() {
       id: "actions", header: "Action", size: 60, enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<Group, unknown>) => (
         <div className="flex justify-center">
-          <GroupRowActions group={row.original} onEdit={onEdit} onDelete={onDelete} />
+          <GroupRowActions
+            group={row.original}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
         </div>
       ),
     },
-  ], [onEdit, onDelete]);
+  ], [onEdit, onDelete, canEdit, canDelete]);
 
   const table = useReactTable({
     data: filteredData,
@@ -247,14 +262,16 @@ export default function GroupPage() {
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>
-            <Button
-              color="primary"
-              className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => { setEditingGroup(null); setDrawerOpen(true); }}
-            >
-              <PlusIcon className="size-4" />
-              <span>Create New Group</span>
-            </Button>
+            {canAdd && (
+              <Button
+                color="primary"
+                className="h-9 gap-2 rounded-md px-4 text-sm"
+                onClick={() => { setEditingGroup(null); setDrawerOpen(true); }}
+              >
+                <PlusIcon className="size-4" />
+                <span>Create New Group</span>
+              </Button>
+            )}
           </div>
         </div>
 

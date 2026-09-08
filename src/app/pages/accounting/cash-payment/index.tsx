@@ -995,7 +995,7 @@ function AddCashPaymentDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CashPaymentPage() {
-  const { canAdd, canView } = usePermission("/cash-payment");
+  const { canAdd, canView } = usePermission("/Cash-Payment");
 
   const [rows, setRows]                 = useState<CashPaymentRow[]>([]);
   const [loading, setLoading]           = useState(true);

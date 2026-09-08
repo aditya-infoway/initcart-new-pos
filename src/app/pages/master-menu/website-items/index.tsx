@@ -9,6 +9,7 @@ import {
   CellContext,
 } from "@tanstack/react-table";
 import { WithIcon, type TabItem } from "@/components/ui/Tab";
+import { usePermission } from "@/hooks/usePermissions";
 import {
   ArrowPathIcon,
   EyeIcon,
@@ -157,6 +158,7 @@ function StatCard({
 // ── Main List Page ─────────────────────────────────────────────────────────
 export default function WebsiteItemsListPage() {
   const navigate = useNavigate();
+  const { canEdit, canDelete } = usePermission("/WebItems");
 
   const [rows, setRows]                 = useState<WebsiteItemRow[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -387,30 +389,34 @@ export default function WebsiteItemsListPage() {
           </Button>
 
           {/* Edit */}
-          <Button
-            isIcon
-            variant="flat"
-            className="size-8 rounded-full"
-            title="Edit"
-            onClick={() => navigate(`/website-items/${row.original.id}`)}
-          >
-            <PencilSquareIcon className="size-5 text-success-600" />
-          </Button>
+          {canEdit && (
+            <Button
+              isIcon
+              variant="flat"
+              className="size-8 rounded-full"
+              title="Edit"
+              onClick={() => navigate(`/website-items/${row.original.id}`)}
+            >
+              <PencilSquareIcon className="size-5 text-success-600" />
+            </Button>
+          )}
 
           {/* Delete */}
-          <Button
-            isIcon
-            variant="flat"
-            className="size-8 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
-            title="Delete"
-            onClick={() => openDelete(row.original)}
-          >
-            <TrashIcon className="size-5 text-error-600" />
-          </Button>
+          {canDelete && (
+            <Button
+              isIcon
+              variant="flat"
+              className="size-8 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+              title="Delete"
+              onClick={() => openDelete(row.original)}
+            >
+              <TrashIcon className="size-5 text-error-600" />
+            </Button>
+          )}
         </div>
       ),
     },
-  ], [navigate, openDelete, page, pageSize]);
+   ], [navigate, openDelete, page, pageSize, canEdit, canDelete]);
 
   const table = useReactTable({
     data: rows,
