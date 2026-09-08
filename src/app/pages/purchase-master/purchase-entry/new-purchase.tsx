@@ -10,8 +10,8 @@
  *   GET  pos/purchse-item-search/?query=...
  *   POST pos/purchase-item-tax/
  *   POST pos/purchase-create/
- *   POST pos/barcodes/generate/{variantId}/      (Superadmin only)
- *   PUT  pos/barcodes/update/{variantId}/         (Superadmin only)
+ *   POST pos/barcodes/generate/{variantId}/      (Superadmin, or Employee with canAdd)
+ *   PUT  pos/barcodes/update/{variantId}/         (Superadmin, or Employee with canAdd)
  */
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
@@ -34,6 +34,8 @@ import { Listbox } from "@/components/shared/form/StyledListbox";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Get, Post, Put, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 import { useBranchLocationCheck } from "@/hooks/useBranchLocationCheck";
+import { useAuthContext } from "@/app/contexts/auth/context";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Decimal-safe rounding (fixes float drift like 12.999999999) ────────────
 const round2 = (val: any): number => {
@@ -208,7 +210,7 @@ function BarcodeScannerBar({
   );
 }
 
-// ── Barcode generate/save box (Superadmin only, shown when item has no barcode) ──
+// ── Barcode generate/save box (shown when curItem has no barcode & user can manage barcodes) ──
 function BarcodeGenerateBox({
   mode, value, saved, isGenerating, isSaving,
   onModeChange, onValueChange, onGenerate, onSave,
@@ -237,7 +239,6 @@ function BarcodeGenerateBox({
       <div className="mb-3 flex flex-wrap items-center gap-4">
         <span className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
           <QrCodeIcon className="size-4" /> Generate Barcode
-          <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-800/40 dark:text-amber-300">Superadmin</span>
         </span>
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-dark-200">
@@ -433,8 +434,19 @@ function ItemPickModal({
 export default function NewPurchasePage() {
   const navigate = useNavigate();
 
-  // role-based access — barcode generation box is Superadmin-only
-  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+  // ── role-based access (mirrors old software's PurchaseEntryForm.tsx) ───
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  const { canAdd } = usePermission("/Addpurchaseitem");
+
+  // ✅ Superadmin: hamesha barcode-management access.
+  // ✅ Employee: sirf tab jab unke paas is page ka `canAdd` permission ho —
+  // normal branch role ke liye canAdd trust nahi karte, warna unhe bhi
+  // barcode box dikh jaata aur mandatory barcode requirement lag jaata.
+  const canManageBarcode = isSuperAdmin || (isEmployee && canAdd);
+
   const { checkLocation, isLoading: locationLoading } = useBranchLocationCheck()
 
   // accounts
@@ -480,8 +492,8 @@ export default function NewPurchasePage() {
   const termsLabel = termsVal?.label ?? "";
   const partyVal   = watch("partyName");
 
-  // needs a saved barcode before this item can be added (superadmin, no existing barcode)
-  const barcodePending = isSuperAdmin && !!curItem && !existingBarcode && !barcodeSaved;
+  // needs a saved barcode before this item can be added (superadmin OR employee-with-canAdd, no existing barcode)
+  const barcodePending = canManageBarcode && !!curItem && !existingBarcode && !barcodeSaved;
 
   // load data on mount
   useEffect(() => {
@@ -611,8 +623,9 @@ export default function NewPurchasePage() {
     if (!qty || qty <= 0)     { toasterrormsg("Enter a valid quantity."); return; }
     if (!price || price <= 0) { toasterrormsg("Enter a valid price."); return; }
 
-    // role-based rule: Superadmin must generate + save a barcode before an unbarcoded item can be added
-    if (isSuperAdmin && !existingBarcode) {
+    // role-based rule: Superadmin OR Employee-with-canAdd must generate + save a
+    // barcode before an unbarcoded item can be added
+    if (canManageBarcode && !existingBarcode) {
       if (!barcodeValue)  { toasterrormsg("Please generate or enter a barcode first."); return; }
       if (!barcodeSaved)  { toasterrormsg('Please save the barcode first by clicking "Save Barcode".'); return; }
     }
@@ -975,8 +988,8 @@ const onSubmit = async (values: FormValues) => {
     </div>
   )}
 
-  {/* Superadmin-only barcode generate/save box */}
-  {isSuperAdmin && curItem && !existingBarcode && (
+  {/* Barcode generate/save box — Superadmin, or Employee with canAdd permission */}
+  {canManageBarcode && curItem && !existingBarcode && (
     <BarcodeGenerateBox
       mode={barcodeMode}
       value={barcodeValue}

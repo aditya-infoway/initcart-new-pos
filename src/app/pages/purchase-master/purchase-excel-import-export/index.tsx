@@ -8,6 +8,7 @@ import {
   InformationCircleIcon,
   CheckCircleIcon,
   DocumentIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Swal from "sweetalert2";
@@ -16,6 +17,7 @@ import jsPDF from "jspdf";
 import { Page } from "@/components/shared/Page";
 import { Button, Card } from "@/components/ui";
 import { Post, Get, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Helper: Download Error Report PDF ────────────────────────────────────
 const downloadErrorReportPdf = (errors: string[], title: string = "Purchase Import Errors") => {
@@ -98,6 +100,9 @@ const normalizeErrors = (raw: any): string[] => {
 
 export default function PurchaseExcelImportExport() {
   const navigate = useNavigate();
+  
+  // ── Permission check ──────────────────────────────────────────────────
+  const { canAdd, canView } = usePermission("/purchaseimport");
 
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -144,6 +149,12 @@ export default function PurchaseExcelImportExport() {
   };
 
   const handleDownloadTemplate = async () => {
+    // ── Permission check: canView allows download ────────────────────
+    if (!canView && !canAdd) {
+      toasterrormsg("You don't have permission to download template");
+      return;
+    }
+
     setDownloading(true);
     try {
       const response = await Get("pos/purchase-excel/template/", {
@@ -172,6 +183,12 @@ export default function PurchaseExcelImportExport() {
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // ── Permission check: only canAdd allows import ──────────────────
+    if (!canAdd) {
+      toasterrormsg("You don't have permission to import purchases");
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -287,109 +304,138 @@ export default function PurchaseExcelImportExport() {
           </div>
         </div>
 
-        {/* ─── Info Banner ─── */}
-        <div className="px-(--margin-x) mt-4">
-          <Card skin="bordered" className="p-4 bg-blue-50/70 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30">
-            <div className="flex items-start gap-3">
-              <InformationCircleIcon className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
-                  How the template works
-                </h3>
-                <ul className="text-sm text-blue-700 dark:text-blue-300/80 space-y-0.5 list-disc pl-4 mt-1">
-                  <li>
-                    <span className="font-medium">Peach columns</span> (Party, Terms, Cash/Bank Account, Freight, etc.) — fill only on the <span className="font-semibold">FIRST row</span> of each purchase
-                  </li>
-                  <li>
-                    <span className="font-medium">Blue columns</span> (Item, Qty, Price, Discount%) — fill on <span className="font-semibold">every item row</span>
-                  </li>
-                  <li>Typing a new Party Name starts a brand-new purchase entry</li>
-                  <li>Bill number, GST/discount calculation happen automatically on import — don't type them</li>
-                  <li>Fields marked with <span className="text-red-500 font-bold">*</span> are mandatory</li>
-                </ul>
+        {/* ─── Permission Denied Banner - Only when no permissions at all ─── */}
+        {!canAdd && !canView && (
+          <div className="px-(--margin-x) mt-4">
+            <Card skin="bordered" className="p-4 bg-red-50/70 dark:bg-red-900/10 border-red-200 dark:border-red-800/30">
+              <div className="flex items-start gap-3">
+                <LockClosedIcon className="size-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-red-800 dark:text-red-300 text-sm">
+                    Access Restricted
+                  </h3>
+                  <p className="text-sm text-red-700 dark:text-red-300/80 mt-0.5">
+                    You don't have permission to access this page. Please contact your administrator.
+                  </p>
+                </div>
               </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ─── Info Banner - Show when user has any permission ─── */}
+        {(canAdd || canView) && (
+          <div className="px-(--margin-x) mt-4">
+            <Card skin="bordered" className="p-4 bg-blue-50/70 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30">
+              <div className="flex items-start gap-3">
+                <InformationCircleIcon className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
+                    How the template works
+                  </h3>
+                  <ul className="text-sm text-blue-700 dark:text-blue-300/80 space-y-0.5 list-disc pl-4 mt-1">
+                    <li>
+                      <span className="font-medium">Peach columns</span> (Party, Terms, Cash/Bank Account, Freight, etc.) — fill only on the <span className="font-semibold">FIRST row</span> of each purchase
+                    </li>
+                    <li>
+                      <span className="font-medium">Blue columns</span> (Item, Qty, Price, Discount%) — fill on <span className="font-semibold">every item row</span>
+                    </li>
+                    <li>Typing a new Party Name starts a brand-new purchase entry</li>
+                    <li>Bill number, GST/discount calculation happen automatically on import — don't type them</li>
+                    <li>Fields marked with <span className="text-red-500 font-bold">*</span> are mandatory</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* ─── Action Cards ─── */}
-        <div className="px-(--margin-x) mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Download Template */}
-          <Card skin="bordered" className="overflow-hidden hover:shadow-md transition-shadow">
-            <div className="px-5 py-3.5 border-b border-gray-100 dark:border-dark-600 bg-emerald-50/70 dark:bg-emerald-900/20 flex items-center gap-2">
-              <DocumentArrowDownIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
-              <h3 className="font-semibold text-gray-800 dark:text-dark-100 text-sm">
-                Download Template
-              </h3>
-            </div>
-            <div className="p-5">
-              <p className="text-sm text-gray-600 dark:text-dark-300 mb-4">
-                Party, Cash Account, Bank Account and Item dropdowns are pre-filled with your current data.
-              </p>
-              <Button
-                color="success"
-                className="w-full gap-2"
-                disabled={downloading}
-                onClick={handleDownloadTemplate}
-              >
-                <DocumentArrowDownIcon className="size-4" />
-                {downloading ? "Downloading..." : "Download Template"}
-              </Button>
-            </div>
-          </Card>
+        {(canAdd || canView) && (
+          <div className="px-(--margin-x) mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Download Template - Show when canView OR canAdd */}
+            {(canView || canAdd) && (
+              <Card skin="bordered" className="overflow-hidden hover:shadow-md transition-shadow">
+                <div className="px-5 py-3.5 border-b border-gray-100 dark:border-dark-600 bg-emerald-50/70 dark:bg-emerald-900/20 flex items-center gap-2">
+                  <DocumentArrowDownIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="font-semibold text-gray-800 dark:text-dark-100 text-sm">
+                    Download Template
+                  </h3>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-gray-600 dark:text-dark-300 mb-4">
+                    Party, Cash Account, Bank Account and Item dropdowns are pre-filled with your current data.
+                  </p>
+                  <Button
+                    color="success"
+                    className="w-full gap-2"
+                    disabled={downloading}
+                    onClick={handleDownloadTemplate}
+                  >
+                    <DocumentArrowDownIcon className="size-4" />
+                    {downloading ? "Downloading..." : "Download Template"}
+                  </Button>
+                </div>
+              </Card>
+            )}
 
-          {/* Import Purchases */}
-          <Card skin="bordered" className="overflow-hidden hover:shadow-md transition-shadow">
-            <div className="px-5 py-3.5 border-b border-gray-100 dark:border-dark-600 bg-emerald-50/70 dark:bg-emerald-900/20 flex items-center gap-2">
-              <ArrowUpTrayIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
-              <h3 className="font-semibold text-gray-800 dark:text-dark-100 text-sm">
-                Import Purchases
-              </h3>
-            </div>
-            <div className="p-5">
-              <p className="text-sm text-gray-600 dark:text-dark-300 mb-4">
-                Upload the filled Excel file to bulk-create purchase entries.
-              </p>
-              <label
-                className={clsx(
-                  "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer",
-                  "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600",
-                  "text-white shadow-sm",
-                  uploading && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <ArrowUpTrayIcon className="size-4" />
-                {uploading ? "Uploading..." : "Choose File & Import"}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImport}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          </Card>
-        </div>
+            {/* Import Purchases - Show only when canAdd */}
+            {canAdd && (
+              <Card skin="bordered" className="overflow-hidden hover:shadow-md transition-shadow">
+                <div className="px-5 py-3.5 border-b border-gray-100 dark:border-dark-600 bg-emerald-50/70 dark:bg-emerald-900/20 flex items-center gap-2">
+                  <ArrowUpTrayIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="font-semibold text-gray-800 dark:text-dark-100 text-sm">
+                    Import Purchases
+                  </h3>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-gray-600 dark:text-dark-300 mb-4">
+                    Upload the filled Excel file to bulk-create purchase entries.
+                  </p>
+                  <label
+                    className={clsx(
+                      "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer",
+                      "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600",
+                      "text-white shadow-sm",
+                      uploading && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <ArrowUpTrayIcon className="size-4" />
+                    {uploading ? "Uploading..." : "Choose File & Import"}
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleImport}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* ─── Auto Features Info ─── */}
-        <div className="px-(--margin-x) mt-5">
-          <Card skin="bordered" className="p-4 border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-900/10">
-            <div className="flex items-start gap-3">
-              <CheckCircleIcon className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm">
-                  What happens automatically on import
-                </h3>
-                <p className="text-sm text-emerald-700 dark:text-emerald-300/80 mt-1">
-                  Purchase voucher (Bill No) generation, GST/CGST/SGST/IGST calculation with discount, and
-                  auto Cash/Bank payment creation (PCP/PBP) for Cash/Bank terms — exactly like creating a
-                  purchase from the normal Purchase Entry form.
-                </p>
+        {(canAdd || canView) && (
+          <div className="px-(--margin-x) mt-5">
+            <Card skin="bordered" className="p-4 border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-900/10">
+              <div className="flex items-start gap-3">
+                <CheckCircleIcon className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm">
+                    What happens automatically on import
+                  </h3>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300/80 mt-1">
+                    Purchase voucher (Bill No) generation, GST/CGST/SGST/IGST calculation with discount, and
+                    auto Cash/Bank payment creation (PCP/PBP) for Cash/Bank terms — exactly like creating a
+                    purchase from the normal Purchase Entry form.
+                  </p>
+                </div>
               </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
       </div>
     </Page>
   );

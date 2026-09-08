@@ -1,4 +1,3 @@
-
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
@@ -15,6 +14,8 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Checkbox, Input } from "@/components/ui";
 import { Listbox } from "@/components/shared/form/StyledListbox";
 import { Get, Post, Put, Delete, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { useAuthContext } from "@/app/contexts/auth/context";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EntryType = "company" | "manual";
@@ -171,14 +172,26 @@ export default function ItemFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
 
-const isSuperAdmin = useMemo(() => {
-    return localStorage.getItem("role") === "superadmin";
-  }, []);
+  // ── Role & Permissions ────────────────────────────────────────────────
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  
+  // Employee ko bhi company items create karne do (same as Superadmin)
+  const canCreateCompanyItems = isSuperAdmin || isEmployee;
+  
+  // Permission checks using the hook's returned booleans
+  const { canAdd, canEdit } = usePermission("/AddItems");
+  
+  // Superadmin always has full access; employee needs explicit permission
+  const hasAddPermission = isSuperAdmin || canAdd;
+  const hasEditPermission = isSuperAdmin || canEdit;
 
   // ── form fields ────────────────────────────────────────────────────────
   const [itemName, setItemName] = useState("");
   const [hsnCode, setHsnCode] = useState("");
-  const [entryType, setEntryType] = useState<EntryType>(isSuperAdmin ? "company" : "manual");
+  const [entryType, setEntryType] = useState<EntryType>(canCreateCompanyItems ? "company" : "manual");
   const [websiteDisplay, setWebsite] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -268,8 +281,8 @@ const isSuperAdmin = useMemo(() => {
   }, [entryType]);
 
   useEffect(() => {
-    if (!isSuperAdmin) setEntryType("manual");
-  }, [isSuperAdmin]);
+    if (isEmployee && !hasAddPermission) setEntryType("manual");
+  }, [isEmployee, hasAddPermission]);
 
   useEffect(() => {
     if (!selCat?.id) { setSubCats([]); setSelSubCat(null); return; }
@@ -290,6 +303,14 @@ const isSuperAdmin = useMemo(() => {
   // ── edit mode load ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isEdit) return;
+    
+    // Check edit permission for employees
+    if (isEmployee && !hasEditPermission) {
+      toasterrormsg("You don't have permission to edit items.");
+      navigate("/AddItems");
+      return;
+    }
+    
     Get(`pos/items/${id}/with-variants/`).then((res: any) => {
       const b = res?.data ?? res;
       if (b?.item) {
@@ -320,10 +341,10 @@ const isSuperAdmin = useMemo(() => {
       }
     }).catch(() => toasterrormsg("Failed to load item."))
       .finally(() => setItemDataLoaded(true));
-  }, [id, isEdit]);
+  }, [id, isEdit, isEmployee, hasEditPermission]);
 
   // ── barcode check (debounced, matches old screen's 500ms behaviour) ────
-const checkBarcode = async (barcode: string): Promise<boolean> => {
+  const checkBarcode = async (barcode: string): Promise<boolean> => {
     if (!isSuperAdmin || !barcode || barcode.length < 3) { setBarcodeError(""); return true; }
     setCheckingBarcode(true);
     try {
@@ -361,8 +382,7 @@ const checkBarcode = async (barcode: string): Promise<boolean> => {
     if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
   }, []);
 
-  // ── add variant ────────────────────────────────────────────────────────
-// ── add / update variant ──────────────────────────────────────────────
+  // ── add / update variant ──────────────────────────────────────────────
   const handleAddVariant = async () => {
     const pp = Number(cur.purchasePrice), sp = Number(cur.salesPrice), mrp = Number(cur.mrp);
 
@@ -489,7 +509,7 @@ const checkBarcode = async (barcode: string): Promise<boolean> => {
     </Page>
   );
 
-const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandatory nahi
+  const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandatory nahi
   const barcodeMissing = false;
   return (
     <Page title={isEdit ? "Edit Item" : "Add Item"}>
@@ -523,7 +543,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
         <div className="px-(--margin-x)">
           <div className="flex flex-wrap items-center gap-6 rounded-xl border border-gray-200 bg-white px-5 py-3 dark:border-dark-500 dark:bg-dark-750">
             <span className="text-sm font-semibold text-gray-700 dark:text-dark-200">Entry Type:</span>
-            {isSuperAdmin && (
+            {canCreateCompanyItems && (
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input type="radio" className="accent-primary size-4" checked={entryType === "company"}
                   onChange={() => setEntryType("company")} disabled={isEdit} />
@@ -641,7 +661,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
                 </div>
               ))}
 
-              {isSuperAdmin && (
+              {(isSuperAdmin || isEmployee) && (
                 <div>
                   <FieldLabel>Branch Price</FieldLabel>
                   <ThemedInput value={cur.branchPrice} onChange={v => setCur((p: any) => ({ ...p, branchPrice: v }))} type="number" min={0} placeholder="0" />
@@ -701,7 +721,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
                 {liveNet > liveBasic && <p className="text-xs text-gray-400">Net: ₹{liveNet.toFixed(2)}</p>}
               </div>
 
-<div className="flex gap-2">
+              <div className="flex gap-2">
                 <Button type="button" color="primary" className="h-9 flex-1 gap-2 rounded-lg px-4 text-sm"
                   onClick={handleAddVariant}>
                   <CheckCircleIcon className="size-4" /> {editingUid !== null ? "Update" : "Add"}
@@ -748,7 +768,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
                 <thead className="sticky top-0 z-10 bg-primary">
                   <tr>
                     {["#", ...branchFields.map(f => f.label),
-                      ...(isSuperAdmin ? ["Branch ₹"] : []),
+                      ...((isSuperAdmin || isEmployee) ? ["Branch ₹"] : []),
                       "Purchase ₹", "Sales ₹", "MRP", "Barcode", "Op.Stock", "Net Value", ""].map(h => (
                         <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">{h}</th>
                       ))}
@@ -766,14 +786,14 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
                       {branchFields.map(f => (
                         <td key={f.key} className="px-4 py-2.5 text-gray-700 dark:text-dark-200">{(v as any)[f.key] || "—"}</td>
                       ))}
-                      {isSuperAdmin && <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.branchPrice}</td>}
+                      {(isSuperAdmin || isEmployee) && <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.branchPrice}</td>}
                       <td className="px-4 py-2.5 tabular-nums font-medium text-gray-800 dark:text-dark-100">₹{v.purchasePrice}</td>
                       <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.salesPrice}</td>
                       <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.mrp}</td>
                       <td className="px-4 py-2.5  text-xs text-gray-500 dark:text-dark-300">{v.barcode || "—"}</td>
                       <td className="px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">{v.opStock}</td>
                       <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{v.netValue.toFixed(2)}</td>
-<td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1">
                           <Button type="button" isIcon variant="flat" className="size-7 rounded-full hover:bg-primary/10"
                             title="Edit" onClick={() => handleEditVariant(v)}>
@@ -791,7 +811,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
                 {addedItems.length > 0 && (
                   <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-dark-800">
                     <tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                      <td colSpan={branchFields.length + (isSuperAdmin ? 5 : 4) + 1}
+                      <td colSpan={branchFields.length + ((isSuperAdmin || isEmployee) ? 5 : 4) + 1}
                         className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">
                         Total — Qty: {totals.qty} · Tax: ₹{totals.tax.toFixed(2)}
                       </td>
@@ -812,7 +832,7 @@ const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandato
 
       {/* ── Sticky footer ─────────────────────────────────────────── */}
       <div className="fixed bottom-0 inset-x-0 z-50 flex flex-wrap items-center justify-center gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-dark-500 dark:bg-dark-700/95">
-<Button type="button" variant="outlined"
+        <Button type="button" variant="outlined"
           className="h-9 gap-2 rounded-lg px-4 text-sm text-error-600 border-error-300 hover:bg-error-50 dark:border-error-700 dark:hover:bg-error-900/20"
           onClick={() => { setAddedItems([]); setCur({ ...EMPTY }); setEditingUid(null); }}>
           <TrashIcon className="size-4" /> Clear Variants
