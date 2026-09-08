@@ -303,7 +303,7 @@ function ItemsDrawer({ record, onClose }: { record: PurchaseRecord | null; onClo
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function PurchaseEntryPage() {
   const navigate = useNavigate();
-  const { canAdd, canView } = usePermission("/purchase-entry");
+  const { canAdd, canView } = usePermission("/Addpurchaseitem");
 
   const [records, setRecords]           = useState<PurchaseRecord[]>([]);
   const [loading, setLoading]           = useState(true);

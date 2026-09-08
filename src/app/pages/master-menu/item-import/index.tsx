@@ -8,21 +8,38 @@ import {
   TableCellsIcon,
   BuildingOfficeIcon,
   ShieldCheckIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
-import { useMemo, useRef, useState } from "react";  
+import { useRef, useState } from "react";
 
 import { Page } from "@/components/shared/Page";
 import { Button, Card } from "@/components/ui";
-import { Get, Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
+import { Post, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
 import { API_URL } from "@/ApiHelper";
+import { useAuthContext } from "@/app/contexts/auth/context";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function getToken() {
   return localStorage.getItem("access") || "";
-} 
+}
 
 export default function ItemImportPage() {
-  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+  // ── auth / permissions (via the auth provider + context, not raw localStorage) ──
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+
+  // Employees see the same Company Items section a superadmin sees (view access).
+  const canAccessCompanyItems = isSuperAdmin || isEmployee;
+
+  // ✅ Employee gets the exact same access as superadmin on this page — Import
+  // actions no longer depend on the `canAdd` permission table for these two
+  // roles, only as a fallback for any other role.
+  const { canAdd } = usePermission("/ItemImportExport");
+  const hasFullAccess = isSuperAdmin || isEmployee;
+  const canImport = hasFullAccess || canAdd;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -30,7 +47,7 @@ export default function ItemImportPage() {
   const [downloading, setDownloading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // ── Company Items (superadmin only) ──
+  // ── Company Items (superadmin + employee) ──
   const companyFileInputRef = useRef<HTMLInputElement>(null);
   const [companyImporting, setCompanyImporting] = useState(false);
   const [companyExporting, setCompanyExporting] = useState(false);
@@ -63,6 +80,11 @@ export default function ItemImportPage() {
 
   // ── Import Items ──────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canImport) {
+      toasterrormsg("You don't have permission to import items.");
+      e.target.value = "";
+      return;
+    }
     const file = e.target.files?.[0] ?? null;
     setSelectedFile(file);
     if (file) handleImport(file);
@@ -114,6 +136,11 @@ export default function ItemImportPage() {
 
   // ── Import Company Items ──────────────────────────────────────────────────
   const handleCompanyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canImport) {
+      toasterrormsg("You don't have permission to import items.");
+      e.target.value = "";
+      return;
+    }
     const file = e.target.files?.[0] ?? null;
     setSelectedCompanyFile(file);
     if (file) handleCompanyImport(file);
@@ -162,7 +189,6 @@ export default function ItemImportPage() {
       setCompanyExporting(false);
     }
   };
-
 
   // ── Export Items ──────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -226,21 +252,28 @@ export default function ItemImportPage() {
             </div>
           </div>
         </Card>
-{/* Company Items section — superadmin only */}
-        {isSuperAdmin && (
+
+        {/* Company Items section — superadmin + employee (both full access) */}
+        {canAccessCompanyItems && (
           <div>
             <div className="flex items-center gap-2 mb-4">
               <BuildingOfficeIcon className="size-5 text-success-600 dark:text-success-400" />
               <h2 className="text-base font-semibold text-gray-800 dark:text-dark-50">
                 Company Items
               </h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-success-500/10 px-2.5 py-0.5 text-xs font-semibold text-success-600 dark:bg-success-500/15 dark:text-success-400">
-                <ShieldCheckIcon className="size-3.5" /> Super Admin
-              </span>
+              {isSuperAdmin ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success-500/10 px-2.5 py-0.5 text-xs font-semibold text-success-600 dark:bg-success-500/15 dark:text-success-400">
+                  <ShieldCheckIcon className="size-3.5" /> Super Admin
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success-500/10 px-2.5 py-0.5 text-xs font-semibold text-success-600 dark:bg-success-500/15 dark:text-success-400">
+                  <UserIcon className="size-3.5" /> Employee Access
+                </span>
+              )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Download Template */}
+            <div className={canImport ? "grid gap-4 sm:grid-cols-2" : "sm:max-w-sm"}>
+              {/* Download Template — visible to anyone with company-items access */}
               <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-success-500/30 dark:hover:border-success-500/30 cursor-default">
                 <div className="flex items-center gap-2">
                   <div className="grid size-8 place-items-center rounded-lg bg-success-500/10 text-success-600 transition-colors duration-200 dark:bg-success-500/15 dark:text-success-400">
@@ -263,40 +296,42 @@ export default function ItemImportPage() {
                 </Button>
               </Card>
 
-              {/* Import Items */}
-              <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-success-500/30 dark:hover:border-success-500/30 cursor-default">
-                <div className="flex items-center gap-2">
-                  <div className="grid size-8 place-items-center rounded-lg bg-success-500/10 text-success-600 transition-colors duration-200 dark:bg-success-500/15 dark:text-success-400">
-                    <ArrowUpTrayIcon className="size-4" />
+              {/* Import Items — superadmin & employee always see this, others need canAdd */}
+              {canImport && (
+                <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-success-500/30 dark:hover:border-success-500/30 cursor-default">
+                  <div className="flex items-center gap-2">
+                    <div className="grid size-8 place-items-center rounded-lg bg-success-500/10 text-success-600 transition-colors duration-200 dark:bg-success-500/15 dark:text-success-400">
+                      <ArrowUpTrayIcon className="size-4" />
+                    </div>
+                    <p className="font-semibold text-gray-800 dark:text-dark-100">
+                      Import Company Items
+                    </p>
                   </div>
-                  <p className="font-semibold text-gray-800 dark:text-dark-100">
-                    Import Company Items
+                  <p className="text-sm text-gray-500 dark:text-dark-300">
+                    Upload filled Excel file to bulk import company items.
                   </p>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-dark-300">
-                  Upload filled Excel file to bulk import company items.
-                </p>
-                <input
-                  ref={companyFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={handleCompanyFileChange}
-                />
-                <Button
-                  onClick={() => companyFileInputRef.current?.click()}
-                  disabled={companyImporting}
-                  className="w-full gap-2 bg-success-600 text-white hover:bg-success-700 active:scale-[0.98] transition-all duration-150"
-                >
-                  <ArrowUpTrayIcon className="size-4" />
-                  {companyImporting ? "Importing..." : selectedCompanyFile ? selectedCompanyFile.name : "Choose File & Import"}
-                </Button>
-              </Card>
+                  <input
+                    ref={companyFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleCompanyFileChange}
+                  />
+                  <Button
+                    onClick={() => companyFileInputRef.current?.click()}
+                    disabled={companyImporting}
+                    className="w-full gap-2 bg-success-600 text-white hover:bg-success-700 active:scale-[0.98] transition-all duration-150"
+                  >
+                    <ArrowUpTrayIcon className="size-4" />
+                    {companyImporting ? "Importing..." : selectedCompanyFile ? selectedCompanyFile.name : "Choose File & Import"}
+                  </Button>
+                </Card>
+              )}
             </div>
           </div>
         )}
 
-        {/* Manual Items section */}
+        {/* Manual Items section — all users */}
         <div>
           <div className="flex items-center gap-2 mb-4">
             <DocumentArrowDownIcon className="size-5 text-gray-700 dark:text-dark-200" />
@@ -304,8 +339,8 @@ export default function ItemImportPage() {
               Manual Items
             </h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Download Template */}
+          <div className={canImport ? "grid gap-4 sm:grid-cols-2" : "sm:max-w-sm"}>
+            {/* Download Template — visible to everyone */}
             <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/30 cursor-default">
               <div className="flex items-center gap-2">
                 <div className="grid size-8 place-items-center rounded-lg bg-gray-100 text-gray-600 transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary dark:bg-dark-600 dark:text-dark-300">
@@ -328,39 +363,41 @@ export default function ItemImportPage() {
               </Button>
             </Card>
 
-            {/* Import Items */}
-            <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/30 cursor-default">
-              <div className="flex items-center gap-2">
-                <div className="grid size-8 place-items-center rounded-lg bg-gray-100 text-gray-600 transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary dark:bg-dark-600 dark:text-dark-300">
-                  <ArrowUpTrayIcon className="size-4" />
+            {/* Import Items — superadmin & employee always see this, others need canAdd */}
+            {canImport && (
+              <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 dark:hover:border-primary/30 cursor-default">
+                <div className="flex items-center gap-2">
+                  <div className="grid size-8 place-items-center rounded-lg bg-gray-100 text-gray-600 transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary dark:bg-dark-600 dark:text-dark-300">
+                    <ArrowUpTrayIcon className="size-4" />
+                  </div>
+                  <p className="font-semibold text-gray-800 dark:text-dark-100">
+                    Import Manual Items
+                  </p>
                 </div>
-                <p className="font-semibold text-gray-800 dark:text-dark-100">
-                  Import Manual Items
+                <p className="text-sm text-gray-500 dark:text-dark-300">
+                  Upload filled manual Excel file to bulk import items.
                 </p>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-dark-300">
-                Upload filled manual Excel file to bulk import items.
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={importing}
-                className="w-full gap-2 bg-gray-700 text-white hover:bg-gray-900 active:scale-[0.98] transition-all duration-150 dark:bg-dark-500 dark:hover:bg-dark-400"
-              >
-                <ArrowUpTrayIcon className="size-4" />
-                {importing ? "Importing..." : selectedFile ? selectedFile.name : "Choose File & Import"}
-              </Button>
-            </Card>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                  className="w-full gap-2 bg-gray-700 text-white hover:bg-gray-900 active:scale-[0.98] transition-all duration-150 dark:bg-dark-500 dark:hover:bg-dark-400"
+                >
+                  <ArrowUpTrayIcon className="size-4" />
+                  {importing ? "Importing..." : selectedFile ? selectedFile.name : "Choose File & Import"}
+                </Button>
+              </Card>
+            )}
           </div>
         </div>
 
- {/* Export Options */}
+        {/* Export Options — visible to everyone regardless of canImport */}
         <div>
           <div className="flex items-center gap-2 mb-4">
             <DocumentArrowDownIcon className="size-5 text-gray-700 dark:text-dark-200" />
@@ -369,9 +406,9 @@ export default function ItemImportPage() {
             </h2>
           </div>
 
-          <div className={isSuperAdmin ? "grid gap-4 sm:grid-cols-2" : "sm:max-w-sm"}>
-            {/* Export Company Items — superadmin only */}
-            {isSuperAdmin && (
+          <div className={canAccessCompanyItems ? "grid gap-4 sm:grid-cols-2" : "sm:max-w-sm"}>
+            {/* Export Company Items — superadmin + employee */}
+            {canAccessCompanyItems && (
               <Card className="group p-5 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-success-500/30 dark:hover:border-success-500/30 cursor-default">
                 <div className="flex items-center gap-2">
                   <div className="grid size-8 place-items-center rounded-lg bg-success-500/10 text-success-600 transition-colors duration-200 dark:bg-success-500/15 dark:text-success-400">

@@ -24,6 +24,7 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface PurchaseReturn {
@@ -215,6 +216,8 @@ function DetailDrawer({ isOpen, onClose, rec }: { isOpen: boolean; onClose: () =
 // ── Main List Page ─────────────────────────────────────────────────────────
 export default function PurchaseReturnPage() {
   const navigate  = useNavigate();
+  const { canAdd, canDelete, canView } = usePermission("/purchaseReturnList");
+  
   const [records, setRecords]           = useState<PurchaseReturn[]>([]);
   const [loading, setLoading]           = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -326,18 +329,22 @@ export default function PurchaseReturnPage() {
       id: "actions", header: "Actions", enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<PurchaseReturn, unknown>) => (
         <div className="flex items-center gap-1.5">
-          <Button isIcon variant="flat" className="size-7 rounded-full" title="View"
-            onClick={() => setSelected(row.original)}>
-            <EyeIcon className="size-3.5" />
-          </Button>
-          <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
-            title="Delete" onClick={() => handleDelete(row.original.id)}>
-            <TrashIcon className="size-3.5 text-error-600" />
-          </Button>
+          {canView && (
+            <Button isIcon variant="flat" className="size-7 rounded-full" title="View"
+              onClick={() => setSelected(row.original)}>
+              <EyeIcon className="size-3.5" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+              title="Delete" onClick={() => handleDelete(row.original.id)}>
+              <TrashIcon className="size-3.5 text-error-600" />
+            </Button>
+          )}
         </div>
       ),
     },
-  ], []);
+  ], [canView, canDelete]);
 
   const table = useReactTable({
     data: filtered, columns,
@@ -378,10 +385,12 @@ export default function PurchaseReturnPage() {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={fetchRecords} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
-            <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={() => navigate("/purchase-return")}>
-              <PlusIcon className="size-4" /><span>New Return</span>
-            </Button>
+            {canAdd && (
+              <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
+                onClick={() => navigate("/purchase-return")}>
+                <PlusIcon className="size-4" /><span>New Return</span>
+              </Button>
+            )}
           </div>
         </div>
         {/* Summary cards */}

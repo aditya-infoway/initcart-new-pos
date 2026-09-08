@@ -15,6 +15,8 @@ import Barcode from "react-barcode";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Card, Input, Spinner, Table, TBody, Td, THead, Th, Tr, Checkbox } from "@/components/ui";
 import { Get, Post, Put, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { useAuthContext } from "@/app/contexts/auth/context";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -329,14 +331,33 @@ function PrintModal({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ItemBarcodesPage() {
-  // ── role-based access ──
-  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+  // ── role-based access (mirrors ItemImportPage.tsx pattern) ──────────────
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
 
-  // Superadmin: company + manual dono edit kar sakta hai.
-  // Normal branch: sirf manual entry_type wale items edit kar sakta hai.
+  // ✅ Employee gets the exact same access as superadmin on this page —
+  // Generate / Reset / Edit-barcode actions no longer depend on the
+  // permission table for these two roles, only as a fallback for any
+  // other role (same shape as `canImport` in ItemImportPage.tsx).
+  const hasFullAccess = isSuperAdmin || isEmployee;
+  const { canAdd, canEdit } = usePermission("/PendingBarcodes");
+  const canGenerate = hasFullAccess || canAdd;
+
+  // Superadmin: hamesha full access (company + manual dono), permission
+  // table se independent — pehle jaisa hi.
+  //
+  // Employee: ab sirf `canEdit` permission true hone par hi full access
+  // milega (company + manual dono). Agar canEdit false hai to employee ko
+  // bhi edit button nahi dikhega — superadmin jaisa automatic bypass nahi.
+  //
+  // Koi aur role: sirf manual entry_type wale items, wo bhi sirf canEdit
+  // permission hone par.
   const canEditBarcode = (entryType: string | undefined): boolean => {
     if (isSuperAdmin) return true;
-    return (entryType || "manual") === "manual";
+    if (isEmployee) return canEdit;
+    return canEdit && (entryType || "manual") === "manual";
   };
 
   const [tab, setTab] = useState<"pending" | "generated">("pending");
@@ -458,6 +479,7 @@ export default function ItemBarcodesPage() {
 
   // ── Generate single ────────────────────────────────────────────────────────
   const handleGenerateSingle = async (v: PendingVariant) => {
+    if (!canGenerate) { toasterrormsg("You don't have permission to generate barcodes."); return; }
     const manual = manualInputs.get(v.variant_id)?.trim() ?? "";
     try {
       const res = await Post(`pos/barcodes/generate/${v.variant_id}/`, manual ? { barcode: manual } : {}) as any;
@@ -475,6 +497,7 @@ export default function ItemBarcodesPage() {
 
   // ── Bulk generate ──────────────────────────────────────────────────────────
   const handleBulkGenerate = async () => {
+    if (!canGenerate) { toasterrormsg("You don't have permission to generate barcodes."); return; }
     if (!selectedIds.size) { toasterrormsg("Select items first"); return; }
     setBulkLoading(true);
     try {
@@ -510,6 +533,7 @@ export default function ItemBarcodesPage() {
 
   // ── Update barcode (generated tab, role-restricted) ──────────────────────
   const startEditBarcode = (v: GeneratedVariant) => {
+    if (!canEditBarcode(v.entry_type)) return;
     setEditingVariantId(v.variant_id);
     setEditBarcodeValue(v.barcode);
   };
@@ -679,7 +703,7 @@ export default function ItemBarcodesPage() {
             )}
           </div>
           <div className="flex gap-2">
-            {tab === "pending" && (
+            {tab === "pending" && canGenerate && (
               <Button color="primary" className="h-9 gap-2 px-4 text-sm"
                 onClick={handleBulkGenerate}
                 disabled={bulkLoading || selectedIds.size === 0}>
@@ -792,20 +816,28 @@ export default function ItemBarcodesPage() {
                             </Td>
                             <Td className="bg-white dark:bg-dark-700 text-center">
                               {!gened ? (
-                                <Button color="primary" className="h-7 gap-1 px-3 text-xs mx-auto" onClick={() => handleGenerateSingle(v)}>
-                                  <QrCodeIcon className="size-3.5" />
-                                  {manualVal ? "Save" : "Auto"}
-                                </Button>
+                                canGenerate ? (
+                                  <Button color="primary" className="h-7 gap-1 px-3 text-xs mx-auto" onClick={() => handleGenerateSingle(v)}>
+                                    <QrCodeIcon className="size-3.5" />
+                                    {manualVal ? "Save" : "Auto"}
+                                  </Button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs text-gray-400 dark:text-dark-500" title="You don't have permission to generate barcodes">
+                                    <LockClosedIcon className="size-3.5" /> —
+                                  </span>
+                                )
                               ) : (
                                 <div className="flex flex-col items-center gap-1">
                                   <span className="flex items-center gap-1 text-xs font-medium text-success-600 dark:text-success-400">
                                     <CheckCircleIcon className="size-3.5" /> Done
                                   </span>
-                                  <button type="button"
-                                    onClick={() => setGeneratedMap(prev => { const m = new Map(prev); m.delete(v.variant_id); return m; })}
-                                    className="text-xs text-error-500 hover:text-error-700 dark:text-error-400">
-                                    Reset
-                                  </button>
+                                  {canGenerate && (
+                                    <button type="button"
+                                      onClick={() => setGeneratedMap(prev => { const m = new Map(prev); m.delete(v.variant_id); return m; })}
+                                      className="text-xs text-error-500 hover:text-error-700 dark:text-error-400">
+                                      Reset
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </Td>
@@ -975,7 +1007,7 @@ export default function ItemBarcodesPage() {
                                   <PencilIcon className="size-3.5 text-primary-600" />
                                 </Button>
                               ) : (
-                                <span className="inline-flex" title="Company items cannot be edited by branch users">
+                                <span className="inline-flex" title="You don't have edit permission for this page">
                                   <LockClosedIcon className="size-3.5 text-gray-400" />
                                 </span>
                               )}

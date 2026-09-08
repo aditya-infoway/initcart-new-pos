@@ -1086,7 +1086,7 @@ function AddBankPaymentDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function BankPaymentPage() {
-  const { canAdd, canView } = usePermission("/bank-payment");
+  const { canAdd, canView } = usePermission("/Bank-payment");
 
   const [rows, setRows] = useState<BankPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);

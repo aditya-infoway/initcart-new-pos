@@ -1257,7 +1257,7 @@ function AddBankReceiptDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function BankReceiptPage() {
-  const { canAdd, canView } = usePermission("/bank-receipt");
+  const { canAdd, canView } = usePermission("/Bank-receipt");
 
   const [rows, setRows]                 = useState<BankReceiptRow[]>([]);
   const [loading, setLoading]           = useState(true);

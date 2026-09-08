@@ -14,7 +14,7 @@ import {
   SortingState,
   useReactTable,
   ColumnDef,
-  CellContext,
+  CellContext,                                                             
   RowSelectionState,
 } from "@tanstack/react-table";
 import {
@@ -54,6 +54,7 @@ import {
   ACCOUNT_TABS,
   mapApiAccount,
 } from "./data";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── No AccountDrawer import needed anymore ──
 
@@ -82,10 +83,14 @@ function AccountRowActions({
   account,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete,
 }: {
   account: Account;
   onEdit: (a: Account) => void;
   onDelete: (a: Account) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -105,36 +110,40 @@ function AccountRowActions({
           anchor={{ to: "bottom end", gap: 8 }}
           className="dark:border-dark-500 dark:bg-dark-750 absolute z-100 w-36 rounded-lg border border-gray-300 bg-white py-1 shadow-lg shadow-gray-200/50 outline-hidden dark:shadow-none"
         >
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button
-                type="button"
-                onClick={() => onEdit(account)}
-                className={clsx(
-                  "flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100",
-                )}
-              >
-                <PencilIcon className="size-4.5 stroke-1" />
-                <span>Edit</span>
-              </button>
-            )}
-          </MenuItem>
-          <MenuItem>
-            {({ focus }: { focus: boolean }) => (
-              <button
-                type="button"
-                onClick={() => onDelete(account)}
-                className={clsx(
-                  "this:error text-this dark:text-this-light flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
-                  focus && "bg-this/10 dark:bg-this-light/10",
-                )}
-              >
-                <TrashIcon className="size-4.5 stroke-1" />
-                <span>Delete</span>
-              </button>
-            )}
-          </MenuItem>
+          {canEdit && (
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button
+                  type="button"
+                  onClick={() => onEdit(account)}
+                  className={clsx(
+                    "flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100",
+                  )}
+                >
+                  <PencilIcon className="size-4.5 stroke-1" />
+                  <span>Edit</span>
+                </button>
+              )}
+            </MenuItem>
+          )}
+          {canDelete && (
+            <MenuItem>
+              {({ focus }: { focus: boolean }) => (
+                <button
+                  type="button"
+                  onClick={() => onDelete(account)}
+                  className={clsx(
+                    "this:error text-this dark:text-this-light flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
+                    focus && "bg-this/10 dark:bg-this-light/10",
+                  )}
+                >
+                  <TrashIcon className="size-4.5 stroke-1" />
+                  <span>Delete</span>
+                </button>
+              )}
+            </MenuItem>
+          )}
         </MenuItems>
       </Transition>
     </Menu>
@@ -143,7 +152,8 @@ function AccountRowActions({
 
 // ── Main Page ───────────────────────────────────────────────────────────────
 export default function AccountCreationPage() {
-  const navigate = useNavigate(); // 👈 Add this
+  const navigate = useNavigate(); 
+  const { canAdd, canEdit, canDelete } = usePermission("/addAccounts");
   const [data, setData] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AccountTabKey>("all");
@@ -336,25 +346,28 @@ export default function AccountCreationPage() {
           </span>
         ),
       },
-      {
-        id: "actions",
-        header: "Action",
-        size: 60,
-        enableSorting: false,
-        enableGlobalFilter: false,
-        cell: ({ row }: CellContext<Account, unknown>) => (
-          <div className="flex justify-center">
-            <AccountRowActions
-              account={row.original}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          </div>
-        ),
-      },
-    ],
-    [onEdit, onDelete],
-  );
+{
+  id: "actions",
+  header: "Action",
+  size: 60,
+  enableSorting: false,
+  enableGlobalFilter: false,
+  cell: ({ row }: CellContext<Account, unknown>) => (
+    <div className="flex justify-center">
+      <AccountRowActions
+        account={row.original}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
+    </div>
+  ),
+},
+],
+[onEdit, onDelete, canEdit, canDelete],
+);
+
 
   const table = useReactTable({
     data: filteredData,
@@ -390,25 +403,27 @@ export default function AccountCreationPage() {
               {data.length} account{data.length === 1 ? "" : "s"} found
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outlined"
-              className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={fetchAccounts}
-              disabled={loading}
-            >
-              <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
-              <span>Refresh</span>
-            </Button>
-            <Button
-              color="primary"
-              className="h-9 gap-2 rounded-md px-4 text-sm"
-              onClick={onAdd}  // 👈 Updated
-            >
-              <PlusIcon className="size-4" />
-              <span>Add Account</span>
-            </Button>
-          </div>
+<div className="flex items-center gap-2">
+  <Button
+    variant="outlined"
+    className="h-9 gap-2 rounded-md px-3 text-sm"
+    onClick={fetchAccounts}
+    disabled={loading}
+  >
+    <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
+    <span>Refresh</span>
+  </Button>
+  {canAdd && (
+    <Button
+      color="primary"
+      className="h-9 gap-2 rounded-md px-4 text-sm"
+      onClick={onAdd}
+    >
+      <PlusIcon className="size-4" />
+      <span>Add Account</span>
+    </Button>
+  )}
+</div>
         </div>
 
         {/* Search */}

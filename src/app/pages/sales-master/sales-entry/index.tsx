@@ -268,7 +268,7 @@ function ItemsDrawer({ isOpen, onClose, sale }: { isOpen: boolean; onClose: () =
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function SalesRegisterPage() {
   const navigate = useNavigate();
-  const { canAdd, canView } = usePermission("/sales-entry");
+  const { canAdd, canView } = usePermission("/Addsalesitem");
 
   const [records, setRecords] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);

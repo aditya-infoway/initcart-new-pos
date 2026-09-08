@@ -1162,7 +1162,7 @@ function AddCashReceiptDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CashReceiptPage() {
-  const { canAdd, canView } = usePermission("/cash-receipt");
+  const { canAdd, canView } = usePermission("/Cash-receipt");
 
   const [rows, setRows]                 = useState<CashReceiptRow[]>([]);
   const [loading, setLoading]           = useState(true);

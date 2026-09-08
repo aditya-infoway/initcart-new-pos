@@ -357,7 +357,7 @@ function AddContraDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function ContraPage() {
-  const { canAdd, canView } = usePermission("/contra");
+  const { canAdd, canView } = usePermission("/Contra");
 
   const [rows, setRows]                 = useState<ContraRow[]>([]);
   const [loading, setLoading]           = useState(true);
