@@ -126,9 +126,9 @@ const protectedRoutes: RouteObject = {
         {
           path: "branch/orders/:orderId",
           lazy: async () => ({
-            Component: (await import("@/app/pages/order-management/order-items/detail")).default,
+            Component: (await import("@/app/pages/master-menu/orders/detail")).default,
           }),
-        },
+        },                                                     
 
         // Group
         {

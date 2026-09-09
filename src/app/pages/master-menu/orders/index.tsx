@@ -17,6 +17,7 @@ import {
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
+import { usePermission } from "@/hooks/usePermissions";
 import { Button, Input } from "@/components/ui";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
@@ -41,6 +42,11 @@ const PAGE_SIZE = 10;
 
 export default function BranchOrdersPage() {
   const navigate = useNavigate();
+  const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
+const isEmployee   = useMemo(() => localStorage.getItem("role") === "employee", []);
+const canViewAllBranches = isSuperAdmin || isEmployee; 
+
+const { canView } = usePermission("/Orders"); 
   const [stats, setStats] = useState<OrderStats>(DEFAULT_STATS);
   const [orders, setOrders] = useState<Order[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -53,31 +59,47 @@ export default function BranchOrdersPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [page, setPage] = useState(1);
 
-  const fetchStats = useCallback(async () => {
-    setStatsLoading(true);
-    try {
-      const res = await Get("pos/branch/orders/stats/") as any;
-      const d = res?.data ?? res;
-      setStats({ ...DEFAULT_STATS, ...(d?.data ?? d) });
-    } catch { /* silent */ } finally { setStatsLoading(false); }
-  }, []);
+  
+  
+// Branch dropdown state
+const [branchOpts, setBranchOpts] = useState<{ id: string; label: string }[]>([]);
+const [selectedBranch, setSelectedBranch] = useState<{ id: string; label: string } | null>(null);
 
-  const fetchOrders = useCallback(async (status: OrderStatus, pg: number) => {
-    setLoading(true);
-    try {
-      const res = await Get("pos/branch/orders/", { status, page: pg, page_size: PAGE_SIZE }) as any;
-      const body = res?.data ?? res;
-      const rows: any[] = body?.data?.orders ?? body?.orders ?? [];
-      const pag = body?.data?.pagination ?? body?.pagination ?? {};
-      setOrders(rows.map(mapApiOrder));
-      setTotalCount(pag.total ?? rows.length);
-      setTotalPages(pag.total_pages ?? 1);
-    } catch { toasterrormsg("Failed to fetch orders."); }
-    finally { setLoading(false); }
-  }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { fetchOrders(activeStatus, page); }, [fetchOrders, activeStatus, page]);
+ const fetchStats = useCallback(async () => {
+  setStatsLoading(true);
+  try {
+    const params: any = {};
+    if (selectedBranch?.id) params.branch_id = selectedBranch.id;
+    const res = await Get("pos/branch/orders/stats/", params) as any;
+    const d = res?.data ?? res;
+    setStats({ ...DEFAULT_STATS, ...(d?.data ?? d) });
+  } catch { /* silent */ } finally { setStatsLoading(false); }
+}, [selectedBranch]);
+
+const fetchOrders = useCallback(async (status: OrderStatus, pg: number) => {
+  setLoading(true);
+  try {
+    const params: any = { status, page: pg, page_size: PAGE_SIZE };
+    if (selectedBranch?.id) params.branch_id = selectedBranch.id;
+    const res = await Get("pos/branch/orders/", params) as any;
+    const body = res?.data ?? res;
+    const rows: any[] = body?.data?.orders ?? body?.orders ?? [];
+    const pag = body?.data?.pagination ?? body?.pagination ?? {};
+    setOrders(rows.map(mapApiOrder));
+    setTotalCount(pag.total ?? rows.length);
+    setTotalPages(pag.total_pages ?? 1);
+  } catch { toasterrormsg("Failed to fetch orders."); }
+  finally { setLoading(false); }
+}, [selectedBranch]);
+
+useEffect(() => { fetchStats(); }, [fetchStats]);
+useEffect(() => { fetchOrders(activeStatus, page); }, [fetchOrders, activeStatus, page]);
+
+const handleBranchChange = (v: any) => {
+  setSelectedBranch(v?.id ? v : null);
+  setPage(1);
+};
 
   const handleTabChange = (status: OrderStatus) => { setActiveStatus(status); setPage(1); };
 
@@ -148,7 +170,7 @@ export default function BranchOrdersPage() {
       cell: ({ row }: CellContext<Order, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`branch/orders/${row.original.id}`)}
+            onClick={() => navigate(`/branch/orders/${row.original.id}`)}
             title="View Order">
             <EyeIcon className="size-4" />
           </Button>
