@@ -48,6 +48,99 @@ export function mapApiOrder(raw: Record<string, any>): Order {
   };
 }
 
+export interface OrderItemDetail {
+  id: number;
+  product_name: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
+  quantity: number;
+  unit_price: number;
+  tax_amount: number;
+  tax_percentage: number;
+  discount_amount: number;
+  total_price: number;
+  item_status: string;
+  product_details: {
+    main_image: string | null;
+    thumbnail: string | null;
+    variant_image?: string | null;
+  };
+}
+
+export interface OrderSummary {
+  vendor_subtotal: number;
+  vendor_discount: number;
+  vendor_tax: number;
+  vendor_total: number;
+  total_items: number;
+  total_quantity: number;
+}
+
+export interface ShippingAddress {
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface CustomerDetails {
+  name: string;
+  phone: string;
+  email: string;
+  shipping_address: ShippingAddress;
+}
+
+export interface DeliveryInfo {
+  delivery_service: string;
+  delivery_man_name: string | null;
+  delivery_man_phone: string | null;
+  delivery_incentive: number | null;
+  expected_delivery_date: string | null;
+  tracking_id: string | null;
+  courier_name: string | null;
+  courier_website: string | null;
+  delivery_status: string;
+}
+
+export interface OrderDetail {
+  id: number;
+  order_number: string;
+  created_at: string;
+  updated_at: string;
+  customer_details: CustomerDetails;
+  payment_method: string;
+  payment_status: string;
+  order_status: string;
+  items: OrderItemDetail[];
+  tax_percentage: number;
+  order_summary: OrderSummary;
+  delivery_info: DeliveryInfo | null;
+  notes: string | null;
+}
+
+export const ORDER_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "processing", label: "Packaging" },
+  { value: "shipped", label: "Out for Delivery" },
+  { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Returned" },
+];
+
+export function formatINR(amount: number | null | undefined): string {
+  const n = Number(amount ?? 0);
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(n) ? n : 0);
+}
+
 export const STATUS_TABS: { key: OrderStatus; label: string }[] = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },

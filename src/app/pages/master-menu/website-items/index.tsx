@@ -378,6 +378,7 @@ export default function WebsiteItemsListPage() {
       cell: ({ row }: CellContext<WebsiteItemRow, unknown>) => (
         <div className="flex items-center gap-2">
           {/* View */}
+          {canEdit && (
           <Button
             isIcon
             variant="flat"
@@ -387,8 +388,8 @@ export default function WebsiteItemsListPage() {
           >
             <EyeIcon className="size-5 text-primary-600" />
           </Button>
-
-          {/* Edit */}
+ )}
+        
           {canEdit && (
             <Button
               isIcon
