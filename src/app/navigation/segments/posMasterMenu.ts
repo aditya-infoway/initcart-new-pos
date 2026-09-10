@@ -1,3 +1,4 @@
+//navigation/segments/posMasterMenu.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posMasterMenu: NavigationTree = {
@@ -7,9 +8,9 @@ export const posMasterMenu: NavigationTree = {
   title: "Master",
   icon: "posMasterMenu",
   childs: [
-    { id: "posMasterMenu.accountCreation",  type: "item", path: "/Addaccounts",          title: "Account Creation",  icon: "posMasterMenu.accountCreation" },
+    { id: "posMasterMenu.accountCreation",  type: "item", path: "/addAccounts",          title: "Account Creation",  icon: "posMasterMenu.accountCreation" },
     { id: "posMasterMenu.branchMaster",     type: "item", path: "/branchMaster",      title: "Branch Master",     icon: "posMasterMenu.branchMaster", superAdminOnly: true },
-    { id: "posMasterMenu.addItems",         type: "item", path: "/Additems",             title: "Add Items",         icon: "posMasterMenu.addItems" },
+    { id: "posMasterMenu.addItems",         type: "item", path: "/AddItems",             title: "Add Items",         icon: "posMasterMenu.addItems" },
     { id: "posMasterMenu.websiteItems",     type: "item", path: "/WebItems",          title: "Website Items",     icon: "posMasterMenu.websiteItems" },
     { id: "posMasterMenu.itemBarcodes",     type: "item", path: "/PendingBarcodes",          title: "Item Barcodes",     icon: "posMasterMenu.itemBarcodes" },
     { id: "posMasterMenu.orders",           type: "item", path: "/Orders",            title: "Orders",            icon: "posMasterMenu.orders" },

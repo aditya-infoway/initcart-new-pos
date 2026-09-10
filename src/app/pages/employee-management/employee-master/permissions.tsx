@@ -1,3 +1,4 @@
+//pages/employee-management/employee-master/permissions.tsx
 import {
   ArrowLeftIcon, CheckIcon, ArrowPathIcon,
 } from "@heroicons/react/24/outline";

@@ -26,6 +26,7 @@ import { ensureString } from "@/utils/ensureString";
 import { Branch, STATUS_OPTIONS, mapApiBranch } from "./data";
 import { BranchDrawer } from "./BranchDrawer";
 import { BranchViewModal } from "./BranchViewModal";
+import { usePermission } from "@/hooks/usePermissions";
 
 type StatusOption = (typeof STATUS_OPTIONS)[number];
 
@@ -65,11 +66,15 @@ function BranchRowActions({
   onView,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete,
 }: {
   branch: Branch;
   onView: (b: Branch) => void;
   onEdit: (b: Branch) => void;
   onDelete: (b: Branch) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <div className="flex items-center justify-center gap-1.5">
@@ -81,22 +86,26 @@ function BranchRowActions({
       >
         <EyeIcon className="size-4.5 stroke-1" />
       </button>
-      <button
-        type="button"
-        title="Edit"
-        onClick={() => onEdit(branch)}
-        className="flex size-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-dark-600 dark:hover:text-primary-400"
-      >
-        <PencilIcon className="size-4.5 stroke-1" />
-      </button>
-      <button
-        type="button"
-        title="Delete"
-        onClick={() => onDelete(branch)}
-        className="flex size-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600 dark:text-dark-200 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-      >
-        <TrashIcon className="size-4.5 stroke-1" />
-      </button>
+      {canEdit && (
+        <button
+          type="button"
+          title="Edit"
+          onClick={() => onEdit(branch)}
+          className="flex size-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-dark-600 dark:hover:text-primary-400"
+        >
+          <PencilIcon className="size-4.5 stroke-1" />
+        </button>
+      )}
+      {canDelete && (
+        <button
+          type="button"
+          title="Delete"
+          onClick={() => onDelete(branch)}
+          className="flex size-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600 dark:text-dark-200 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+        >
+          <TrashIcon className="size-4.5 stroke-1" />
+        </button>
+      )}
     </div>
   );
 }
@@ -104,6 +113,7 @@ function BranchRowActions({
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function BranchMasterPage() {
   const [data, setData] = useState<Branch[]>([]);
+  const {canAdd , canEdit, canDelete} = usePermission("/branchMaster");
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -418,11 +428,13 @@ export default function BranchMasterPage() {
             onView={onView}
             onEdit={onEdit}
             onDelete={onDelete}
+            canDelete={canDelete}
+            canEdit={canEdit}
           />
         ),
       },
     ],
-    [onView, onEdit, onDelete],
+    [onView, onEdit, onDelete, canEdit, canDelete],
   );
 
   const table = useReactTable({
@@ -519,6 +531,7 @@ export default function BranchMasterPage() {
               <DocumentArrowDownIcon className={clsx("size-4", exporting && "animate-spin")} />
               <span>Export Excel</span>
             </Button>
+            {canAdd && (
             <Button
               color="primary"
               className="h-9 gap-2 rounded-md px-4 text-sm"
@@ -527,6 +540,7 @@ export default function BranchMasterPage() {
               <PlusIcon className="size-4" />
               <span>Add Branch</span>
             </Button>
+            )}
           </div>
         </div>
 

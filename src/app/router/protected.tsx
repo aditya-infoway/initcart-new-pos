@@ -44,7 +44,7 @@ const protectedRoutes: RouteObject = {
 // ── Master Menu ────────────────────────────────────────────────
 // Account Creation
 {
-  path: "Addaccounts",
+  path: "addAccounts",
   lazy: async () => ({
     Component: (await import("@/app/pages/master-menu/account-creation")).default,
   }),
@@ -64,7 +64,7 @@ const protectedRoutes: RouteObject = {
 
         // Items
         {
-          path: "Additems",
+          path: "AddItems",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/items")).default,
           }),

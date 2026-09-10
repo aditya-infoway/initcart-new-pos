@@ -1,3 +1,4 @@
+//navigation/segments/posOrderManagement.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posOrderManagement: NavigationTree = {

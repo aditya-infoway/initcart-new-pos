@@ -11,4 +11,5 @@ export interface NavigationTree {
   superAdminOnly?: boolean; 
   branchOnly?: boolean; 
   franchiseOnly?: boolean; 
+  alwaysVisible?: boolean;
 }

@@ -40,11 +40,11 @@ export interface OrderPagination {
 export function mapApiOrder(raw: Record<string, any>): Order {
   return {
     id: Number(raw.id ?? 0),
-    orderId: String(raw.order_id ?? raw.orderId ?? `#${raw.id}`),
-    orderDate: String(raw.order_date ?? raw.created_at ?? ""),
-    customer: String(raw.customer_name ?? raw.customer ?? "—"),
-    totalAmount: String(raw.total_amount ?? raw.total ?? "0.00"),
-    status: String(raw.status ?? "pending"),
+    orderId: String(raw.order_number ?? raw.order_id ?? raw.orderId ?? `#${raw.id}`),
+    orderDate: String(raw.created_at ?? raw.order_date ?? ""),
+    customer: String(raw.billing_name ?? raw.customer_name ?? raw.customer ?? "—"),
+    totalAmount: String(raw.totalAmount ?? raw.total_amount ?? raw.vendor_total ?? raw.total ?? "0.00"),
+    status: String(raw.order_status ?? raw.vendor_item_status ?? raw.status ?? "pending"),
   };
 }
 

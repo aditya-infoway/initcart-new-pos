@@ -27,6 +27,7 @@ import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { usePermission } from "@/hooks/usePermissions";
 
+
 interface SchemeOfferItem {
   id: number;
   offer_name: string;
@@ -522,7 +523,7 @@ function SchemeFormModal({
 
 export default function SchemeOfferListPage() {
   const navigate = useNavigate();
-  const { canAdd, canEdit, canDelete, canView } = usePermission("/scheme-offer");
+  const { canAdd, canEdit, canDelete, canView } = usePermission("/SchemeOffer");
 
   const [rows, setRows] = useState<SchemeOfferItem[]>([]);
   const [loading, setLoading] = useState(true);

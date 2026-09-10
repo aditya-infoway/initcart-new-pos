@@ -1,3 +1,4 @@
+//navigation/segments/posTansactionMaster.ts                                                                                                                                                                                               
 import { NavigationTree } from "@/@types/navigation";
 
 export const posTransactionMaster: NavigationTree = {
