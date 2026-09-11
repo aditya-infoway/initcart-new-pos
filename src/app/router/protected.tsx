@@ -261,6 +261,13 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "purchaseorder",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/errors/coming-soon")).default,
+          }),
+        },
+
+        {
           path: "b2bpurchaseverify",
           lazy: async () => ({
             Component: (await import("@/app/pages/purchase-master/b2b-purchase-verification")).default,
