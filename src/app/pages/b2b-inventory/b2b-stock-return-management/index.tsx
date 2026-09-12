@@ -62,7 +62,7 @@ function extractRows(res: any): ReturnListItem[] {
 
 export default function B2BStockReturnManagementPage() {
   const navigate = useNavigate();
-  const { canAdd, canView } = usePermission("/b2b-stock-return-management");
+  const { canAdd, canView, canEdit, canDelete } = usePermission("/b2bstockReturnverification");
 
   const [returns, setReturns] = useState<ReturnListItem[]>([]);
   const [loading, setLoading] = useState(true);

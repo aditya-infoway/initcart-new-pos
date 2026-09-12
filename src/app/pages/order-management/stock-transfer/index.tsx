@@ -339,7 +339,7 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
 // ── Order Tracking ────────────────────────────────────────────────────────
 function OrderTracking() {
   const [allOrders, setAllOrders] = useState<BranchOrderListItem[]>([]);
-  const {canAdd} = usePermission("/stockTransfer");
+  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"branches" | "list">("branches");
   const [branchFilter, setBranchFilter] = useState<{ branch_name: string; status: string } | null>(null);
@@ -556,10 +556,12 @@ function OrderTracking() {
                         <div className="flex items-center gap-2">
                           <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10"
                             onClick={() => loadOrderDetail(o.id)} title="View & Process"><EyeIcon className="size-4" /></Button>
-                          {o.status === "pending" && (
-                            <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
-                              onClick={() => cancelOrder(o.id)} title="Cancel Order"><XMarkIcon className="size-4" /></Button>
-                          )}
+{o.status === "pending" && canDelete && (
+  <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
+    onClick={() => cancelOrder(o.id)} title="Cancel Order">
+    <XMarkIcon className="size-4" />
+  </Button>
+)}
                         </div>
                       </Td>
                     </Tr>
@@ -1046,7 +1048,7 @@ function SelectItemsDrawer({
 // ── Main Component ────────────────────────────────────────────────────────
 export default function StockTransferPage() {
   const [mode, setMode] = useState<"manual" | "order_tracking">("manual");
-  const {canAdd } = usePermission("/stockTransfer");
+  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
   const [tab, setTab] = useState<"list" | "create">("list");
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [myItems, setMyItems] = useState<ItemWithVariants[]>([]);
@@ -1478,12 +1480,16 @@ export default function StockTransferPage() {
                             <Td>
                               <div className="flex items-center gap-2">
                                 <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10" onClick={() => loadDetail(t.id)}><EyeIcon className="size-4" /></Button>
-                                {t.status === "pending" && (
-                                  <>
-                                    <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
-                                    <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
-                                  </>
-                                )}
+{t.status === "pending" && (
+  <>
+    {canEdit && (
+      <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
+    )}
+    {canDelete && (
+      <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
+    )}
+  </>
+)}
                               </div>
                             </Td>
                           </Tr>
