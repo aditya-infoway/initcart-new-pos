@@ -27,6 +27,7 @@ import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { usePermission } from "@/hooks/usePermissions";
+import { printReceipt } from "@/utils/PrintReceipt";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface BankReceiptRow {
@@ -43,6 +44,29 @@ interface BankReceiptRow {
   chequeClearDate: string | null;
   narration: string;
   createdByName?: string;
+
+  // 👇 PRINT KE LIYE — BRANCH DETAILS
+  branch_name?: string;
+  branch_owner_name?: string;
+  branch_address?: string;
+  branch_city?: string;
+  branch_state?: string;
+  branch_country?: string;
+  branch_pincode?: string;
+  branch_phone?: string;
+  branch_email?: string;
+
+  // 👇 PRINT KE LIYE — PARTY DETAILS
+  party_address?: string;
+  party_city?: string;
+  party_state?: string;
+  party_country?: string;
+  party_pincode?: string;
+  party_mobile?: string;
+  party_phone?: string;
+  party_email?: string;
+  party_gst_no?: string;
+  party_pan_card?: string;
 }
 
 function mapRow(raw: any): BankReceiptRow {
@@ -60,6 +84,29 @@ function mapRow(raw: any): BankReceiptRow {
     chequeClearDate: raw.cheque_clear_date ?? null,
     narration:       String(raw.narration ?? ""),
     createdByName:   String(raw.created_by_name ?? ""),
+
+    // 👇 PRINT KE LIYE — BRANCH DETAILS
+    branch_name:       String(raw.branch_name ?? ""),
+    branch_owner_name: String(raw.branch_owner_name ?? ""),
+    branch_address:    String(raw.branch_address ?? ""),
+    branch_city:       String(raw.branch_city ?? ""),
+    branch_state:      String(raw.branch_state ?? ""),
+    branch_country:    String(raw.branch_country ?? ""),
+    branch_pincode:    String(raw.branch_pincode ?? ""),
+    branch_phone:      String(raw.branch_phone ?? ""),
+    branch_email:      String(raw.branch_email ?? ""),
+
+    // 👇 PRINT KE LIYE — PARTY DETAILS
+    party_address:  String(raw.party_address ?? ""),
+    party_city:     String(raw.party_city ?? ""),
+    party_state:    String(raw.party_state ?? ""),
+    party_country:  String(raw.party_country ?? ""),
+    party_pincode:  String(raw.party_pincode ?? ""),
+    party_mobile:   String(raw.party_mobile ?? ""),
+    party_phone:    String(raw.party_phone ?? ""),
+    party_email:    String(raw.party_email ?? ""),
+    party_gst_no:   String(raw.party_gst_no ?? ""),
+    party_pan_card: String(raw.party_pan_card ?? ""),
   };
 }
 
@@ -1419,6 +1466,23 @@ export default function BankReceiptPage() {
         </span>
       ),
     },
+    // 👇👇👇 PRINT COLUMN — YAHAN ADD KIYA 👇👇👇
+    {
+      id: "print", header: "Receipt", size: 90,
+      enableSorting: false, enableGlobalFilter: false,
+      cell: ({ row }: CellContext<BankReceiptRow, unknown>) => (
+        <Button
+          isIcon
+          variant="flat"
+          className="size-8 rounded-full"
+          title="Print Receipt"
+          onClick={() => printReceipt(row.original, "bank")}
+        >
+          <PrinterIcon className="size-4 text-primary-600" />
+        </Button>
+      ),
+    },
+    // 👆👆👆 PRINT COLUMN KHATAM 👆👆👆
   ], []);
 
   const table = useReactTable({

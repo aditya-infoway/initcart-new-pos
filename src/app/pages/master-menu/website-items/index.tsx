@@ -74,6 +74,7 @@ interface WebsiteItemRow {
   vendor_receivable: number;
   completion_percentage: number;
   linked_product: number | null;
+  createdByName?: string;
 }
 
 interface DashboardStats {
@@ -102,6 +103,7 @@ function mapRow(raw: any): WebsiteItemRow {
     vendor_receivable:      Number(raw.vendor_receivable ?? raw.final_price ?? 0),
     completion_percentage:  Number(raw.completion_percentage ?? 0),
     linked_product:         raw.linked_product ?? null,
+    createdByName: String(raw.created_by_name ?? ""),
   };
 }
 
@@ -369,6 +371,16 @@ export default function WebsiteItemsListPage() {
           </Badge>
         );
       },
+    },
+    {
+      id: "createdByName",
+      accessorKey: "createdByName",
+      header: "Created By",
+      cell: ({ getValue }: CellContext<WebsiteItemRow, unknown>) => (
+        <span className="text-gray-600 dark:text-dark-200">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
     },
     {
       id: "actions",

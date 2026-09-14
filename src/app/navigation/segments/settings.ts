@@ -29,5 +29,6 @@ export const settings: NavigationTree = {
       title: "Appearance",
       icon: "settings.appearance",
     },
+
   ],
 };

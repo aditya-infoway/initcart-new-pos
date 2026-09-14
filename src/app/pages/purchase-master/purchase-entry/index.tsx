@@ -65,6 +65,7 @@ interface PurchaseRecord {
   dueDate: string | null;
   for_: number;
   items: PurchaseItem[];
+  createdByName?: string;
 }
 
 function mapRow(raw: any): PurchaseRecord {
@@ -79,6 +80,7 @@ function mapRow(raw: any): PurchaseRecord {
     partyName:      String(raw.party_name ?? raw.party_name_name ?? raw.vendor_name ?? ""),
     paymentTerms:   String(raw.payment_terms ?? raw.terms ?? ""),
     narration:      String(raw.narration ?? ""),
+    createdByName:  String(raw.created_by_name ??  ""),
     totalBasic:     round2(raw.total_basic ?? 0),
     totalTax:       round2(raw.total_tax ?? 0),
     grandTotal:     round2(raw.grand_total ?? 0),
@@ -98,6 +100,7 @@ function mapRow(raw: any): PurchaseRecord {
       taxAmount:       String(i.tax_amount ?? i.taxAmount ?? "0"),
       netAmount:       String(i.net_amount ?? i.netValue ?? "0"),
       barcode:         String(i.barcode ?? ""),
+      
     })) : [],
   };
 }
@@ -470,6 +473,16 @@ export default function PurchaseEntryPage() {
       id: "grandTotal", accessorKey: "grandTotal", header: "Grand Total",
       cell: ({ getValue }: CellContext<PurchaseRecord, unknown>) => (
         <span className="font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{round2(getValue() ?? 0).toFixed(2)}</span>
+      ),
+    },
+        {
+      id: "createdByName",
+      accessorKey: "createdByName",
+      header: "Created By",
+      cell: ({ getValue }: CellContext<PurchaseRecord, unknown>) => (
+        <span className="whitespace-nowrap text-gray-600 dark:text-dark-200">
+          {String(getValue() ?? "") || "—"}
+        </span>
       ),
     },
     {

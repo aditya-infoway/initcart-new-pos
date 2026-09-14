@@ -18,6 +18,8 @@ export interface Account {
   panCard: string;
   currentBalance: string;
   currentDrcr: string;
+  createdBy?: number;
+  createdByName?: string;
 }
 
 // NAYA
@@ -73,6 +75,8 @@ export function mapApiAccount(raw: Record<string, any>): Account {
     panCard: String(raw.pan_card ?? ""),
     currentBalance: String(raw.current_balance ?? "0.00"),
     currentDrcr: String(raw.current_drcr ?? "Dr"),
+    createdBy: raw.created_by,
+    createdByName: raw.created_by_name,
   };
 }
 

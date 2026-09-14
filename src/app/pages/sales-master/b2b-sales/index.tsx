@@ -201,6 +201,17 @@ export default function B2BSalesPage() {
         );
       },
     },
+        {
+      id: "created_by_name", accessorKey: "created_by_name", header: "Created By",
+      cell: ({ getValue, table }: CellContext<B2BSale, unknown>) => {
+        const q = ensureString(table.getState().globalFilter);
+        return (
+          <span className="text-gray-700 dark:text-dark-200">
+            <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
+          </span>
+        );
+      },
+    },
     {
       id: "actions", header: "Action",
       enableSorting: false, enableGlobalFilter: false,

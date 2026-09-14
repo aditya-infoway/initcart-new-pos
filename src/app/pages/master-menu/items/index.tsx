@@ -40,6 +40,7 @@ interface ItemRow {
   hsnCode: string;
   taxSlab: string;
   createdBySuperadmin: boolean;
+  createdByName?: string;
 }
 
 function mapRow(raw: any): ItemRow {
@@ -56,6 +57,7 @@ function mapRow(raw: any): ItemRow {
     hsnCode:             String(raw.hsnCode ?? raw.hsn_code ?? ""),
     taxSlab:             String(raw.taxSlab ?? raw.tax_slab ?? ""),
     createdBySuperadmin: Boolean(raw.created_by_superadmin),
+    createdByName:       String(raw.created_by_name ?? ""),
   };
 }
 
@@ -347,6 +349,14 @@ const isSuperAdmin = useMemo(() => {
         const v = String(getValue() ?? "");
         return v ? <Badge color="warning" variant="soft" className="text-xs">{v}</Badge> : <span className="text-gray-400">—</span>;
       },
+    },
+        {
+      id: "createdByName", accessorKey: "createdByName", header: "Created By",
+      cell: ({ getValue }: CellContext<ItemRow, unknown>) => (
+        <span className="text-gray-600 dark:text-dark-200">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
     },
     {
       id: "actions", header: "Actions", enableSorting: false, enableGlobalFilter: false,

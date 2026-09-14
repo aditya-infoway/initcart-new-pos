@@ -482,7 +482,7 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
-          path: "ledger-detail/:accountId",
+          path: "ledger-detail/:id",
           lazy: async () => ({
             Component: (await import("@/app/pages/transaction-master/ledger-report/detail")).default,
           }),
@@ -611,6 +611,12 @@ const protectedRoutes: RouteObject = {
               path: "appearance",
               lazy: async () => ({
                 Component: (await import("@/app/pages/settings/sections/Appearance")).default,
+              }),
+            },
+            {
+              path: "adminsettings",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/settings/sections/adminsettings")).default,
               }),
             },
           ],

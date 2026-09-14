@@ -419,6 +419,17 @@ export default function BranchMasterPage() {
           </span>
         ),
       },
+            {
+        id: "createdByName",
+        accessorKey: "createdByName",
+        header: "Created By",
+        size: 130,
+        cell: ({ getValue }: CellContext<Branch, unknown>) => (
+          <span className="text-gray-600 dark:text-dark-200">
+            {String(getValue() || "—")}
+          </span>
+        ),
+      },
       {
         id: "actions", header: "Actions", size: 130,
         enableSorting: false, enableGlobalFilter: false,
@@ -493,18 +504,7 @@ export default function BranchMasterPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-           
-            {/* <div className="w-44 max-w-full">
-              <Combobox
-                data={STATUS_OPTIONS}
-                value={statusFilterObj}
-                onChange={(item: StatusOption | null) => setStatusFilterObj(item ?? STATUS_OPTIONS[0])}
-                displayField="label"
-                searchFields={["label"]}
-                placeholder="Status"
-                inputProps={{ className: "h-9 text-sm" }}
-              />
-            </div> */}
+          
             <Button
               variant="outlined"
               className={clsx("h-9 gap-2 rounded-md px-3 text-sm", showFilter && "border-primary text-primary")}

@@ -10,6 +10,7 @@ export interface SalesReturnRecord {
   approvedBy: string;
   grandTotal: number;
   items: SalesReturnItem[];
+  createdByName?: string;
 }
 
 export interface SalesReturnItem {
@@ -66,7 +67,8 @@ export function mapApiSalesReturn(raw: any): SalesReturnRecord {
     returnType: String(raw.return_type ?? ""),
     approvedBy: String(raw.approved_by ?? ""),
     grandTotal: Number(raw.grand_total ?? 0),
-    items: Array.isArray(raw.items) ? raw.items : [],
+    items: Array.isArray(raw.items) ? raw.items : [], 
+    createdByName: String(raw.created_by_name ?? ""),
   };
 }
 
@@ -89,6 +91,7 @@ export function mapBillReturnItem(raw: any, returnType: string): BillReturnItem 
     tax_amount: Number(raw.tax_amount ?? 0),
     net_amount: Number(raw.net_amount ?? 0),
     unit: String(raw.unit ?? "Pcs"),
+    
   };
 }
 

@@ -3,6 +3,7 @@ export interface Group {
   name: string;
   description: string;
   createdAt: string;
+  createdByName?: string;
 }
 
 export interface GroupFormValues {
@@ -16,6 +17,7 @@ export function mapApiGroup(raw: Record<string, any>): Group {
     name: String(raw.name ?? ""),
     description: String(raw.description ?? ""),
     createdAt: String(raw.created_at ?? ""),
+    createdByName: String(raw.created_by_name ?? ""),
   };
 }
 

@@ -12,6 +12,7 @@ export interface SaleRecord {
   totalTax: number;
   for_: number;
   grandTotal: number;
+  createdByName?: string;
 }
 
 /** Variant row from sale-search-item — `id` is variant id, `itemId` is pos_items id */
@@ -91,6 +92,7 @@ export function mapApiSaleRecord(raw: any): SaleRecord {
     totalTax: Number(raw.total_tax ?? raw.tax_amount ?? 0),
     for_: Number(raw.for ?? raw.freight ?? 0),
     grandTotal: Number(raw.grand_total ?? raw.net_amount ?? 0),
+    createdByName: String(raw.created_by_name ?? ""),
   };
 }
 

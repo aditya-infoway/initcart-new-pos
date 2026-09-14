@@ -38,6 +38,7 @@ interface ContraRow {
   cashAccountName: string;
   partyName: string;
   amount: number;
+  createdByName?: string;
 }
 
 function mapRow(raw: any): ContraRow {
@@ -49,6 +50,7 @@ function mapRow(raw: any): ContraRow {
     cashAccountName: String(raw.cash_account_name ?? ""),
     partyName:       String(raw.party_name ?? ""),
     amount:          Number(raw.amount ?? 0),
+    createdByName:   String(raw.created_by_name ?? ""),
   };
 }
 
@@ -466,6 +468,16 @@ export default function ContraPage() {
           </span>
         );
       },
+    },
+        {
+      id: "createdByName",
+      accessorKey: "createdByName",
+      header: "Created By",
+      cell: ({ getValue }: CellContext<ContraRow, unknown>) => (
+        <span className="whitespace-nowrap text-gray-600 dark:text-dark-200">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
     },
     {
       id: "amount", accessorKey: "amount", header: "Amount",
