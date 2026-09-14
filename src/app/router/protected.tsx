@@ -44,7 +44,7 @@ const protectedRoutes: RouteObject = {
 // ── Master Menu ────────────────────────────────────────────────
 // Account Creation
 {
-  path: "Addaccounts",
+  path: "addAccounts",
   lazy: async () => ({
     Component: (await import("@/app/pages/master-menu/account-creation")).default,
   }),
@@ -64,7 +64,7 @@ const protectedRoutes: RouteObject = {
 
         // Items
         {
-          path: "Additems",
+          path: "AddItems",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/items")).default,
           }),
@@ -260,6 +260,13 @@ const protectedRoutes: RouteObject = {
             Component: (await import("@/app/pages/purchase-master/purchase-excel-import-export/index")).default,
           }),
         },
+        {
+          path: "purchaseorder",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/errors/coming-soon")).default,
+          }),
+        },
+
         {
           path: "b2bpurchaseverify",
           lazy: async () => ({
@@ -475,7 +482,7 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
-          path: "ledger-detail/:accountId",
+          path: "ledger-detail/:id",
           lazy: async () => ({
             Component: (await import("@/app/pages/transaction-master/ledger-report/detail")).default,
           }),
@@ -604,6 +611,12 @@ const protectedRoutes: RouteObject = {
               path: "appearance",
               lazy: async () => ({
                 Component: (await import("@/app/pages/settings/sections/Appearance")).default,
+              }),
+            },
+            {
+              path: "adminsettings",
+              lazy: async () => ({
+                Component: (await import("@/app/pages/settings/sections/adminsettings")).default,
               }),
             },
           ],

@@ -30,6 +30,8 @@ export interface Branch {
   branchLogo: string | null;
   createdAt: string;
   updatedAt: string;
+  createdBy?: number;
+  createdByName?: string;
   country_id?: number | string;
   state_id?: number | string;
   city_id?: number | string;
@@ -100,6 +102,8 @@ export function mapApiBranch(raw: Record<string, any>): Branch {
     country_id: raw.country_id,
     state_id: raw.state_id,
     city_id: raw.city_id,
+    createdBy: raw.created_by,
+    createdByName : raw.created_by_name,
   };
 }
 

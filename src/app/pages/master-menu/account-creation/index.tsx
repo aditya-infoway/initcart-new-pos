@@ -346,6 +346,17 @@ export default function AccountCreationPage() {
           </span>
         ),
       },
+      {
+        id: "createdByName",
+        accessorKey: "createdByName",
+        header: "Created By",
+        cell: ({ getValue }: CellContext<Account, unknown>) => (
+          <span className="text-gray-600 dark:text-dark-200">
+            {String(getValue() ?? "—")}
+          </span>
+        ),
+      },
+
 {
   id: "actions",
   header: "Action",
@@ -472,14 +483,6 @@ export default function AccountCreationPage() {
           />
         </div>
       </div>
-
-      {/* ❌ REMOVE AccountDrawer - ab nahi chahiye */}
-      {/* <AccountDrawer
-        isOpen={drawerOpen}
-        close={() => setDrawerOpen(false)}
-        account={editingAccount}
-        onSaved={fetchAccounts}
-      /> */}
 
       {/* Delete confirm modal - keep this */}
       <ConfirmModal

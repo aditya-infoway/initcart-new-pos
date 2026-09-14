@@ -37,6 +37,7 @@ interface PurchaseReturn {
   approvedBy: string;
   grandTotal: number;
   items: any[];
+  createdByName?: string;
 }
 
 function mapRow(raw: any): PurchaseReturn {
@@ -50,6 +51,7 @@ function mapRow(raw: any): PurchaseReturn {
     approvedBy: String(raw.approved_by ?? ""),
     grandTotal: Number(raw.grand_total ?? 0),
     items:      Array.isArray(raw.items) ? raw.items : [],
+    createdByName: String(raw.created_by_name ?? ""),
   };
 }
 
@@ -323,6 +325,12 @@ export default function PurchaseReturnPage() {
       id: "grandTotal", accessorKey: "grandTotal", header: "Grand Total",
       cell: ({ getValue }: CellContext<PurchaseReturn, unknown>) => (
         <span className="font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{Number(getValue() ?? 0).toFixed(2)}</span>
+      ),
+    },
+        {
+      id: "createdByName", accessorKey: "createdByName", header: "Created By",
+      cell: ({ getValue }: CellContext<PurchaseReturn, unknown>) => (
+        <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "") || "—"}</span>
       ),
     },
     {

@@ -1,3 +1,4 @@
+//pages/employee-management/employee-master/permissions.tsx
 import {
   ArrowLeftIcon, CheckIcon, ArrowPathIcon,
 } from "@heroicons/react/24/outline";
@@ -42,8 +43,8 @@ const PAGE_ALLOWED_ACTIONS: Record<string, AllowedActions> = {
 
   // ── Stock related ───────────────────────
   "/stockReturnverification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/b2bstockReturnverification": { can_view: true, can_add: false, can_edit: false, can_delete: false },
-  "/stockTransfer": { can_view: true, can_add: true, can_edit: false, can_delete: false },
+  "/b2bstockReturnverification": { can_view: true, can_add: true, can_edit: true, can_delete: true },
+  "/stockTransfer": { can_view: true, can_add: true, can_edit: true, can_delete: true },
 
   // ── Purchase ─────────────────────────────
   "/Addpurchaseitem": { can_view: true, can_add: true, can_edit: false, can_delete: false },

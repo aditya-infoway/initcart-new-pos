@@ -43,6 +43,7 @@ export function mapApiStockItem(raw: any): StockItem {
     salesPrice: Number(raw.salesPrice ?? 0),
     stock: Number(raw.current_stock ?? 0),
     createdBySuperadmin: Boolean(raw.created_by_superadmin),
+    
   };
 }
 

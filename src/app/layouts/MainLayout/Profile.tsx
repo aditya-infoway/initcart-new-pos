@@ -8,7 +8,6 @@ import {
 import {
   ArrowLeftStartOnRectangleIcon,
   Cog6ToothIcon,
-  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { TbPalette, TbUser } from "react-icons/tb";
 import { Link, useNavigate } from "react-router";
@@ -16,7 +15,6 @@ import { useEffect, useState } from "react";
 
 // Local Imports
 import { Avatar, Button } from "@/components/ui";
-import { APP_FAVICON, APP_NAME, ColorType } from "@/constants/app";
 import { Get } from "@/ApiHelper";
 import { resolveProfileDisplay } from "@/utils/authMeProfile";
 import { useAuthContext } from "@/app/contexts/auth/context";
@@ -30,6 +28,9 @@ export function Profile() {
   const [adminName, setAdminName] = useState("Branch");
   const [adminEmail, setAdminEmail] = useState("");
   const [profileImage, setProfileImage] = useState("");
+
+  // 👇 ROLE CHECK — superadmin only for admin settings
+  const isSuperAdmin = localStorage.getItem("role") === "superadmin";
 
   useEffect(() => {
     const loadProfile = () => {
@@ -159,6 +160,27 @@ export function Profile() {
                     </p>
                   </div>
                 </Link>
+
+                {/* 👇 ADMIN SETTINGS — sirf superadmin ko dikhe */}
+                {isSuperAdmin && (
+                  <Link
+                    to="/settings/adminsettings"
+                    onClick={() => close()}
+                    className="group flex items-center gap-3 px-4 py-2.5 tracking-wide outline-hidden transition-all hover:bg-gray-100 dark:hover:bg-dark-600"
+                  >
+                    <Avatar size={8} initialColor="primary" classNames={{ display: "rounded-lg" }}>
+                      <Cog6ToothIcon className="size-4" />
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 group-hover:text-primary-600 dark:text-dark-100">
+                        Admin Settings
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-dark-300">
+                        Superadmin only settings
+                      </p>
+                    </div>
+                  </Link>
+                )}
 
                 {/* Logout */}
                 <div className="px-4 pt-3">

@@ -6,7 +6,8 @@ import {
 import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
   ArrowDownTrayIcon, ArrowPathIcon, EyeIcon, MagnifyingGlassIcon,
-  HomeIcon, UserGroupIcon, BuildingOfficeIcon, BuildingLibraryIcon, CurrencyDollarIcon,
+  HomeIcon, UserGroupIcon, BuildingOfficeIcon, BuildingLibraryIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,13 +21,25 @@ import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { usePermission } from "@/hooks/usePermissions";
+import { useAuthContext } from "@/app/contexts/auth/context";
 import { LedgerAccount, GROUP_TABS, getDrCrColor, mapApiLedgerAccount } from "./data";
 
-const PAGE_SIZES = [10, 15, 25, 50, 100];
+// ✅ ADD: branch dropdown option
+interface Branch {
+  id: number;
+  branch_name: string;
+}
 
 export default function LedgerReportPage() {
   const navigate = useNavigate();
   const { canView } = usePermission("/ledger-report");
+
+  // ✅ ADD: same role-gating as OutstandingReport — superadmin AND employee
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  const canViewAllBranches = isSuperAdmin || isEmployee;
 
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +52,22 @@ export default function LedgerReportPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchAccounts = useCallback(async (pg: number, ps: number) => {
+  // ✅ ADD: branch list + currently selected branch
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+
+  // ✅ CHANGED: accepts branchId and forwards it to the API as `branch_id`
+  const fetchAccounts = useCallback(async (
+    pg: number,
+    ps: number,
+    branchId: string = selectedBranchId,
+  ) => {
     setLoading(true);
     try {
-      const res = await Get("pos/ledger-report/", { page: pg, page_size: ps }) as any;
+      const params: Record<string, unknown> = { page: pg, page_size: ps };
+      if (branchId) params.branch_id = branchId;
+
+      const res = await Get("pos/ledger-report/", params) as any;
       const body = res?.data ?? res;
       const rows: any[] = Array.isArray(body?.results) ? body.results : [];
       setAccounts(rows.map(mapApiLedgerAccount));
@@ -53,9 +78,37 @@ export default function LedgerReportPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedBranchId]);
 
   useEffect(() => { fetchAccounts(page, pageSize); }, [fetchAccounts, page, pageSize]);
+
+  // ✅ ADD: fetch branch list — only for superadmin/employee
+  useEffect(() => {
+    if (!canViewAllBranches) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await Get("pos/branches/") as any;
+        const body = res?.data ?? res;
+        const list: Branch[] = Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body)
+            ? body
+            : [];
+        if (!cancelled) setBranches(list);
+      } catch (e) {
+        console.error("Branches fetch failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canViewAllBranches]);
+
+  // ✅ ADD: branch change handler — refetch + reset page
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    setPage(1);
+    fetchAccounts(1, pageSize, val);
+  };
 
   const filteredByGroup = useMemo(() => {
     if (activeGroup === "all") return accounts;
@@ -73,7 +126,7 @@ export default function LedgerReportPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "ledger_report.csv"; a.click();
     URL.revokeObjectURL(url);
-  }; 
+  };
 
   const columns = useMemo<ColumnDef<LedgerAccount>[]>(() => [
     {
@@ -144,15 +197,20 @@ export default function LedgerReportPage() {
       id: "actions", header: "Action", size: 60, enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<LedgerAccount, unknown>) => (
         <div className="flex justify-center">
+          {/* ✅ CHANGED: pass branch context via URL query */}
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/ledger-detail/${row.original.id}`)}
+            onClick={() => navigate(
+              selectedBranchId
+                ? `/ledger-detail/${row.original.id}?branch_id=${selectedBranchId}`
+                : `/ledger-detail/${row.original.id}`
+            )}
             title="View Ledger">
             <EyeIcon className="size-4" />
           </Button>
         </div>
       ),
     },
-  ], [navigate]);
+  ], [navigate, selectedBranchId]);
 
   const table = useReactTable({
     data: filteredByGroup,
@@ -187,6 +245,24 @@ export default function LedgerReportPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* ✅ ADD: Branch filter — only for superadmin/employee */}
+            {canViewAllBranches && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-dark-300">
+                  <BuildingOfficeIcon className="size-3.5" /> Branch:
+                </label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  className="h-9 min-w-[160px] rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:ring-3 focus:ring-primary-500/50 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+                >
+                  <option value="">My Branch (Main)</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={String(b.id)}>{b.branch_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
               onClick={handleExport}>
               <ArrowDownTrayIcon className="size-4 text-success-600" />
@@ -202,10 +278,8 @@ export default function LedgerReportPage() {
 
         {/* Group tabs + page size in one row */}
         <div className="px-(--margin-x) mt-2 flex flex-wrap items-center justify-between gap-3">
-          {/* Group filter tabs */}
           <WithIcon
             tabs={GROUP_TABS.map(tab => {
-              // Map appropriate icons based on group type
               const getIcon = () => {
                 switch(tab.key) {
                   case "all": return HomeIcon;
@@ -216,12 +290,12 @@ export default function LedgerReportPage() {
                   default: return HomeIcon;
                 }
               };
-              
+
               return {
                 id: tab.key,
                 title: tab.label,
                 icon: getIcon(),
-                content: null, // Content is handled separately via activeGroup state
+                content: null,
               };
             })}
             selectedIndex={GROUP_TABS.findIndex(t => t.key === activeGroup)}
@@ -270,4 +344,3 @@ export default function LedgerReportPage() {
     </Page>
   );
 }
-

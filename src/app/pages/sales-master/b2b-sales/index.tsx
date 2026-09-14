@@ -19,6 +19,7 @@ import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface B2BSaleItem {
@@ -67,7 +68,7 @@ const STATUS_COLOR: Record<string, string> = {
 // ── Main list page ─────────────────────────────────────────────────────────
 export default function B2BSalesPage() {
   const navigate = useNavigate();
-
+  const { canAdd } = usePermission("/b2bsales");
   const [rows, setRows] = useState<B2BSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -200,6 +201,17 @@ export default function B2BSalesPage() {
         );
       },
     },
+        {
+      id: "created_by_name", accessorKey: "created_by_name", header: "Created By",
+      cell: ({ getValue, table }: CellContext<B2BSale, unknown>) => {
+        const q = ensureString(table.getState().globalFilter);
+        return (
+          <span className="text-gray-700 dark:text-dark-200">
+            <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
+          </span>
+        );
+      },
+    },
     {
       id: "actions", header: "Action",
       enableSorting: false, enableGlobalFilter: false,
@@ -282,9 +294,11 @@ export default function B2BSalesPage() {
             <Button variant="outlined" className="gap-2" onClick={fetchRows}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
             </Button>
-            <Button color="primary" className="gap-2" onClick={() => navigate("/b2bsalescreate")}>
-              <PlusIcon className="size-4" /> New B2B Sale
-            </Button>
+            {canAdd && (
+              <Button color="primary" className="gap-2" onClick={() => navigate("/b2bsalescreate")}>
+                <PlusIcon className="size-4" /> New B2B Sale
+              </Button>
+            )}
           </div>
         </div>
 

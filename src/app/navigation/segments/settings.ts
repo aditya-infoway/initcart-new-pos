@@ -1,3 +1,4 @@
+//navigation/segments/settings.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const settings: NavigationTree = {
@@ -28,5 +29,6 @@ export const settings: NavigationTree = {
       title: "Appearance",
       icon: "settings.appearance",
     },
+
   ],
 };

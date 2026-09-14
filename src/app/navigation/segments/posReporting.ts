@@ -1,3 +1,4 @@
+//navigation/segments/posReporting.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posReporting: NavigationTree = {

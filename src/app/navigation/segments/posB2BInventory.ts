@@ -1,3 +1,5 @@
+
+//navigation/segments/posB2BInventory.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posB2BInventory: NavigationTree = {

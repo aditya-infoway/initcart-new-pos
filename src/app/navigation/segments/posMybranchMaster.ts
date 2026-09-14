@@ -1,3 +1,4 @@
+//navigation/segments/posMyBranchMaster.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posMyBranches: NavigationTree = {

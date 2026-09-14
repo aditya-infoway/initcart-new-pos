@@ -1,3 +1,4 @@
+// SchemeOfferListPage.tsx (New Theme - WITH Created By Column)
 import {
   getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
   getSortedRowModel, SortingState, useReactTable,
@@ -41,6 +42,7 @@ interface SchemeOfferItem {
   created_by_branch: number;
   created_by_branch_name: string;
   created_at: string;
+  createdByName?: string;   // ✅ Added
 }
 
 interface BranchOption {
@@ -88,13 +90,25 @@ const AVAILABILITY_LABEL: Record<string, string> = {
   selected: "Selected Branches",
 };
 
+// ── extractRows with createdByName mapping ────────────────────────────────
 function extractRows(res: any): SchemeOfferItem[] {
   const body = res?.data ?? res;
-  if (body?.results?.data) return body.results.data;
-  if (Array.isArray(body?.results)) return body.results;
-  if (Array.isArray(body?.data)) return body.data;
-  if (Array.isArray(body)) return body;
-  return [];
+  let rawRows: any[] = [];
+  if (body?.results?.data) rawRows = body.results.data;
+  else if (Array.isArray(body?.results)) rawRows = body.results;
+  else if (Array.isArray(body?.data)) rawRows = body.data;
+  else if (Array.isArray(body)) rawRows = body;
+
+  // 👇 Map createdByName from multiple possible API fields
+  return rawRows.map((raw: any) => ({
+    ...raw,
+    createdByName: String(
+      raw.created_by_name ??
+      raw.created_by_branch_name ??
+      raw.created_by ??
+      ""
+    ),
+  }));
 }
 
 // ── Branch Multi-Select Component ────────────────────────────────────────────
@@ -522,7 +536,7 @@ function SchemeFormModal({
 
 export default function SchemeOfferListPage() {
   const navigate = useNavigate();
-  const { canAdd, canEdit, canDelete, canView } = usePermission("/scheme-offer");
+  const { canAdd, canEdit, canDelete, canView } = usePermission("/SchemeOffer");
 
   const [rows, setRows] = useState<SchemeOfferItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -575,6 +589,7 @@ export default function SchemeOfferListPage() {
     setShowModal(true);
   };
 
+  // ── Columns (with Created By) ──────────────────────────────────────────
   const columns = useMemo<ColumnDef<SchemeOfferItem>[]>(() => [
     {
       id: "srNo", header: "#", size: 55,
@@ -663,36 +678,48 @@ export default function SchemeOfferListPage() {
         );
       },
     },
+    // ✅ NEW COLUMN — Created By
+    {
+      id: "createdByName",
+      accessorKey: "createdByName",
+      header: "Created By",
+      enableGlobalFilter: false,
+      cell: ({ getValue }: CellContext<SchemeOfferItem, unknown>) => (
+        <span className="whitespace-nowrap text-gray-600 dark:text-dark-200 text-xs">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
+    },
     {
       id: "actions", header: "Actions", size: 120,
       enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<SchemeOfferItem, unknown>) => (
         <div className="flex items-center gap-1.5">
-      <button
-        title="View Report"
-        onClick={() => navigate(`/SchemeOffers/${row.original.id}/report`)}
-        className="p-1.5 rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors dark:text-dark-300"
-      >
-        <EyeIcon className="size-4" />
-      </button>
-          {canEdit && (
           <button
-            title="Edit"
-            onClick={() => { setEditingScheme(row.original); setShowModal(true); }}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-warning/10 hover:text-warning transition-colors dark:text-dark-300"
+            title="View Report"
+            onClick={() => navigate(`/SchemeOffers/${row.original.id}/report`)}
+            className="p-1.5 rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors dark:text-dark-300"
           >
-            <PencilIcon className="size-4" />
+            <EyeIcon className="size-4" />
           </button>
+          {canEdit && (
+            <button
+              title="Edit"
+              onClick={() => { setEditingScheme(row.original); setShowModal(true); }}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-warning/10 hover:text-warning transition-colors dark:text-dark-300"
+            >
+              <PencilIcon className="size-4" />
+            </button>
           )}
           {canDelete && (
-          <button
-            title="Delete"
-            disabled={deletingId === row.original.id}
-            onClick={() => handleDelete(row.original)}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-error/10 hover:text-error transition-colors disabled:opacity-40 dark:text-dark-300"
-          >
-            <TrashIcon className="size-4" />
-          </button>
+            <button
+              title="Delete"
+              disabled={deletingId === row.original.id}
+              onClick={() => handleDelete(row.original)}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-error/10 hover:text-error transition-colors disabled:opacity-40 dark:text-dark-300"
+            >
+              <TrashIcon className="size-4" />
+            </button>
           )}
         </div>
       ),
@@ -727,9 +754,9 @@ export default function SchemeOfferListPage() {
             </div>
           </div>
           {canAdd && (
-          <Button color="primary" className="gap-2" onClick={handleCreate}>
-            <PlusIcon className="size-4" /> New Scheme
-          </Button>
+            <Button color="primary" className="gap-2" onClick={handleCreate}>
+              <PlusIcon className="size-4" /> New Scheme
+            </Button>
           )}
         </div>
 
@@ -790,4 +817,3 @@ export default function SchemeOfferListPage() {
     </Page>
   );
 }
-

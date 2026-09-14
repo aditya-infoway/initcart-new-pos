@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowDownTrayIcon, ArrowPathIcon,
-  BanknotesIcon, CalendarDaysIcon,
+  BanknotesIcon, BuildingOfficeIcon, CalendarDaysIcon,
   FunnelIcon, MagnifyingGlassIcon,
   PrinterIcon, XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -22,6 +22,8 @@ import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import { usePermission } from "@/hooks/usePermissions";
+// ✅ ADD: same auth context used by OutstandingReport + other register pages
+import { useAuthContext } from "@/app/contexts/auth/context";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EntryCategory = "cash_payment" | "cash_receipt" | "bank_payment" | "bank_receipt";
@@ -41,6 +43,12 @@ interface DayBookEntry {
   mode: string;
   chequeNo: string;
   category: EntryCategory;
+}
+
+// ✅ ADD: branch dropdown option — same shape as OutstandingReport page
+interface Branch {
+  id: number;
+  branch_name: string;
 }
 
 const today = new Date().toISOString().split("T")[0];
@@ -145,6 +153,14 @@ function TypeBadge({ type }: { type: string }) {
 export default function DayBookPage() {
   const { canView } = usePermission("/day-book");
 
+  // ✅ ADD: same role-gating as OutstandingReport + other register pages —
+  // superadmin AND employee both get to pick any branch.
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  const canViewAllBranches = isSuperAdmin || isEmployee;
+
   const [allEntries, setAllEntries]     = useState<DayBookEntry[]>([]);
   const [loading, setLoading]           = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -158,15 +174,24 @@ export default function DayBookPage() {
   const [filterCategory, setFilterCategory]     = useState<any>({ label: "All Transactions", value: "" });
   const [filterTxType, setFilterTxType]         = useState<any>({ label: "All Types", value: "" });
 
+  // ✅ ADD: branch list + currently selected branch
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+
   // ── Fetch all 4 APIs in parallel ──────────────────────────────────────
-  const fetchAll = useCallback(async () => {
+  // ✅ CHANGED: accepts branchId and forwards it to ALL 4 API calls as
+  // `branch_id`, exactly like the OutstandingReport page does.
+  const fetchAll = useCallback(async (branchId: string = selectedBranchId) => {
     setLoading(true);
     try {
+      const params: Record<string, unknown> = { page: 1, page_size: 1000 };
+      if (branchId) params.branch_id = branchId;
+
       const [cpRes, crRes, bpRes, brRes] = await Promise.all([
-        Get("pos/cash-payments/",  { page: 1, page_size: 1000 }),
-        Get("pos/cash-receipts/",  { page: 1, page_size: 1000 }),
-        Get("pos/bank-payments/",  { page: 1, page_size: 1000 }),
-        Get("pos/bank-receipts/",  { page: 1, page_size: 1000 }),
+        Get("pos/cash-payments/",  params),
+        Get("pos/cash-receipts/",  params),
+        Get("pos/bank-payments/",  params),
+        Get("pos/bank-receipts/",  params),
       ]) as any[];
 
       const all: DayBookEntry[] = [
@@ -188,9 +213,38 @@ export default function DayBookPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedBranchId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // ✅ ADD: fetch branch list — only for superadmin/employee, same as
+  // the OutstandingReport page.
+  useEffect(() => {
+    if (!canViewAllBranches) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await Get("pos/branches/") as any;
+        const body = res?.data ?? res;
+        const list: Branch[] = Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body)
+            ? body
+            : [];
+        if (!cancelled) setBranches(list);
+      } catch (e) {
+        console.error("Branches fetch failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canViewAllBranches]);
+
+  // ✅ ADD: called from the branch <select> — updates state and refetches
+  // immediately with the freshly-picked id (avoids stale-state issue).
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    fetchAll(val);
+  };
 
   // ── Client-side filtering ──────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -418,6 +472,24 @@ export default function DayBookPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* ✅ ADD: Branch filter — only for superadmin/employee, same gating as OutstandingReport page */}
+            {canViewAllBranches && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-dark-300">
+                  <BuildingOfficeIcon className="size-3.5" /> Branch:
+                </label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  className="h-9 min-w-[160px] rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:ring-3 focus:ring-primary-500/50 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+                >
+                  <option value="">My Branch (Main)</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={String(b.id)}>{b.branch_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {!isToday && (
               <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={applyToday}>
                 <CalendarDaysIcon className="size-4 text-primary-600" />
@@ -444,7 +516,7 @@ export default function DayBookPage() {
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={() => window.print()}>
               <PrinterIcon className="size-4" /><span>Print</span>
             </Button>
-            <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={fetchAll} disabled={loading}>
+            <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={() => fetchAll()} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
           </div>

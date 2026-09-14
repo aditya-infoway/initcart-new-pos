@@ -60,6 +60,7 @@ interface SaleRecord {
   roundAmount: number;
   for_: number;
   items: SaleItem[];
+  createdByName?: string;
 }
 
 function mapApiSale(raw: any): SaleRecord {
@@ -82,6 +83,7 @@ function mapApiSale(raw: any): SaleRecord {
     otherExpense:  other,
     roundAmount:   round,
     for_:          fright + other + round,
+    createdByName: String(raw.created_by_name ?? ""),
     items: Array.isArray(raw.items) ? raw.items.map((i: any) => ({
       item:            Number(i.item ?? 0),
       variant:         Number(i.variant ?? 0),
@@ -422,6 +424,14 @@ export default function SalesRegisterPage() {
       cell: ({ getValue }: CellContext<SaleRecord, unknown>) => (
         <span className="font-bold tabular-nums text-primary-600 dark:text-primary-400">
           ₹{Number(getValue() ?? 0).toFixed(2)}
+        </span>
+      ),
+    },
+        {
+      id: "createdByName", accessorKey: "createdByName", header: "Created by",
+      cell: ({ getValue }: CellContext<SaleRecord, unknown>) => (
+        <span className=" text-gray-500 dark:text-dark-300">
+          {String(getValue() ?? "") || "—"}
         </span>
       ),
     },

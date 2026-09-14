@@ -8,6 +8,7 @@ import {
   ArrowDownTrayIcon, ArrowPathIcon, BanknotesIcon,
   CurrencyRupeeIcon, FunnelIcon, MagnifyingGlassIcon,
   PrinterIcon, ReceiptRefundIcon, ShoppingCartIcon, HomeIcon, ArrowUpRightIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,6 +20,10 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+// ✅ FIX: this app uses useAuthContext (see ItemImportPage.tsx), not a
+// useAuthStore — that hook doesn't exist here, which is why the branch
+// dropdown never showed up even for a logged-in superadmin.
+import { useAuthContext } from "@/app/contexts/auth/context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface OutstandingRow {
@@ -40,6 +45,12 @@ interface Summary {
   totalGrand: number;
   totalReceived: number;
   totalPending: number;
+}
+
+// ✅ NEW: branch dropdown option
+interface Branch {
+  id: number;
+  branch_name: string;
 }
 
 function mapRow(raw: any): OutstandingRow {
@@ -290,6 +301,19 @@ function OutstandingTable({
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function OutstandingReportPage() {
+  // ✅ FIX: same role-gating as the old OutstandingReport.tsx, but using
+  // the auth provider that this app actually has (matches ItemImportPage.tsx) —
+  // superadmin AND employee both get to pick any branch.
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  const canViewAllBranches = isSuperAdmin || isEmployee;
+
+  // 🔎 TEMP DEBUG — check the browser console after logging in as superadmin.
+  // Remove this line once the dropdown works correctly.
+  console.log("[OutstandingReport DEBUG] user =", user, "| role =", role, "| canViewAllBranches =", canViewAllBranches);
+
   const [receivable, setReceivable] = useState<OutstandingRow[]>([]);
   const [payable, setPayable] = useState<OutstandingRow[]>([]);
   const [receivableSummary, setReceivableSummary] = useState<Summary>({ totalBills: 0, totalGrand: 0, totalReceived: 0, totalPending: 0 });
@@ -297,10 +321,19 @@ export default function OutstandingReportPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
 
-  const fetchData = useCallback(async () => {
+  // ✅ NEW: branch list + currently selected branch
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+
+  // ✅ CHANGED: now accepts a branchId and forwards it to the API as
+  // `branch_id`, exactly like the old page's fetchData(branchId).
+  const fetchData = useCallback(async (branchId: string = selectedBranchId) => {
     setLoading(true);
     try {
-      const res = await Get("pos/outstanding-report/", { type: "both" }) as any;
+      const params: Record<string, unknown> = { type: "both" };
+      if (branchId) params.branch_id = branchId;
+
+      const res = await Get("pos/outstanding-report/", params) as any;
       const body = res?.data ?? res;
 
       setReceivable(Array.isArray(body?.receivable) ? body.receivable.map(mapRow) : []);
@@ -326,9 +359,38 @@ export default function OutstandingReportPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedBranchId]);
+
+  // ✅ NEW: fetch branch list — only for superadmin/employee, same as old page.
+  useEffect(() => {
+    if (!canViewAllBranches) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await Get("pos/branches/") as any;
+        const body = res?.data ?? res;
+        const list: Branch[] = Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body)
+            ? body
+            : [];
+        if (!cancelled) setBranches(list);
+      } catch (e) {
+        console.error("Branches fetch failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canViewAllBranches]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ✅ NEW: called from the branch <select> — updates state and refetches
+  // immediately with the freshly-picked id (avoids stale-state issue of
+  // calling fetchData() before setSelectedBranchId's re-render lands).
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    fetchData(val);
+  };
 
   const handleExport = () => {
     const data = activeTab === 0 ? receivable : payable;
@@ -364,6 +426,24 @@ export default function OutstandingReportPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* ✅ NEW: Branch filter — only for superadmin/employee, same gating as old page */}
+            {canViewAllBranches && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-dark-300">
+                  <BuildingOfficeIcon className="size-3.5" /> Branch:
+                </label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  className="h-9 min-w-[160px] rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:ring-3 focus:ring-primary-500/50 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+                >
+                  <option value="">My Branch (Main)</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={String(b.id)}>{b.branch_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
               onClick={handleExport}>
               <ArrowDownTrayIcon className="size-4 text-success-600" />
@@ -375,7 +455,7 @@ export default function OutstandingReportPage() {
               <span>Print</span>
             </Button>
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={fetchData} disabled={loading}>
+              onClick={() => fetchData()} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>

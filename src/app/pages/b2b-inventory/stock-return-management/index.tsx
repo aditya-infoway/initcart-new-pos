@@ -235,7 +235,7 @@ const BranchInfoCard: React.FC<{
 
 export default function StockReturnManagementPage() {
   const navigate = useNavigate();
-  const { canAdd, canView } = usePermission("/stock-return-management");
+  const { canAdd, canEdit, canDelete } = usePermission("/b2bstockReturnverification");
 
   const [returns, setReturns] = useState<ReturnListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,46 +246,47 @@ export default function StockReturnManagementPage() {
   const [listPage, setListPage] = useState(1);
 
   const [selectedReturn, setSelectedReturn] = useState<ReturnDetail | null>(null);
+  // ✅ FIX: detailLoading was declared but never used anywhere in the JSX,
+  // so clicking "View" gave the user zero feedback while the request was
+  // in flight (and silently did nothing at all if the request "succeeded"
+  // with success:false — see loadReturnDetail below for the real bug).
   const [detailLoading, setDetailLoading] = useState(false);
+  const [loadingRowId, setLoadingRowId] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   const PAGE_SIZE = 15;
 
-  // ✅ OLD FILE API PATH: "admin/stock-returns/"
-// ✅ FIXED: loadAllReturns function
-const loadAllReturns = useCallback(async () => {
-  setLoading(true);
-  try {
-    let page = 1;
-    let all: ReturnListItem[] = [];
-    while (true) {
-      const res = await safeGet("pos/admin/stock-returns/", { page, page_size: 1000 }) as any;
-      
-      // ✅ FIX: root level se count/next/previous lo
-      const count = res?.data?.count ?? res?.count ?? 0;
-      const next = res?.data?.next ?? res?.next ?? null;
-      
-      // ✅ FIX: results object se data array lo
-      const resultsObj = res?.data?.results ?? res?.results ?? {};
-      const arr: ReturnListItem[] = resultsObj.data || resultsObj || [];
-      
-      all = all.concat(arr);
-      
-      if (!next || arr.length === 0) break;
-      page++;
-      if (page > 200) break;
+  const loadAllReturns = useCallback(async () => {
+    setLoading(true);
+    try {
+      let page = 1;
+      let all: ReturnListItem[] = [];
+      while (true) {
+        const res = await safeGet("pos/admin/stock-returns/", { page, page_size: 1000 }) as any;
+
+        const count = res?.data?.count ?? res?.count ?? 0;
+        const next = res?.data?.next ?? res?.next ?? null;
+
+        const resultsObj = res?.data?.results ?? res?.results ?? {};
+        const arr: ReturnListItem[] = resultsObj.data || resultsObj || [];
+
+        all = all.concat(arr);
+
+        if (!next || arr.length === 0) break;
+        page++;
+        if (page > 200) break;
+      }
+      setReturns(all);
+    } catch (e: any) {
+      setReturns([]);
+      const status = e?.response?.status ?? 0;
+      if (status >= 500) toasterrormsg("Could not load returns");
+    } finally {
+      setLoading(false);
     }
-    setReturns(all);
-  } catch (e: any) {
-    setReturns([]);
-    const status = e?.response?.status ?? 0;
-    if (status >= 500) toasterrormsg("Could not load returns");
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   useEffect(() => { loadAllReturns(); }, [loadAllReturns]);
 
@@ -326,31 +327,43 @@ const loadAllReturns = useCallback(async () => {
 
   const stageColKeys = STAGE_COLUMNS.map(s => s.key);
 
-  // ✅ OLD FILE API PATH: "stock-returns/${id}/"
+  // ✅ FIX: safeGet already returns the API body unwrapped, i.e.
+  // { success, message, data }. The old code checked `res?.data?.success`
+  // (an extra, wrong ".data" hop) which is always undefined → the `if`
+  // never ran → clicking "View" did nothing, ever. Corrected to `res?.success`
+  // and `res.data` (the actual return record), plus an else-branch so a
+  // real failure now shows a toast instead of failing silently.
   const loadReturnDetail = async (id: number) => {
     setDetailLoading(true);
+    setLoadingRowId(id);
     try {
       const res = await safeGet(`pos/stock-returns/${id}/`) as any;
-      if (res?.data?.success) setSelectedReturn(res.data.data);
+      if (res?.success) {
+        setSelectedReturn(res.data);
+      } else {
+        toasterrormsg(res?.message || "Could not load return detail");
+      }
     } catch (e: any) {
-      toasterrormsg("Could not load return detail");
+      toasterrormsg(e?.response?.data?.message || "Could not load return detail");
+    } finally {
+      setDetailLoading(false);
+      setLoadingRowId(null);
     }
-    setDetailLoading(false);
   };
 
-  // ✅ OLD FILE API PATH: "admin/stock-returns/${id}/process/"
+  // ✅ FIX: same `.data.success` / `.data.message` bug as above.
   const handleApprove = async (id: number) => {
     const confirmed = window.confirm("Approve return request? This will allow the branch to package items for this return.");
     if (!confirmed) return;
     setProcessing(true);
     try {
       const res = await safePost(`pos/admin/stock-returns/${id}/process/`, { action: "approve", note: "" }) as any;
-      if (res?.data?.success) {
-        toastsuccessmsg(res?.data?.message || "Return approved successfully");
+      if (res?.success) {
+        toastsuccessmsg(res?.message || "Return approved successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
-        toasterrormsg(res?.data?.message || "Action failed");
+        toasterrormsg(res?.message || "Action failed");
       }
     } catch (e: any) {
       toasterrormsg(e?.response?.data?.message || "Error processing return");
@@ -358,7 +371,7 @@ const loadAllReturns = useCallback(async () => {
     setProcessing(false);
   };
 
-  // ✅ OLD FILE API PATH: "admin/stock-returns/${id}/process/"
+  // ✅ FIX: same `.data.success` / `.data.message` bug as above.
   const handleReject = async (id: number, note: string) => {
     if (!note.trim()) {
       toasterrormsg("Please provide a reason for rejection.");
@@ -369,14 +382,14 @@ const loadAllReturns = useCallback(async () => {
     setProcessing(true);
     try {
       const res = await safePost(`pos/admin/stock-returns/${id}/process/`, { action: "reject", note }) as any;
-      if (res?.data?.success) {
-        toastsuccessmsg(res?.data?.message || "Return rejected successfully");
+      if (res?.success) {
+        toastsuccessmsg(res?.message || "Return rejected successfully");
         setSelectedReturn(null);
         setShowRejectModal(false);
         setRejectNote("");
         loadAllReturns();
       } else {
-        toasterrormsg(res?.data?.message || "Action failed");
+        toasterrormsg(res?.message || "Action failed");
       }
     } catch (e: any) {
       toasterrormsg(e?.response?.data?.message || "Error processing return");
@@ -384,19 +397,19 @@ const loadAllReturns = useCallback(async () => {
     setProcessing(false);
   };
 
- 
+  // ✅ FIX: same `.data.success` / `.data.message` bug as above.
   const handleReceive = async (id: number) => {
     const confirmed = window.confirm("Confirm receive return? This will increase stock in the company branch for all packaged items.");
     if (!confirmed) return;
     setProcessing(true);
     try {
       const res = await safePost(`pos/admin/stock-returns/${id}/receive/`) as any;
-      if (res?.data?.success) {
-        toastsuccessmsg(res?.data?.message || "Stock received successfully");
+      if (res?.success) {
+        toastsuccessmsg(res?.message || "Stock received successfully");
         setSelectedReturn(null);
         loadAllReturns();
       } else {
-        toasterrormsg(res?.data?.message || "Failed to receive return");
+        toasterrormsg(res?.message || "Failed to receive return");
       }
     } catch (e: any) {
       toasterrormsg(e?.response?.data?.message || "Error receiving return");
@@ -626,8 +639,14 @@ const loadAllReturns = useCallback(async () => {
                               variant="soft"
                               className="h-7 px-3 text-xs font-semibold"
                               onClick={() => loadReturnDetail(r.id)}
+                              disabled={loadingRowId === r.id}
                             >
-                              <EyeIcon className="inline mr-1 size-3" /> View
+                              {loadingRowId === r.id ? (
+                                <span className="inline-block size-3 mr-1 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+                              ) : (
+                                <EyeIcon className="inline mr-1 size-3" />
+                              )}
+                              View
                             </Button>
                           </Td>
                         </Tr>
@@ -726,6 +745,9 @@ const loadAllReturns = useCallback(async () => {
                     setRejectNote={setRejectNote}
                     showRejectModal={showRejectModal}
                     setShowRejectModal={setShowRejectModal}
+                    canApprove={canEdit}
+                    canReject={canDelete}
+                    canReceive={canEdit}
                   />
                 )}
               </div>
@@ -834,6 +856,9 @@ interface ReturnDetailViewProps {
   setRejectNote: (note: string) => void;
   showRejectModal: boolean;
   setShowRejectModal: (show: boolean) => void;
+  canApprove: boolean;
+  canReject: boolean;
+  canReceive: boolean;
 }
 
 function ReturnDetailView({
@@ -847,11 +872,19 @@ function ReturnDetailView({
   setRejectNote,
   showRejectModal,
   setShowRejectModal,
+  canApprove: userCanApprove,
+  canReject: userCanReject,
+  canReceive: userCanReceive,
 }: ReturnDetailViewProps) {
-  const canApprove = returnData.status === "pending";
-  const canReceive = returnData.status === "approved" || returnData.status === "packaging_ready";
+  // status-based (sirf return ke stage se decide hota hai)
+  const statusCanApprove = returnData.status === "pending";
+  const statusCanReceive = returnData.status === "approved" || returnData.status === "packaging_ready";
   const isCompleted = returnData.status === "received" || returnData.status === "rejected";
 
+  // final — status + permission dono
+  const showApproveBtn = statusCanApprove && userCanApprove;
+  const showRejectBtn = statusCanApprove && userCanReject;
+  const showReceiveBtn = statusCanReceive && userCanReceive;
   const totalPackaged = returnData.items.filter(i => i.is_packaging_ready).length;
   const totalItems = returnData.items.length;
   const allPackaged = totalPackaged === totalItems && totalItems > 0;
@@ -949,46 +982,28 @@ function ReturnDetailView({
       )}
 
       {/* Actions */}
-      {!isCompleted && (
+      {!isCompleted && (showApproveBtn || showRejectBtn || showReceiveBtn) && (
         <Card className="p-4 flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700 dark:text-dark-200">Actions:</span>
-            {canApprove && (
-              <>
-                <Button
-                  color="success"
-                  variant="filled"
-                  className="text-sm font-semibold"
-                  onClick={() => onApprove(returnData.id)}
-                  disabled={processing}
-                >
-                  <CheckIcon className="inline size-4 mr-1" /> Approve
-                </Button>
-                <Button
-                  color="error"
-                  variant="filled"
-                  className="text-sm font-semibold"
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={processing}
-                >
-                  <XMarkIcon className="inline size-4 mr-1" /> Reject
-                </Button>
-              </>
+            {showApproveBtn && (
+              <Button color="success" onClick={() => onApprove(returnData.id)} disabled={processing}>
+                <CheckIcon className="inline size-4 mr-1" /> Approve
+              </Button>
             )}
-            {canReceive && (
-              <Button
-                color="primary"
-                variant="filled"
-                className="text-sm font-semibold"
-                onClick={() => onReceive(returnData.id)}
-                disabled={processing || !allPackaged}
-              >
+            {showRejectBtn && (
+              <Button color="error" onClick={() => setShowRejectModal(true)} disabled={processing}>
+                <XMarkIcon className="inline size-4 mr-1" /> Reject
+              </Button>
+            )}
+            {showReceiveBtn && (
+              <Button color="primary" onClick={() => onReceive(returnData.id)} disabled={processing || !allPackaged}>
                 <CheckCircleIcon className="inline size-4 mr-1" /> Receive Stock
                 {!allPackaged && <span className="text-xs ml-1">({totalPackaged}/{totalItems})</span>}
               </Button>
             )}
           </div>
-          {canApprove && (
+          {statusCanApprove && (
             <span className="text-xs text-gray-500 dark:text-dark-400 flex items-center gap-1.5">
               {allPackaged ? (
                 <><CheckCircleIcon className="size-3.5 text-success" /> All items packaged</>
@@ -997,12 +1012,12 @@ function ReturnDetailView({
               )}
             </span>
           )}
-          {canReceive && !allPackaged && (
+          {statusCanReceive && !allPackaged && (
             <span className="text-xs text-warning-600 dark:text-warning-400 font-medium flex items-center gap-1.5">
               <ExclamationTriangleIcon className="size-4" /> Waiting for branch to package all items ({totalPackaged}/{totalItems})
             </span>
           )}
-          {canReceive && allPackaged && (
+          {statusCanReceive && allPackaged && (
             <span className="text-xs text-success-600 dark:text-success-400 font-medium flex items-center gap-1.5">
               <CheckCircleIcon className="size-4" /> All items packaged. Ready to receive.
             </span>

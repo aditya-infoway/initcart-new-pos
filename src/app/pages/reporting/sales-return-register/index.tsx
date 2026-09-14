@@ -8,8 +8,8 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowDownTrayIcon, ArrowPathIcon, BanknotesIcon,
-  CheckCircleIcon, CubeIcon, CurrencyRupeeIcon, EyeIcon, FunnelIcon,
-  MagnifyingGlassIcon, PrinterIcon,
+  BuildingOfficeIcon, CheckCircleIcon, CubeIcon, CurrencyRupeeIcon,
+  EyeIcon, FunnelIcon, MagnifyingGlassIcon, PrinterIcon,
   ReceiptRefundIcon, XMarkIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
@@ -22,6 +22,8 @@ import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
+// ✅ ADD: same auth context used by OutstandingReport + SalesEntryReport
+import { useAuthContext } from "@/app/contexts/auth/context";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 interface ReturnItem {
@@ -51,6 +53,12 @@ interface SalesReturnRecord {
   approvedBy: string;
   amount: number;
   items: ReturnItem[];
+}
+
+// ✅ ADD: branch dropdown option — same shape as OutstandingReport page
+interface Branch {
+  id: number;
+  branch_name: string;
 }
 
 function mapApiReturn(raw: any): SalesReturnRecord {
@@ -263,6 +271,14 @@ function ItemsDrawer({ isOpen, onClose, record }: { isOpen: boolean; onClose: ()
 
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function SalesReturnRegisterPage() {
+  // ✅ ADD: same role-gating as OutstandingReport + SalesEntryReport —
+  // superadmin AND employee both get to pick any branch.
+  const { user } = useAuthContext();
+  const role = (user as any)?.role;
+  const isSuperAdmin = role === "superadmin";
+  const isEmployee = role === "employee";
+  const canViewAllBranches = isSuperAdmin || isEmployee;
+
   const [records, setRecords] = useState<SalesReturnRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -272,10 +288,19 @@ export default function SalesReturnRegisterPage() {
   const [filterType, setFilterType] = useState("all");
   const [selectedRecord, setSelectedRecord] = useState<SalesReturnRecord | null>(null);
 
-  const fetchRecords = useCallback(async () => {
+  // ✅ ADD: branch list + currently selected branch
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+
+  // ✅ CHANGED: now accepts a branchId and forwards it to the API as
+  // `branch_id`, exactly like the OutstandingReport page does.
+  const fetchRecords = useCallback(async (branchId: string = selectedBranchId) => {
     setLoading(true);
     try {
-      const res = await Get("pos/sales-return-list/", { page: 1, page_size: 1000 }) as any;
+      const params: Record<string, unknown> = { page: 1, page_size: 1000 };
+      if (branchId) params.branch_id = branchId;
+
+      const res = await Get("pos/sales-return-list/", params) as any;
       const body = res?.data ?? res;
       const rows: any[] = Array.isArray(body?.results) ? body.results
         : Array.isArray(body?.data) ? body.data
@@ -286,9 +311,38 @@ export default function SalesReturnRegisterPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedBranchId]);
+
+  // ✅ ADD: fetch branch list — only for superadmin/employee, same as
+  // the OutstandingReport page.
+  useEffect(() => {
+    if (!canViewAllBranches) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await Get("pos/branches/") as any;
+        const body = res?.data ?? res;
+        const list: Branch[] = Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body)
+            ? body
+            : [];
+        if (!cancelled) setBranches(list);
+      } catch (e) {
+        console.error("Branches fetch failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canViewAllBranches]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
+
+  // ✅ ADD: called from the branch <select> — updates state and refetches
+  // immediately with the freshly-picked id (avoids stale-state issue).
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    fetchRecords(val);
+  };
 
   // ── Derived data ───────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -299,10 +353,6 @@ export default function SalesReturnRegisterPage() {
   const fullReturns    = useMemo(() => records.filter(r => r.returnType.toLowerCase() === "full").length,    [records]);
   const partialReturns = useMemo(() => records.filter(r => r.returnType.toLowerCase() === "partial").length, [records]);
   const grandTotal     = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
-  const pageTotal      = useMemo(() => {
-    // Sum only the rows currently visible on the active page
-    return filtered.reduce((s, r) => s + r.amount, 0);
-  }, [filtered]);
 
   // ── Export ─────────────────────────────────────────────────────────────
   const handleExport = () => {
@@ -466,6 +516,24 @@ export default function SalesReturnRegisterPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* ✅ ADD: Branch filter — only for superadmin/employee, same gating as OutstandingReport page */}
+            {canViewAllBranches && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-dark-300">
+                  <BuildingOfficeIcon className="size-3.5" /> Branch:
+                </label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  className="h-9 min-w-[160px] rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:ring-3 focus:ring-primary-500/50 dark:border-dark-500 dark:bg-dark-700 dark:text-dark-100"
+                >
+                  <option value="">My Branch (Main)</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={String(b.id)}>{b.branch_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
               onClick={() => setShowFilter(v => !v)}>
               <FunnelIcon className={clsx("size-4", showFilter && "text-primary")} />
@@ -482,7 +550,7 @@ export default function SalesReturnRegisterPage() {
               <span>Print</span>
             </Button>
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={fetchRecords} disabled={loading}>
+              onClick={() => fetchRecords()} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
               <span>Refresh</span>
             </Button>

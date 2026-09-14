@@ -25,6 +25,7 @@ import { Page } from "@/components/shared/Page";
 import { Badge, Button, Card } from "@/components/ui";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface TransferHop {
@@ -152,7 +153,7 @@ const GstSummaryCard = ({ totals, title = "GST Summary" }: { totals: GstTotals; 
 export default function B2BStockReturnDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
+  const { canEdit, canDelete } = usePermission("/b2bstockReturnverification");
   const [detail, setDetail] = useState<ReturnDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -205,7 +206,7 @@ export default function B2BStockReturnDetailPage() {
       const res = await Post(`pos/b2b-stock-returns/${detail.id}/cancel/`, {}) as any;
       const body = res?.data ?? res;
       body?.success !== false
-        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/b2bstockReturn"))
+        ? (toastsuccessmsg(body?.message ?? "Return cancelled."), navigate("/b2bstockReturnverification"))
         : toasterrormsg(body?.message ?? "Failed.");
     } catch (e: any) { toasterrormsg(e?.response?.data?.message ?? "Error."); }
   };
@@ -282,10 +283,10 @@ export default function B2BStockReturnDetailPage() {
   // ── Columns ───────────────────────────────────────────────────────────────
   const columns = useMemo<ColumnDef<ReturnItem>[]>(() => [
     {
-      id: "check", header: () => canPackage ? <span className="sr-only">Select</span> : null,
-      size: 48, enableSorting: false, enableGlobalFilter: false,
-      cell: ({ row }: CellContext<ReturnItem, unknown>) => {
-        if (!canPackage) return null;
+  id: "check", header: () => (canPackage && canEdit) ? <span className="sr-only">Select</span> : null,
+  size: 48, enableSorting: false, enableGlobalFilter: false,
+  cell: ({ row }: CellContext<ReturnItem, unknown>) => {
+    if (!canPackage || !canEdit) return null;
         const item = row.original;
         const returned = item.is_returned_to_company;
         const sel = selectedIds.has(item.id);
@@ -379,8 +380,8 @@ export default function B2BStockReturnDetailPage() {
         </Badge>;
       },
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [canPackage, selectedIds]);
+
+], [canPackage, canEdit, selectedIds]);
 
   const table = useReactTable({
     data: detail?.items ?? [],
@@ -416,7 +417,7 @@ export default function B2BStockReturnDetailPage() {
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-1">
           <div className="flex items-center gap-3">
             <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={() => navigate("/b2bstockReturn")}>
+              onClick={() => navigate("/b2bstockReturnverification")}>
               <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
@@ -429,31 +430,31 @@ export default function B2BStockReturnDetailPage() {
               {STATUS_LABEL[detail.status] ?? detail.status}
             </Badge>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
-              onClick={load} disabled={loading}>
-              <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
-            </Button>
-            {canApprove && (
-              <>
-                <Button color="success" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
-                  onClick={() => setShowApproveModal(true)} disabled={processing}>
-                  <CheckIcon className="size-4" /> Approve
-                </Button>
-                <Button color="error" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
-                  onClick={() => setShowRejectModal(true)} disabled={processing}>
-                  <XMarkIcon className="size-4" /> Reject
-                </Button>
-              </>
-            )}
-            {canCancel && (
-              <Button variant="outlined"
-                className="h-8 gap-1.5 rounded-md px-3 text-xs text-error-600 border-error-300 hover:bg-error-50 dark:border-error-800 dark:hover:bg-error-900/20"
-                onClick={cancelReturn}>
-                <XMarkIcon className="size-3.5" /> Cancel Return
-              </Button>
-            )}
-          </div>
+<div className="flex flex-wrap items-center gap-2">
+  <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
+    onClick={load} disabled={loading}>
+    <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
+  </Button>
+  {canApprove && canEdit && (
+    <Button color="success" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
+      onClick={() => setShowApproveModal(true)} disabled={processing}>
+      <CheckIcon className="size-4" /> Approve
+    </Button>
+  )}
+  {canApprove && canDelete && (
+    <Button color="error" variant="filled" className="h-8 gap-2 rounded-md px-4 text-sm"
+      onClick={() => setShowRejectModal(true)} disabled={processing}>
+      <XMarkIcon className="size-4" /> Reject
+    </Button>
+  )}
+  {canCancel && canDelete && (
+    <Button variant="outlined"
+      className="h-8 gap-1.5 rounded-md px-3 text-xs text-error-600 border-error-300 hover:bg-error-50 dark:border-error-800 dark:hover:bg-error-900/20"
+      onClick={cancelReturn}>
+      <XMarkIcon className="size-3.5" /> Cancel Return
+    </Button>
+  )}
+</div>
         </div>
 
         {/* ── Summary gradient cards ────────────────────────────────────── */}

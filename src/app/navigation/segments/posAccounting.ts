@@ -1,3 +1,4 @@
+//navigation/segments/podAccounting.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posAccounting: NavigationTree = {
@@ -14,5 +15,5 @@ export const posAccounting: NavigationTree = {
     { id: "posAccounting.contra",         type: "item", path: "/Contra",             title: "Contra",              icon: "posAccounting.contra" },
     { id: "posAccounting.journalEntries", type: "item", path: "/JournalEntries",     title: "Journal Entries",     icon: "posAccounting.journalEntries" },
     { id: "posAccounting.salesProfit",    type: "item", path: "/salesProfitReport",  title: "Sales Profit Report", icon: "posAccounting.salesProfit" },
-  ],
+  ], 
 };

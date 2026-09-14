@@ -194,6 +194,17 @@ export default function GroupPage() {
         <span className="text-gray-500 dark:text-dark-300">{formatDateDDMMYYYY(String(getValue() ?? ""))}</span>
       ),
     },
+        {
+      id: "createdByName",
+      accessorKey: "createdByName",
+      header: "Created By",
+      cell: ({ getValue }: CellContext<Group, unknown>) => (
+        <span className="text-gray-600 dark:text-dark-200">
+          {String(getValue() ?? "") || "—"}
+        </span>
+      ),
+    },
+
     {
       id: "actions", header: "Action", size: 60, enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<Group, unknown>) => (

@@ -323,6 +323,12 @@ export default function SalesReturnPage() {
         <span className="font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{Number(getValue() ?? 0).toFixed(2)}</span>
       ),
     },
+        {
+      id: "createdByName", accessorKey: "createdByName", header: "Created By",
+      cell: ({ getValue }: CellContext<SalesReturnRecord, unknown>) => (
+        <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "") || "—"}</span>
+      ),
+    },
     {
       id: "actions", header: "Actions", enableSorting: false, enableGlobalFilter: false,
       cell: ({ row }: CellContext<SalesReturnRecord, unknown>) => (

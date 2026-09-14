@@ -17,6 +17,7 @@ import { Page } from "@/components/shared/Page";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
 import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
+import { usePermission } from "@/hooks/usePermissions";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 const round2 = (v: any) => { const n = Number(v); return isNaN(n) ? 0 : Math.round((n + Number.EPSILON) * 100) / 100; };
@@ -338,10 +339,11 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
 // ── Order Tracking ────────────────────────────────────────────────────────
 function OrderTracking() {
   const [allOrders, setAllOrders] = useState<BranchOrderListItem[]>([]);
+  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"branches" | "list">("branches");
   const [branchFilter, setBranchFilter] = useState<{ branch_name: string; status: string } | null>(null);
-  const [listPage, setListPage] = useState(1);
+  const [listPage, setListPage] = useState(1);                                                                 
   const PAGE_SIZE = 15;
 
   const [selectedOrder, setSelectedOrder] = useState<BranchOrderDetail | null>(null);
@@ -554,10 +556,12 @@ function OrderTracking() {
                         <div className="flex items-center gap-2">
                           <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10"
                             onClick={() => loadOrderDetail(o.id)} title="View & Process"><EyeIcon className="size-4" /></Button>
-                          {o.status === "pending" && (
-                            <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
-                              onClick={() => cancelOrder(o.id)} title="Cancel Order"><XMarkIcon className="size-4" /></Button>
-                          )}
+{o.status === "pending" && canDelete && (
+  <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
+    onClick={() => cancelOrder(o.id)} title="Cancel Order">
+    <XMarkIcon className="size-4" />
+  </Button>
+)}
                         </div>
                       </Td>
                     </Tr>
@@ -764,10 +768,12 @@ function OrderTracking() {
               onClick={() => cancelOrder(selectedOrder!.id)}>
               <XMarkIcon className="size-4" /> Cancel Order
             </Button>
+            {canAdd && (
             <Button color="primary" className="gap-2 px-7" disabled={processing || activeItems.length === 0} onClick={processOrder}>
               <CheckCircleIcon className="size-4" />
               {processing ? "Processing…" : "Send Items (Create Transfer)"}
             </Button>
+            )}
           </div>
         )}
       </div>
@@ -1042,6 +1048,7 @@ function SelectItemsDrawer({
 // ── Main Component ────────────────────────────────────────────────────────
 export default function StockTransferPage() {
   const [mode, setMode] = useState<"manual" | "order_tracking">("manual");
+  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
   const [tab, setTab] = useState<"list" | "create">("list");
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [myItems, setMyItems] = useState<ItemWithVariants[]>([]);
@@ -1367,9 +1374,11 @@ export default function StockTransferPage() {
               <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={loadAll} disabled={loading}>
                 <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
               </Button>
+              {canAdd && (
               <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={() => { setTab("create"); resetForm(); }}>
                 <PlusIcon className="size-4" /> New Transfer
               </Button>
+              )}
             </div>
           )}
           {mode === "manual" && tab === "create" && (
@@ -1471,12 +1480,16 @@ export default function StockTransferPage() {
                             <Td>
                               <div className="flex items-center gap-2">
                                 <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10" onClick={() => loadDetail(t.id)}><EyeIcon className="size-4" /></Button>
-                                {t.status === "pending" && (
-                                  <>
-                                    <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
-                                    <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
-                                  </>
-                                )}
+{t.status === "pending" && (
+  <>
+    {canEdit && (
+      <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
+    )}
+    {canDelete && (
+      <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
+    )}
+  </>
+)}
                               </div>
                             </Td>
                           </Tr>

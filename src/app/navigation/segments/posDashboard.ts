@@ -1,4 +1,4 @@
-// segmnets/posDashboard.ts
+//navigation/segments/posDashboard.ts
 import { NavigationTree } from "@/@types/navigation";
 
 export const posDashboard: NavigationTree = {
@@ -7,5 +7,6 @@ export const posDashboard: NavigationTree = {
   path: "/dashboards/home",
   title: "Dashboard",
   icon: "posDashboard",
+  alwaysVisible: true, 
   // No flags — sabko dikhega
 };
