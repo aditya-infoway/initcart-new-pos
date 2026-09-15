@@ -83,7 +83,7 @@ interface WebsiteItem {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "https://api.initcart.com";
 
 function getFullUrl(mediaPath: string | null | undefined): string | null {
   if (!mediaPath) return null;

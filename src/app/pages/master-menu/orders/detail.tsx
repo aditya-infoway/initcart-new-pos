@@ -204,7 +204,7 @@ export default function OrderDetailPage() {
   };
 
   const getProductImage = (item: OrderDetail["items"][number]) => {
-    const BASE_URL = "http://localhost:8000";
+    const BASE_URL = "https://api.initcart.com";
     let img =
       item.product_details.variant_image ||
       item.product_details.main_image ||
