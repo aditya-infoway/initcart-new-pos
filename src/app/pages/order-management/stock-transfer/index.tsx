@@ -8,7 +8,7 @@ import {
   EyeIcon, FunnelIcon, MagnifyingGlassIcon, PlusIcon,
   TrashIcon, TruckIcon, XMarkIcon, BuildingStorefrontIcon,
   ArrowsRightLeftIcon, BanknotesIcon, ReceiptPercentIcon,
-  
+  PauseIcon, PlayIcon, ClockIcon, ListBulletIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
@@ -37,6 +37,38 @@ const getMyBranchId = (): number | null => {
     const b = sessionStorage.getItem("branch");
     return b ? JSON.parse(b).id : null;
   } catch { return null; }
+};
+
+// ── Hold Storage Types & Helpers ─────────────────────────────────────────
+interface HeldTransfer {
+  holdId: string;
+  heldAt: string;               // ISO timestamp
+  to_branch_id: string;
+  to_branch_name: string;
+  transfer_date: string;
+  note: string;
+  items: FormItem[];
+}
+
+const HOLDS_STORAGE_KEY = "stock_transfer_holds";
+
+const loadHolds = (): HeldTransfer[] => {
+  try {
+    const raw = localStorage.getItem(HOLDS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveHolds = (holds: HeldTransfer[]) => {
+  try {
+    localStorage.setItem(HOLDS_STORAGE_KEY, JSON.stringify(holds));
+  } catch (e) {
+    console.error("Failed to save holds", e);
+  }
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -303,7 +335,6 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
-    
       <input
         ref={ref}
         type="text"
@@ -343,7 +374,7 @@ function OrderTracking() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"branches" | "list">("branches");
   const [branchFilter, setBranchFilter] = useState<{ branch_name: string; status: string } | null>(null);
-  const [listPage, setListPage] = useState(1);                                                                 
+  const [listPage, setListPage] = useState(1);
   const PAGE_SIZE = 15;
 
   const [selectedOrder, setSelectedOrder] = useState<BranchOrderDetail | null>(null);
@@ -1045,6 +1076,103 @@ function SelectItemsDrawer({
   );
 }
 
+// ── Hold List Modal (NEW) ────────────────────────────────────────────────
+function HoldListModal({
+  isOpen, holds, onClose, onResume, onDelete, formatTime,
+}: {
+  isOpen: boolean;
+  holds: HeldTransfer[];
+  onClose: () => void;
+  onResume: (h: HeldTransfer) => void;
+  onDelete: (holdId: string) => void;
+  formatTime: (iso: string) => string;
+}) {
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-[200]" onClose={onClose}>
+        <TransitionChild as="div"
+          enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
+          leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40" />
+        <TransitionChild as={DialogPanel}
+          enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
+          leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
+          className="fixed inset-0 z-[210] m-auto flex h-fit max-h-[85vh] w-[92%] max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700">
+          <div className="bg-primary flex shrink-0 items-center justify-between px-5 py-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <ClipboardDocumentListIcon className="size-5 opacity-80" /> Held Transfers ({holds.length})
+            </h3>
+            <Button onClick={onClose} variant="flat" isIcon className="size-8 rounded-full text-white hover:bg-white/10">
+              <XMarkIcon className="size-5" />
+            </Button>
+          </div>
+
+          <div className="hide-scrollbar grow overflow-y-auto p-5">
+            {holds.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-dark-400">
+                <PauseIcon className="mb-3 size-12 text-gray-200 dark:text-dark-600" />
+                <p className="text-base">No held transfers yet</p>
+                <p className="mt-1 text-xs">Add items and click <b>Hold</b> to save a draft</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {holds.map(h => (
+                  <div key={h.holdId}
+                    className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:border-primary/40 hover:shadow-md dark:border-dark-500 dark:bg-dark-800">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-[200px] flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <BuildingStorefrontIcon className="size-4 text-primary-500" />
+                          <span className="font-semibold text-gray-800 dark:text-dark-100">{h.to_branch_name}</span>
+                          <Badge color="info" variant="soft" className="text-xs">
+                            {h.items.length} item{h.items.length > 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-dark-300">
+                          <span className="flex items-center gap-1">
+                            <ClockIcon className="size-3" /> {formatTime(h.heldAt)}
+                          </span>
+                          <span>Date: {formatDateDDMMYYYY(h.transfer_date)}</span>
+                          {h.note && <span className="max-w-[200px] truncate italic">"{h.note}"</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button color="primary" className="h-8 gap-1.5 rounded-lg px-3 text-xs" onClick={() => onResume(h)}>
+                          <PlayIcon className="size-3.5" /> Resume
+                        </Button>
+                        <Button isIcon variant="flat" className="size-8 rounded-full text-error-500 hover:bg-error-50"
+                          onClick={() => onDelete(h.holdId)} title="Delete hold">
+                          <TrashIcon className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-200 pt-3 dark:border-dark-600">
+                      {h.items.slice(0, 5).map((it, i) => (
+                        <span key={i} className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 dark:border-dark-600 dark:bg-dark-700 dark:text-dark-200">
+                          {it.from_item_name} × {it.quantity}
+                        </span>
+                      ))}
+                      {h.items.length > 5 && (
+                        <span className="px-2 py-0.5 text-[11px] text-gray-500 dark:text-dark-400">
+                          +{h.items.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex shrink-0 justify-center border-t border-gray-200 bg-gray-50 px-5 py-4 dark:border-dark-500 dark:bg-dark-800">
+            <Button variant="outlined" className="px-8" onClick={onClose}>Close</Button>
+          </div>
+        </TransitionChild>
+      </Dialog>
+    </Transition>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 export default function StockTransferPage() {
   const [mode, setMode] = useState<"manual" | "order_tracking">("manual");
@@ -1067,6 +1195,10 @@ export default function StockTransferPage() {
   const [manualListPage, setManualListPage] = useState(1);
   const MANUAL_PAGE_SIZE = 15;
 
+  // ── HOLD feature state ──
+  const [holds, setHolds] = useState<HeldTransfer[]>([]);
+  const [showHoldListModal, setShowHoldListModal] = useState(false);
+
   useEffect(() => {
     if (mode === "manual") { loadAll(); setManualView("branches"); setManualBranchFilter(null); }
   }, [mode]);
@@ -1074,6 +1206,11 @@ export default function StockTransferPage() {
   useEffect(() => {
     setDestBranchDetails(form.to_branch_id ? (branches.find(b => b.id === parseInt(form.to_branch_id)) || null) : null);
   }, [form.to_branch_id, branches]);
+
+  // ── Load holds on mount ──
+  useEffect(() => {
+    setHolds(loadHolds());
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -1295,6 +1432,67 @@ export default function StockTransferPage() {
 
   function resetForm() { setForm({ to_branch_id: "", transfer_date: new Date().toISOString().slice(0, 10), note: "", items: [] }); setDestBranchDetails(null); }
 
+  // ══════════════════════════════════════════════════════════════════
+  // HOLD FEATURE HANDLERS
+  // ══════════════════════════════════════════════════════════════════
+  const handleHold = () => {
+    if (!form.to_branch_id) { toasterrormsg("Select destination branch before holding"); return; }
+    if (form.items.length === 0) { toasterrormsg("Add at least one item before holding"); return; }
+
+    const branch = branches.find(b => String(b.id) === form.to_branch_id);
+    const newHold: HeldTransfer = {
+      holdId: `HOLD-${Date.now()}`,
+      heldAt: new Date().toISOString(),
+      to_branch_id: form.to_branch_id,
+      to_branch_name: branch?.branch_name || `Branch #${form.to_branch_id}`,
+      transfer_date: form.transfer_date,
+      note: form.note || "",
+      items: form.items,
+    };
+
+    const updated = [newHold, ...holds];
+    setHolds(updated);
+    saveHolds(updated);
+
+    resetForm();
+    toastsuccessmsg("Transfer held successfully! Find it in Hold List.");
+    setShowHoldListModal(true);
+  };
+
+  const handleResumeHold = (hold: HeldTransfer) => {
+    setForm({
+      to_branch_id: hold.to_branch_id,
+      transfer_date: hold.transfer_date,
+      note: hold.note || "",
+      items: hold.items,
+    });
+
+    const updated = holds.filter(h => h.holdId !== hold.holdId);
+    setHolds(updated);
+    saveHolds(updated);
+
+    setTab("create");
+    setShowHoldListModal(false);
+    toastsuccessmsg("Held transfer resumed!");
+  };
+
+  const handleDeleteHold = (holdId: string) => {
+    const updated = holds.filter(h => h.holdId !== holdId);
+    setHolds(updated);
+    saveHolds(updated);
+    toastsuccessmsg("Hold removed");
+  };
+
+  const formatHoldTime = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return iso; }
+  };
+
   async function createTransfer() {
     if (!form.items.length) { toasterrormsg("Add at least one item"); return; }
     if (!form.to_branch_id) { toasterrormsg("Select destination branch"); return; }
@@ -1382,10 +1580,21 @@ export default function StockTransferPage() {
             </div>
           )}
           {mode === "manual" && tab === "create" && (
-            <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
-              onClick={() => { setTab("list"); resetForm(); }}>
-              <ArrowLeftIcon className="size-4" /> Back to List
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* ── HOLD LIST button (header) ── */}
+              <Button variant="outlined" className="relative h-9 gap-2 rounded-md px-3 text-sm" onClick={() => setShowHoldListModal(true)}>
+                <ClipboardDocumentListIcon className="size-4" /> Hold List
+                {holds.length > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold text-white">
+                    {holds.length}
+                  </span>
+                )}
+              </Button>
+              <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
+                onClick={() => { setTab("list"); resetForm(); }}>
+                <ArrowLeftIcon className="size-4" /> Back to List
+              </Button>
+            </div>
           )}
         </div>
 
@@ -1680,6 +1889,12 @@ export default function StockTransferPage() {
                   <Button variant="outlined" className="gap-1.5 px-5" onClick={() => { setTab("list"); resetForm(); }}>
                     <XMarkIcon className="size-4" /> Cancel
                   </Button>
+                  {/* ── HOLD button ── */}
+                  <Button variant="outlined" className="gap-1.5 border-amber-300 px-5 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+                    onClick={handleHold}
+                    disabled={form.items.length === 0 || !form.to_branch_id}>
+                    <PauseIcon className="size-4" /> Hold
+                  </Button>
                   <Button variant="outlined" className="gap-1.5 border-error-200 px-5 text-error-500 hover:bg-error-50"
                     onClick={() => setForm(f => ({ ...f, items: [] }))}>
                     <TrashIcon className="size-4" /> Clear All
@@ -1702,6 +1917,16 @@ export default function StockTransferPage() {
 
       <TransferDetailDrawer detail={detail} onClose={() => setDetail(null)}
         onComplete={completeTransfer} onCancel={cancelTransfer} />
+
+      {/* ── HOLD LIST MODAL ── */}
+      <HoldListModal
+        isOpen={showHoldListModal}
+        holds={holds}
+        onClose={() => setShowHoldListModal(false)}
+        onResume={handleResumeHold}
+        onDelete={handleDeleteHold}
+        formatTime={formatHoldTime}
+      />
     </Page>
   );
 }
