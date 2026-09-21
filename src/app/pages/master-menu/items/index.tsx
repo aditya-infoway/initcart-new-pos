@@ -1,4 +1,4 @@
-// new theme page
+// src/app/pages/master/items/ItemsListPage.tsx
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
@@ -11,6 +11,7 @@ import {
 import {
   ArrowPathIcon, CubeIcon, EyeIcon, PencilSquareIcon,
   MagnifyingGlassIcon, PlusIcon, TrashIcon, XMarkIcon, HomeIcon, BuildingOfficeIcon, UserIcon,
+  ClockIcon, CurrencyRupeeIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -43,6 +44,15 @@ interface ItemRow {
   createdByName?: string;
 }
 
+interface PriceHistoryRow {
+  id: number;
+  changed_at: string;
+  old_price: number | null;
+  new_price: number;
+  source: string;
+  reference?: string | null;
+}
+
 function mapRow(raw: any): ItemRow {
   return {
     id:                  Number(raw.id ?? 0),
@@ -72,15 +82,158 @@ const TABS_BRANCH = [
   { key: "my_items",         label: "My Items"         },
 ];
 
+// ── Price History Modal ────────────────────────────────────────────────────
+function PriceHistoryModal({
+  isOpen, onClose, variantId, variantLabel,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  variantId: number | null;
+  variantLabel: string;
+}) {
+  const [history, setHistory] = useState<PriceHistoryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !variantId) return;
+    setLoading(true);
+    setHistory([]);
+    Get("pos/items-variant-price-history/", { variant: variantId })
+      .then((res: any) => {
+        const body = res?.data ?? res;
+        setHistory(Array.isArray(body?.history) ? body.history : []);
+      })
+      .catch(() => toasterrormsg("Failed to fetch price history."))
+      .finally(() => setLoading(false));
+  }, [isOpen, variantId]);
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-100" onClose={onClose}>
+        <TransitionChild
+          as="div"
+          enter="ease-out duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity dark:bg-black/40"
+        />
+
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <TransitionChild
+            as={DialogPanel}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+            className="w-full max-w-3xl transform-gpu overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700"
+          >
+            {/* Header */}
+            <div className="bg-primary flex items-center justify-between px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">
+                  <ClockIcon className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">
+                    Purchase Price History
+                  </h3>
+                  <p className="mt-0.5 text-xs text-white/75">
+                    {variantLabel || "Variant"}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={onClose}
+                variant="flat"
+                isIcon
+                className="size-8 rounded-full text-white hover:bg-white/10"
+              >
+                <XMarkIcon className="size-5" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="max-h-[65vh] overflow-y-auto px-5 py-5">
+              {loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="py-16 text-center">
+                  <CurrencyRupeeIcon className="mx-auto size-10 text-gray-300 dark:text-dark-500" />
+                  <p className="mt-3 text-sm text-gray-400 dark:text-dark-400">
+                    No price changes recorded yet.
+                  </p>
+                </div>
+              ) : (
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table hoverable className="w-full text-left">
+                      <THead>
+                        <Tr>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Date</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Old Price</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">New Price</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Source</Th>
+                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Reference</Th>
+                        </Tr>
+                      </THead>
+                      <TBody>
+                        {history.map((h) => (
+                          <Tr key={h.id} className="dark:border-b-dark-500 border-b border-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-dark-800">
+                            <Td className="px-4 py-3 text-sm text-gray-700 dark:text-dark-100 whitespace-nowrap">
+                              {new Date(h.changed_at).toLocaleString()}
+                            </Td>
+                            <Td className="px-4 py-3 text-sm text-gray-600 dark:text-dark-200">
+                              {h.old_price === null ? "—" : `₹${Number(h.old_price).toFixed(2)}`}
+                            </Td>
+                            <Td className="px-4 py-3 text-sm font-semibold text-gray-800 dark:text-dark-50">
+                              ₹{Number(h.new_price).toFixed(2)}
+                            </Td>
+                            <Td className="px-4 py-3 text-sm text-gray-600 dark:text-dark-200">
+                              <Badge color="info" variant="soft" className="text-xs capitalize">
+                                {h.source || "—"}
+                              </Badge>
+                            </Td>
+                            <Td className="px-4 py-3 text-sm text-gray-500 dark:text-dark-300">
+                              {h.reference || "—"}
+                            </Td>
+                          </Tr>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </div>
+                </Card>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex shrink-0 items-center justify-end border-t border-gray-200 px-5 py-4 dark:border-dark-500">
+              <Button variant="outlined" onClick={onClose}>Close</Button>
+            </div>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}
+
 // ── Variants Drawer ─────────────────────────────────────────────────────────
 function VariantsDrawer({
   isOpen, onClose, itemId, itemName, branchFields,
+  onViewHistory,
 }: {
   isOpen: boolean;
   onClose: () => void;
   itemId: number | null;
   itemName: string;
   branchFields: string[];
+  onViewHistory: (variantId: number, label: string) => void;
 }) {
   const [variants, setVariants] = useState<any[]>([]);
   const [loading, setLoading]   = useState(false);
@@ -96,6 +249,15 @@ function VariantsDrawer({
   }, [isOpen, itemId]);
 
   const COLS = [...branchFields, "purchasePrice", "salesPrice", "mrp", "barcode", "current_stock", "netValue"];
+
+  // ✅ Build a readable label for each variant from its dynamic fields
+  const buildVariantLabel = (v: any, idx: number): string => {
+    const parts = branchFields
+      .map((f) => v?.[f])
+      .filter((x) => x !== null && x !== undefined && x !== "");
+    if (parts.length > 0) return parts.join(" ").trim();
+    return `Variant #${v?.id ?? idx + 1}`;
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -171,6 +333,9 @@ function VariantsDrawer({
                             {c.replace(/([A-Z])/g, ' $1').trim()}
                           </Th>
                         ))}
+                        <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">
+                          Price History
+                        </Th>
                       </Tr>
                     </THead>
                     <TBody>
@@ -182,6 +347,22 @@ function VariantsDrawer({
                               {v[c] ?? "—"}
                             </Td>
                           ))}
+                          <Td className="px-4 py-3 text-center">
+                            <Button
+                              variant="flat"
+                              color="primary"
+                              className="h-7 gap-1.5 rounded-md px-2.5 text-xs"
+                              onClick={() =>
+                                onViewHistory(
+                                  Number(v.id),
+                                  buildVariantLabel(v, i)
+                                )
+                              }
+                            >
+                              <ClockIcon className="size-3.5" />
+                              View
+                            </Button>
+                          </Td>
                         </Tr>
                       ))}
                     </TBody>
@@ -207,7 +388,7 @@ export default function ItemsListPage() {
   const { canAdd, canEdit, canDelete } = usePermission("/AddItems");
   const searchRef = useRef<HTMLInputElement>(null);
 
-const isSuperAdmin = useMemo(() => {
+  const isSuperAdmin = useMemo(() => {
     return localStorage.getItem("role") === "superadmin";
   }, []);
   const TABS = isSuperAdmin ? TABS_SUPERADMIN : TABS_BRANCH;
@@ -231,9 +412,13 @@ const isSuperAdmin = useMemo(() => {
   const [filterBrand, setFilterBrand]   = useState<{id:string;label:string} | null>(null);
   const [filterGroup, setFilterGroup]   = useState<{id:string;label:string} | null>(null);
 
-  // variants modal
+  // variants drawer
   const [variantItem, setVariantItem]   = useState<ItemRow | null>(null);
   const [branchFields, setBranchFields] = useState<string[]>([]);
+
+  // ✅ price history modal state
+  const [historyVariantId, setHistoryVariantId] = useState<number | null>(null);
+  const [historyVariantLabel, setHistoryVariantLabel] = useState<string>("");
 
   // debounce search
   useEffect(() => {
@@ -296,6 +481,16 @@ const isSuperAdmin = useMemo(() => {
   const canEditDelete = (item: ItemRow) => isSuperAdmin || !item.createdBySuperadmin;
   const hasFilter = !!(filterCat?.id || filterBrand?.id || filterGroup?.id);
 
+  // ✅ Open price history modal
+  const handleViewPriceHistory = (variantId: number, label: string) => {
+    if (!variantId) {
+      toasterrormsg("Invalid variant.");
+      return;
+    }
+    setHistoryVariantId(variantId);
+    setHistoryVariantLabel(label);
+  };
+
   const columns = useMemo<ColumnDef<ItemRow>[]>(() => [
     {
       id: "srNo", header: "#", size: 55, enableSorting: false, enableGlobalFilter: false,
@@ -350,7 +545,7 @@ const isSuperAdmin = useMemo(() => {
         return v ? <Badge color="warning" variant="soft" className="text-xs">{v}</Badge> : <span className="text-gray-400">—</span>;
       },
     },
-        {
+    {
       id: "createdByName", accessorKey: "createdByName", header: "Created By",
       cell: ({ getValue }: CellContext<ItemRow, unknown>) => (
         <span className="text-gray-600 dark:text-dark-200">
@@ -360,33 +555,33 @@ const isSuperAdmin = useMemo(() => {
     },
     {
       id: "actions", header: "Actions", enableSorting: false, enableGlobalFilter: false,
-cell: ({ row }: CellContext<ItemRow, unknown>) => (
-  <div className="flex items-center gap-1.5">
-    <Button isIcon variant="flat" className="size-7 rounded-full" title="View Variants"
-      onClick={() => setVariantItem(row.original)}>
-      <EyeIcon className="size-3.5" />
-    </Button>
-    {canEditDelete(row.original) && (
-      <>
-        {canEdit && (
-          <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
-            onClick={() => navigate(`/Additems/${row.original.id}/edit`)}>
-            <PencilSquareIcon className="size-3.5 text-primary-600" />
+      cell: ({ row }: CellContext<ItemRow, unknown>) => (
+        <div className="flex items-center gap-1.5">
+          <Button isIcon variant="flat" className="size-7 rounded-full" title="View Variants"
+            onClick={() => setVariantItem(row.original)}>
+            <EyeIcon className="size-3.5" />
           </Button>
-        )}
-        {canDelete && (
-          <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
-            title="Delete" onClick={() => handleDelete(row.original)}>
-            <TrashIcon className="size-3.5 text-error-600" />
-          </Button>
-        )}
-      </>
-    )}
-    {!isSuperAdmin && row.original.createdBySuperadmin && (
-      <span className="text-xs italic text-gray-400 dark:text-dark-500">Main</span>
-    )}
-  </div>
-),
+          {canEditDelete(row.original) && (
+            <>
+              {canEdit && (
+                <Button isIcon variant="flat" className="size-7 rounded-full" title="Edit"
+                  onClick={() => navigate(`/Additems/${row.original.id}/edit`)}>
+                  <PencilSquareIcon className="size-3.5 text-primary-600" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button isIcon variant="flat" className="size-7 rounded-full hover:bg-error-50 dark:hover:bg-error-900/20"
+                  title="Delete" onClick={() => handleDelete(row.original)}>
+                  <TrashIcon className="size-3.5 text-error-600" />
+                </Button>
+              )}
+            </>
+          )}
+          {!isSuperAdmin && row.original.createdBySuperadmin && (
+            <span className="text-xs italic text-gray-400 dark:text-dark-500">Main</span>
+          )}
+        </div>
+      ),
     },
  ], [navigate, page, pageSize, isSuperAdmin, canEdit, canDelete]);
 
@@ -425,12 +620,12 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
             <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={() => fetchRows(1)} disabled={loading}>
               <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /><span>Refresh</span>
             </Button>
-{canAdd && (
-  <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-    onClick={() => navigate("/Items")}>
-    <PlusIcon className="size-4" /><span>Add Item</span>
-  </Button>
-)}
+            {canAdd && (
+              <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
+                onClick={() => navigate("/Items")}>
+                <PlusIcon className="size-4" /><span>Add Item</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -438,7 +633,6 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
         <div className="px-(--margin-x) mt-3">
           <WithIcon
             tabs={TABS.map(tab => {
-              // Map appropriate icons based on tab type
               const getIcon = () => {
                 if (isSuperAdmin) {
                   switch(tab.key) {
@@ -456,12 +650,12 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
                   }
                 }
               };
-              
+
               return {
                 id: tab.key,
                 title: tab.label,
                 icon: getIcon(),
-                content: null, // Content is handled separately via activeTab state
+                content: null,
               };
             })}
             selectedIndex={TABS.findIndex(t => t.key === activeTab)}
@@ -546,8 +740,19 @@ cell: ({ row }: CellContext<ItemRow, unknown>) => (
         itemName={variantItem?.itemName ?? ""}
         branchFields={branchFields}
         onClose={() => setVariantItem(null)}
+        onViewHistory={handleViewPriceHistory}
+      />
+
+      {/* ✅ Price History Modal */}
+      <PriceHistoryModal
+        isOpen={historyVariantId !== null}
+        variantId={historyVariantId}
+        variantLabel={historyVariantLabel}
+        onClose={() => {
+          setHistoryVariantId(null);
+          setHistoryVariantLabel("");
+        }}
       />
     </Page>
   );
 }
-

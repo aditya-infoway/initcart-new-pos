@@ -1,4 +1,4 @@
-﻿// stock-transfer/index.tsx
+﻿// src/app/pages/stock-transfer/index.tsx
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
@@ -42,7 +42,7 @@ const getMyBranchId = (): number | null => {
 // ── Hold Storage Types & Helpers ─────────────────────────────────────────
 interface HeldTransfer {
   holdId: string;
-  heldAt: string;               // ISO timestamp
+  heldAt: string;
   to_branch_id: string;
   to_branch_name: string;
   transfer_date: string;
@@ -107,6 +107,8 @@ interface TransferListItem {
 interface TransferItemDetail {
   id: number; from_item_detail?: { item_name: string; variant_info: string };
   quantity: number; rate: number;
+  discount_percent?: number;      // ✅ NEW
+  discount_amount?: number;       // ✅ NEW
   basic_amount?: number; tax_amount?: number; net_amount?: number;
   cgst?: number; sgst?: number; igst?: number;
 }
@@ -242,13 +244,43 @@ function BranchStatusSummaryTable({
 }
 
 // ── GST Summary Card ──────────────────────────────────────────────────────
-function GstSummaryCard({ totals }: { totals: ItemGstValue }) {
+// ✅ UPDATED — now optionally shows discount breakdown
+function GstSummaryCard({
+  totals,
+  grossAmount,
+  discountAmount,
+}: {
+  totals: ItemGstValue;
+  grossAmount?: number;      // (Rate × Qty) — sum of all items
+  discountAmount?: number;   // total discount
+}) {
+  const showDiscount = (discountAmount ?? 0) > 0;
+  const afterDiscount = (grossAmount ?? 0) - (discountAmount ?? 0);
+
   return (
     <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 dark:border-primary/30 dark:bg-primary/10">
       <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-dark-200 flex items-center gap-2">
         <ReceiptPercentIcon className="size-4 text-primary-500" /> GST Summary
       </h4>
       <div className="space-y-1.5 text-sm">
+        {showDiscount && (
+          <>
+            <div className="flex justify-between border-b border-primary/10 py-1.5">
+              <span className="text-gray-600 dark:text-dark-300">Total Amount (Rate × Qty)</span>
+              <span className="font-medium tabular-nums">₹{(grossAmount ?? 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-b border-primary/10 py-1.5">
+              <span className="text-success-600 dark:text-success-400">Discount (−)</span>
+              <span className="font-medium tabular-nums text-success-600 dark:text-success-400">
+                − ₹{(discountAmount ?? 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between border-b-2 border-primary/20 py-1.5 font-semibold">
+              <span className="text-gray-700 dark:text-dark-100">Amount after Discount</span>
+              <span className="tabular-nums">₹{afterDiscount.toFixed(2)}</span>
+            </div>
+          </>
+        )}
         <div className="flex justify-between border-b border-primary/10 py-1.5">
           <span className="text-gray-600 dark:text-dark-300">Total Basic Amount</span>
           <span className="font-semibold tabular-nums">₹{totals.basic.toFixed(2)}</span>
@@ -587,12 +619,12 @@ function OrderTracking() {
                         <div className="flex items-center gap-2">
                           <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10"
                             onClick={() => loadOrderDetail(o.id)} title="View & Process"><EyeIcon className="size-4" /></Button>
-{o.status === "pending" && canDelete && (
-  <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
-    onClick={() => cancelOrder(o.id)} title="Cancel Order">
-    <XMarkIcon className="size-4" />
-  </Button>
-)}
+                          {o.status === "pending" && canDelete && (
+                            <Button isIcon variant="flat" className="size-7 rounded-full text-error-500 hover:bg-error-50"
+                              onClick={() => cancelOrder(o.id)} title="Cancel Order">
+                              <XMarkIcon className="size-4" />
+                            </Button>
+                          )}
                         </div>
                       </Td>
                     </Tr>
@@ -812,19 +844,44 @@ function OrderTracking() {
   );
 }
 
-// ── Transfer Detail Drawer ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// TRANSFER DETAIL DRAWER — ✅ UPDATED with discount display
+// ══════════════════════════════════════════════════════════════════════════
 function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
   detail: TransferDetail | null; onClose: () => void;
   onComplete: (id: number) => void; onCancel: (id: number) => void;
 }) {
-  const totalBasic = detail?.items?.reduce((s, i) => s + safeNum((i as any).basic_amount), 0) || 0;
-  const totalTax   = detail?.items?.reduce((s, i) => s + safeNum((i as any).tax_amount), 0) || 0;
-  const totalNet   = detail?.items?.reduce((s, i) => s + safeNum((i as any).net_amount), 0) || 0;
-  const totalCgst  = detail?.items?.reduce((s, i) => s + safeNum((i as any).cgst), 0) || 0;
-  const totalSgst  = detail?.items?.reduce((s, i) => s + safeNum((i as any).sgst), 0) || 0;
-  const totalIgst  = detail?.items?.reduce((s, i) => s + safeNum((i as any).igst), 0) || 0;
-  const hasGst     = !!detail?.items?.some(i => safeNum((i as any).basic_amount) > 0);
-  const grandTotal = detail?.items?.reduce((s, i) => s + i.quantity * i.rate, 0) || 0;
+  const items = detail?.items || [];
+
+  // ── Per-item helpers (Rate × Qty, Discount, Amount after discount) ──
+  const getGross = (i: TransferItemDetail): number => safeNumber(i.quantity) * safeNumber(i.rate);
+  const getDiscountPercent = (i: TransferItemDetail): number => safeNumber(i.discount_percent);
+  const getDiscountAmount = (i: TransferItemDetail): number => {
+    const stored = safeNumber(i.discount_amount);
+    if (stored > 0) return stored;
+    const pct = getDiscountPercent(i); // fallback agar sirf % saved ho
+    return pct > 0 ? (getGross(i) * pct) / 100 : 0;
+  };
+  const getAmount = (i: TransferItemDetail): number => getGross(i) - getDiscountAmount(i);
+
+  // ── Amount / Discount totals ──
+  const totalGross = items.reduce((sum, i) => sum + getGross(i), 0);
+  const totalDiscount = items.reduce((sum, i) => sum + getDiscountAmount(i), 0);
+  const totalAfterDiscount = totalGross - totalDiscount;
+  const hasDiscount = totalDiscount > 0;
+
+  // ── GST totals (backend ne discounted price par calculate karke save kiye hain) ──
+  const totalBasic = items.reduce((sum, i) => sum + safeNum(i.basic_amount), 0);
+  const totalTax   = items.reduce((sum, i) => sum + safeNum(i.tax_amount), 0);
+  const totalNet   = items.reduce((sum, i) => sum + safeNum(i.net_amount), 0);
+  const totalCgst  = items.reduce((sum, i) => sum + safeNum(i.cgst), 0);
+  const totalSgst  = items.reduce((sum, i) => sum + safeNum(i.sgst), 0);
+  const totalIgst  = items.reduce((sum, i) => sum + safeNum(i.igst), 0);
+
+  const hasGst = items.some(i => safeNum(i.basic_amount) > 0);
+
+  // Grand total: agar discount + gst present hai to Net (incl. tax) dikhao, warna Gross
+  const grandTotal = hasGst ? totalNet : totalAfterDiscount;
 
   return (
     <Transition appear show={!!detail} as={Fragment}>
@@ -857,6 +914,7 @@ function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
               </Button>
             </div>
           </div>
+
           <div className="hide-scrollbar grow overflow-y-auto px-5 py-5 space-y-4">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               {[
@@ -871,41 +929,96 @@ function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
                 </div>
               ))}
             </div>
+
+            {/* ✅ Items table — now with Disc% and Amount-after-discount columns */}
             <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-500">
-              <Table hoverable className="w-full min-w-[600px] text-left">
+              <Table hoverable className="w-full min-w-[720px] text-left">
                 <THead>
                   <Tr>
-                    {["Item","Variant","Qty","Rate ₹","Amount ₹"].map(h => (
+                    {["Item","Variant","Qty","Rate ₹","Disc %","Amount ₹"].map(h => (
                       <Th key={h} className="bg-primary/10 text-xs font-semibold text-primary-700 dark:bg-primary/20 dark:text-primary-300">{h}</Th>
                     ))}
                   </Tr>
                 </THead>
                 <TBody>
-                  {detail?.items?.map((item, idx) => (
-                    <Tr key={item.id}>
-                      <Td className="font-semibold text-gray-800 dark:text-dark-100">{item.from_item_detail?.item_name}</Td>
-                      <Td><Badge color="info" variant="soft" className="text-xs">{item.from_item_detail?.variant_info}</Badge></Td>
-                      <Td className="text-center font-bold tabular-nums">{item.quantity}</Td>
-                      <Td className="text-right font-mono tabular-nums">₹{item.rate}</Td>
-                      <Td className="text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{(item.quantity * item.rate).toFixed(2)}</Td>
-                    </Tr>
-                  ))}
+                  {items.map((item) => {
+                    const discPct = getDiscountPercent(item);
+                    const discAmt = getDiscountAmount(item);
+                    const rowHasDiscount = discAmt > 0;
+                    return (
+                      <Tr key={item.id}>
+                        <Td className="font-semibold text-gray-800 dark:text-dark-100">
+                          {item.from_item_detail?.item_name}
+                        </Td>
+                        <Td>
+                          <Badge color="info" variant="soft" className="text-xs">
+                            {item.from_item_detail?.variant_info}
+                          </Badge>
+                        </Td>
+                        <Td className="text-center font-bold tabular-nums">{item.quantity}</Td>
+                        <Td className="text-right font-mono tabular-nums">
+                          ₹{safeNumber(item.rate).toFixed(2)}
+                        </Td>
+                        <Td className="text-center">
+                          {rowHasDiscount ? (
+                            <div className="leading-tight">
+                              <span className="inline-block rounded-lg bg-success-50 px-2 py-0.5 text-xs font-bold text-success-700 dark:bg-success-900/30 dark:text-success-400">
+                                {discPct > 0 ? `${Number(discPct.toFixed(2))}%` : "—"}
+                              </span>
+                              <div className="mt-0.5 text-[11px] text-success-600 dark:text-success-400">
+                                − ₹{discAmt.toFixed(2)}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 dark:text-dark-500">—</span>
+                          )}
+                        </Td>
+                        <Td className="text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">
+                          {rowHasDiscount && (
+                            <div className="text-[11px] font-normal text-gray-400 line-through">
+                              ₹{getGross(item).toFixed(2)}
+                            </div>
+                          )}
+                          ₹{getAmount(item).toFixed(2)}
+                        </Td>
+                      </Tr>
+                    );
+                  })}
                   <Tr className="border-t-2 border-primary/20 dark:border-primary/30">
-                    <Td colSpan={3} className="bg-primary/5 dark:bg-primary/10 text-xs font-bold uppercase text-primary-700 dark:text-primary-300">TOTAL</Td>
-                    <Td className="bg-primary/5 dark:bg-primary/10" />
-                    <Td className="bg-primary/5 dark:bg-primary/10 text-right font-extrabold tabular-nums text-primary-600 dark:text-primary-400">₹{grandTotal.toFixed(2)}</Td>
+                    <Td colSpan={5} className="bg-primary/5 dark:bg-primary/10 text-xs font-bold uppercase text-primary-700 dark:text-primary-300">
+                      {hasDiscount ? "Total (after discount):" : "TOTAL"}
+                    </Td>
+                    <Td className="bg-primary/5 dark:bg-primary/10 text-right font-extrabold tabular-nums text-primary-600 dark:text-primary-400">
+                      ₹{totalAfterDiscount.toFixed(2)}
+                    </Td>
                   </Tr>
                 </TBody>
               </Table>
             </div>
-            {hasGst && (
-              <GstSummaryCard totals={{ basic: totalBasic, tax: totalTax, cgst: totalCgst, sgst: totalSgst, igst: totalIgst, net: totalNet }} />
+
+            {/* ✅ GST Summary Card — shows discount breakdown when discount exists */}
+            {(hasGst || hasDiscount) && (
+              <GstSummaryCard
+                totals={{
+                  basic: totalBasic,
+                  tax: totalTax,
+                  cgst: totalCgst,
+                  sgst: totalSgst,
+                  igst: totalIgst,
+                  net: totalNet,
+                }}
+                grossAmount={totalGross}
+                discountAmount={totalDiscount}
+              />
             )}
           </div>
+
           <div className="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-4 dark:border-dark-500">
             <p className="text-xs text-gray-400 dark:text-dark-400">
-              {detail?.items?.length ?? 0} item(s) · Grand Total:{" "}
-              <span className="font-semibold text-primary-600 dark:text-primary-400">₹{grandTotal.toFixed(2)}</span>
+              {items.length} item(s) · Grand Total:{" "}
+              <span className="font-semibold text-primary-600 dark:text-primary-400">
+                ₹{grandTotal.toFixed(2)}
+              </span>
             </p>
             {detail?.status === "pending" ? (
               <div className="flex gap-3">
@@ -1207,7 +1320,6 @@ export default function StockTransferPage() {
     setDestBranchDetails(form.to_branch_id ? (branches.find(b => b.id === parseInt(form.to_branch_id)) || null) : null);
   }, [form.to_branch_id, branches]);
 
-  // ── Load holds on mount ──
   useEffect(() => {
     setHolds(loadHolds());
   }, []);
@@ -1581,7 +1693,6 @@ export default function StockTransferPage() {
           )}
           {mode === "manual" && tab === "create" && (
             <div className="flex items-center gap-2">
-              {/* ── HOLD LIST button (header) ── */}
               <Button variant="outlined" className="relative h-9 gap-2 rounded-md px-3 text-sm" onClick={() => setShowHoldListModal(true)}>
                 <ClipboardDocumentListIcon className="size-4" /> Hold List
                 {holds.length > 0 && (
@@ -1689,16 +1800,16 @@ export default function StockTransferPage() {
                             <Td>
                               <div className="flex items-center gap-2">
                                 <Button isIcon variant="flat" className="size-7 rounded-full text-primary-500 hover:bg-primary/10" onClick={() => loadDetail(t.id)}><EyeIcon className="size-4" /></Button>
-{t.status === "pending" && (
-  <>
-    {canEdit && (
-      <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
-    )}
-    {canDelete && (
-      <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
-    )}
-  </>
-)}
+                                {t.status === "pending" && (
+                                  <>
+                                    {canEdit && (
+                                      <Button isIcon variant="flat" className="size-7 rounded-full text-success-500 hover:bg-success-50" onClick={() => completeTransfer(t.id)} title="Complete"><CheckCircleIcon className="size-4" /></Button>
+                                    )}
+                                    {canDelete && (
+                                      <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50" onClick={() => cancelTransfer(t.id)} title="Cancel"><XMarkIcon className="size-4" /></Button>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </Td>
                           </Tr>
@@ -1889,7 +2000,6 @@ export default function StockTransferPage() {
                   <Button variant="outlined" className="gap-1.5 px-5" onClick={() => { setTab("list"); resetForm(); }}>
                     <XMarkIcon className="size-4" /> Cancel
                   </Button>
-                  {/* ── HOLD button ── */}
                   <Button variant="outlined" className="gap-1.5 border-amber-300 px-5 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
                     onClick={handleHold}
                     disabled={form.items.length === 0 || !form.to_branch_id}>
@@ -1918,7 +2028,6 @@ export default function StockTransferPage() {
       <TransferDetailDrawer detail={detail} onClose={() => setDetail(null)}
         onComplete={completeTransfer} onCancel={cancelTransfer} />
 
-      {/* ── HOLD LIST MODAL ── */}
       <HoldListModal
         isOpen={showHoldListModal}
         holds={holds}

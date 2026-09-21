@@ -215,6 +215,12 @@ const protectedRoutes: RouteObject = {
             Component: (await import("@/app/pages/order-management/stock-transfer")).default,
           }),
         },
+        {
+          path: "stockTransferExcel",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/order-management/stock-transfer/stock-transfer-excel-import-export/index")).default,
+          }),
+        },
 
 
 // ── My Branches ───────────────────────────────────────────────────────────
@@ -324,6 +330,12 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "b2bexcelimportexport",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/sales-master/b2b-sales/b2b-sales-excel-import-export/index")).default,
+          }),
+        },
+        {
           path: "b2bsales/:id",
           lazy: async () => ({
             Component: (await import("@/app/pages/sales-master/b2b-sales/detail")).default,
@@ -343,6 +355,7 @@ const protectedRoutes: RouteObject = {
             Component: (await import("@/app/pages/stock-master/stock-report")).default,
           }),
         },
+        
         {
           path: "stockDetail/:variantId",
           lazy: async () => ({

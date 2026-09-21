@@ -12,5 +12,6 @@ export const posSalesMaster: NavigationTree = {
     { id: "posSalesMaster.salesEntry2",       type: "item", path: "/salesentry2",    title: "Sales Entry 2",         icon: "posSalesMaster.salesEntry2" },
     { id: "posSalesMaster.salesReturnReport", type: "item", path: "/salesReturnList",   title: "Sales Return & Report", icon: "posSalesMaster.salesReturnReport" },
     { id: "posSalesMaster.b2bSales",          type: "item", path: "/b2bsales",       title: "B2B Sales",             icon: "posSalesMaster.b2bSales", superAdminOnly: true },
+    { id: "posSalesMaster.b2bexcelimportexport", type: "item", path: "/b2bexcelimportexport",    title: "Import - B2B Sales",   icon: "posSalesMaster.b2bSales", superAdminOnly: true },
   ],
 };

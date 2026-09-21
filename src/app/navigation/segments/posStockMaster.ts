@@ -13,6 +13,7 @@ export const posStockMaster: NavigationTree = {
     { id: "posStockMaster.b2bStockReturnManagement", type: "item", path: "/b2bstockReturnverification", title: "B2B Stock Return Management", icon: "posB2BInventory.b2bStockReturnManagement", superAdminOnly: true },
     { id: "posStockMaster.schemeOffer",              type: "item", path: "/SchemeOffer",                title: "Scheme Offer",                icon: "posB2BInventory.schemeOffer",              superAdminOnly: true },
     { id: "posStockMaster.stockTransfer",            type: "item", path: "/stockTransfer",              title: "Stock Transfer",              icon: "posB2BInventory.stockTransfer",            superAdminOnly: true },
+    { id: "posStockMaster.stockTransferExcel",            type: "item", path: "/stockTransferExcel",              title: "Import - Stock Transfer",   icon: "posB2BInventory.stockTransfer",            superAdminOnly: true },
     { id: "posStockMaster.mySchemeOffers",           type: "item", path: "/SchemeOfferRegister",        title: "My Scheme Offers",            icon: "posB2BInventory.schemeOffer",              branchOnly: true },
   ],
 };
