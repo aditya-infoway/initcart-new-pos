@@ -8,7 +8,7 @@ import {
   ColumnDef,
   CellContext,
 } from "@tanstack/react-table";
-import { WithIcon, type TabItem } from "@/components/ui/Tab";
+import { WithIcon } from "@/components/ui/Tab";
 import { usePermission } from "@/hooks/usePermissions";
 import {
   ArrowPathIcon,
@@ -21,7 +21,6 @@ import {
   XCircleIcon,
   DocumentTextIcon,
   CubeIcon,
-  PlusCircleIcon,
   PencilSquareIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
@@ -38,25 +37,14 @@ import { ensureString } from "@/utils/ensureString";
 import { Get, Delete, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
 import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
 
-// ── Confirm modal messages ─────────────────────────────────────────────────
-const confirmMessages: ConfirmMessages = {
-  pending: {
-    title: "Delete Website Item",
-    description: "Are you sure you want to delete this item? This will also remove the linked product from the website and cannot be undone.",
-    actionText: "Yes, Delete",
-  },
-  success: {
-    title: "Item Deleted",
-    description: "The website item has been deleted successfully.",
-  },
-  error: {
-    title: "Delete Failed",
-    description: "Something went wrong while deleting. Please try again.",
-  },
-};
-
 // ── Types ──────────────────────────────────────────────────────────────────
 type WebsiteStatus = "pending" | "approved" | "rejected" | "draft";
+
+interface RowVariant {
+  id: number;
+  variant_image: string | null;
+  variant_image_url: string | null;
+}
 
 interface WebsiteItemRow {
   id: number;
@@ -75,6 +63,7 @@ interface WebsiteItemRow {
   completion_percentage: number;
   linked_product: number | null;
   createdByName?: string;
+  variants: RowVariant[];
 }
 
 interface DashboardStats {
@@ -103,17 +92,36 @@ function mapRow(raw: any): WebsiteItemRow {
     vendor_receivable:      Number(raw.vendor_receivable ?? raw.final_price ?? 0),
     completion_percentage:  Number(raw.completion_percentage ?? 0),
     linked_product:         raw.linked_product ?? null,
-    createdByName: String(raw.created_by_name ?? ""),
+    createdByName:          String(raw.created_by_name ?? ""),
+    variants: Array.isArray(raw.variants)
+      ? raw.variants.map((v: any) => ({
+          id:                Number(v.id ?? 0),
+          variant_image:     v.variant_image ?? null,
+          variant_image_url: v.variant_image_url ?? null,
+        }))
+      : [],
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "https://api.initcart.com";
 
 function getFullImageUrl(mediaPath: string | null | undefined): string | null {
   if (!mediaPath) return null;
   if (mediaPath.startsWith("http://") || mediaPath.startsWith("https://")) return mediaPath;
   if (mediaPath.startsWith("/media/")) return `${API_BASE_URL}${mediaPath}`;
   return `${API_BASE_URL}/media/${mediaPath}`;
+}
+
+// main image → thumbnail → first variant image
+function getRowImage(row: WebsiteItemRow): string | null {
+  if (row.main_image) return getFullImageUrl(row.main_image);
+  if (row.thumbnail_image) return getFullImageUrl(row.thumbnail_image);
+  const first = row.variants[0];
+  if (first) {
+    if (first.variant_image_url) return first.variant_image_url;
+    if (first.variant_image) return getFullImageUrl(first.variant_image);
+  }
+  return null;
 }
 
 // ── Status config ──────────────────────────────────────────────────────────
@@ -135,6 +143,8 @@ const STATUS_TABS = [
   { key: "rejected", label: "Rejected", icon: XCircleIcon },
   { key: "draft",    label: "Draft",    icon: DocumentTextIcon },
 ] as const;
+
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100];
 
 // ── Stat Card ──────────────────────────────────────────────────────────────
 function StatCard({
@@ -170,7 +180,7 @@ export default function WebsiteItemsListPage() {
   const [sorting, setSorting]           = useState<SortingState>([]);
   const [activeTab, setActiveTab]       = useState<string>("all");
   const [page, setPage]                 = useState(1);
-  const pageSize                        = 15;
+  const [pageSize, setPageSize]         = useState(15);
   const [total, setTotal]               = useState(0);
 
   // delete modal state
@@ -180,6 +190,29 @@ export default function WebsiteItemsListPage() {
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteError,   setDeleteError]   = useState(false);
   const deleteState = deleteError ? "error" : deleteSuccess ? "success" : "pending";
+
+  // confirm modal messages (warning about linked product only when it exists)
+  const confirmMessages = useMemo<ConfirmMessages>(() => ({
+    pending: {
+      title: "Delete Website Item",
+      description: deleteTarget
+        ? `Are you sure you want to delete "${deleteTarget.itemName}"?${
+            deleteTarget.linked_product
+              ? " This will also remove the linked product from the website."
+              : ""
+          } This cannot be undone.`
+        : "Are you sure you want to delete this item? This cannot be undone.",
+      actionText: "Yes, Delete",
+    },
+    success: {
+      title: "Item Deleted",
+      description: "The website item has been deleted successfully.",
+    },
+    error: {
+      title: "Delete Failed",
+      description: "Something went wrong while deleting. Please try again.",
+    },
+  }), [deleteTarget]);
 
   // debounce search
   useEffect(() => {
@@ -215,6 +248,7 @@ export default function WebsiteItemsListPage() {
     } catch {
       toasterrormsg("Failed to load website items.");
       setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -222,7 +256,9 @@ export default function WebsiteItemsListPage() {
 
   // initial load
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { fetchRows(1); }, [activeTab, debouncedFilter]);
+
+  // reload (page 1) whenever tab, search or page size changes
+  useEffect(() => { fetchRows(1); }, [fetchRows]);
 
   // ── Delete ────────────────────────────────────────────────────────────────
   const openDelete = useCallback((item: WebsiteItemRow) => {
@@ -239,7 +275,9 @@ export default function WebsiteItemsListPage() {
       await Delete(`pos/website-items/${deleteTarget.id}/delete/?delete_product=true`, {});
       toastsuccessmsg("Item deleted successfully.");
       setDeleteSuccess(true);
-      fetchRows(page);
+      // if the last item of a page was deleted, go to the previous page
+      const nextPage = rows.length === 1 && page > 1 ? page - 1 : page;
+      fetchRows(nextPage);
       fetchStats();
     } catch (e: any) {
       toasterrormsg(e?.response?.data?.error ?? "Failed to delete item.");
@@ -247,7 +285,7 @@ export default function WebsiteItemsListPage() {
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, page, fetchRows, fetchStats]);
+  }, [deleteTarget, page, rows.length, fetchRows, fetchStats]);
 
   // ── Columns ──────────────────────────────────────────────────────────────
   const columns = useMemo<ColumnDef<WebsiteItemRow>[]>(() => [
@@ -269,7 +307,7 @@ export default function WebsiteItemsListPage() {
       header: "Item",
       cell: ({ row, getValue, table }: CellContext<WebsiteItemRow, unknown>) => {
         const q   = ensureString(table.getState().globalFilter);
-        const img = getFullImageUrl(row.original.main_image ?? row.original.thumbnail_image);
+        const img = getRowImage(row.original);
         return (
           <div className="flex items-center gap-3">
             {img ? (
@@ -328,7 +366,7 @@ export default function WebsiteItemsListPage() {
     {
       id: "final_price",
       accessorKey: "final_price",
-      header: "Price",
+      header: "Final Price",
       cell: ({ getValue }: CellContext<WebsiteItemRow, unknown>) => (
         <span className="font-medium text-gray-800 dark:text-dark-100">
           ₹{Number(getValue() ?? 0).toFixed(2)}
@@ -338,7 +376,7 @@ export default function WebsiteItemsListPage() {
     {
       id: "platform_charge_percent",
       accessorKey: "platform_charge_percent",
-      header: "Platform Fee",
+      header: "Platform Charge",
       cell: ({ getValue }: CellContext<WebsiteItemRow, unknown>) => {
         const v = Number(getValue() ?? 0);
         return v > 0 ? (
@@ -391,24 +429,25 @@ export default function WebsiteItemsListPage() {
         <div className="flex items-center gap-2">
           {/* View */}
           {canEdit && (
-          <Button
-            isIcon
-            variant="flat"
-            className="size-8 rounded-full"
-            title="View Details"
-            onClick={() => navigate(`/website-items/${row.original.id}`)}
-          >
-            <EyeIcon className="size-5 text-primary-600" />
-          </Button>
- )}
-        
+            <Button
+              isIcon
+              variant="flat"
+              className="size-8 rounded-full"
+              title="View Details"
+              onClick={() => navigate(`/website-items/${row.original.id}`)}
+            >
+              <EyeIcon className="size-5 text-primary-600" />
+            </Button>
+          )}
+
+          {/* Edit */}
           {canEdit && (
             <Button
               isIcon
               variant="flat"
               className="size-8 rounded-full"
               title="Edit"
-              onClick={() => navigate(`/website-items/${row.original.id}`)}
+              onClick={() => navigate(`/website-items/${row.original.id}/edit`)}
             >
               <PencilSquareIcon className="size-5 text-success-600" />
             </Button>
@@ -429,7 +468,7 @@ export default function WebsiteItemsListPage() {
         </div>
       ),
     },
-   ], [navigate, openDelete, page, pageSize, canEdit, canDelete]);
+  ], [navigate, openDelete, page, pageSize, canEdit, canDelete]);
 
   const table = useReactTable({
     data: rows,
@@ -443,12 +482,11 @@ export default function WebsiteItemsListPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize } },
     manualPagination: true,
     pageCount: Math.ceil(total / pageSize),
   });
 
-  const totalPages = Math.ceil(total / pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <Page title="Website Items">
@@ -495,8 +533,8 @@ export default function WebsiteItemsListPage() {
             tabs={STATUS_TABS.map(tab => ({
               id: tab.key,
               title: tab.label,
-              icon: tab.icon, // These already have appropriate icons defined
-              content: null, // Content is handled separately via activeTab state
+              icon: tab.icon,
+              content: null,
             }))}
             selectedIndex={STATUS_TABS.findIndex(t => t.key === activeTab)}
             onChange={(idx) => {
@@ -535,7 +573,7 @@ export default function WebsiteItemsListPage() {
             <p className="text-xs text-info-700 dark:text-info-300">
               <span className="font-semibold">Tip:</span> Items with complete information (description,
               images, specifications) are more likely to get approved quickly. Click{" "}
-              <span className="font-semibold">View</span> to add missing details.
+              <span className="font-semibold">View</span> or <span className="font-semibold">Edit</span> to add missing details.
             </p>
           </div>
         </div>
@@ -548,46 +586,60 @@ export default function WebsiteItemsListPage() {
         />
 
         {/* ── Pagination ── */}
-        {total > pageSize && (
+        {total > 0 && (
           <div className="px-(--margin-x) mt-3 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-gray-500 dark:text-dark-300">
-              Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outlined"
-                className="h-8 px-3 text-xs"
-                disabled={page <= 1}
-                onClick={() => fetchRows(page - 1)}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 dark:text-dark-300">
+                Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+              </span>
+              <select
+                value={pageSize}
+                onChange={e => setPageSize(Number(e.target.value))}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-100"
               >
-                Prev
-              </Button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let start = Math.max(1, page - 2);
-                if (start + 4 > totalPages) start = Math.max(1, totalPages - 4);
-                const n = start + i;
-                if (n > totalPages) return null;
-                return (
-                  <Button
-                    key={n}
-                    variant={n === page ? "filled" : "outlined"}
-                    color={n === page ? "primary" : undefined}
-                    className="h-8 px-3 text-xs"
-                    onClick={() => fetchRows(n)}
-                  >
-                    {n}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outlined"
-                className="h-8 px-3 text-xs"
-                disabled={page >= totalPages}
-                onClick={() => fetchRows(page + 1)}
-              >
-                Next
-              </Button>
+                {PAGE_SIZE_OPTIONS.map(n => (
+                  <option key={n} value={n}>{n} per page</option>
+                ))}
+              </select>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outlined"
+                  className="h-8 px-3 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => fetchRows(page - 1)}
+                >
+                  Prev
+                </Button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let start = Math.max(1, page - 2);
+                  if (start + 4 > totalPages) start = Math.max(1, totalPages - 4);
+                  const n = start + i;
+                  if (n > totalPages) return null;
+                  return (
+                    <Button
+                      key={n}
+                      variant={n === page ? "filled" : "outlined"}
+                      color={n === page ? "primary" : undefined}
+                      className="h-8 px-3 text-xs"
+                      onClick={() => fetchRows(n)}
+                    >
+                      {n}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outlined"
+                  className="h-8 px-3 text-xs"
+                  disabled={page >= totalPages}
+                  onClick={() => fetchRows(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

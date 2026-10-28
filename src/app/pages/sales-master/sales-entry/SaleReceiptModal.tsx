@@ -29,7 +29,7 @@ export function SaleReceiptModal({ saleId, open, onClose }: Props) {
   const handlePrint = () => {
     const printContents = document.getElementById("sale-receipt-print")?.innerHTML;
     if (!printContents) return;
-    const win = window.open("", "_blank");
+    const win = window.open("", "_blank");  
     if (!win) return;
     win.document.write(`
       <html><head><title>Receipt</title>

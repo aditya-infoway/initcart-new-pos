@@ -1,3 +1,4 @@
+// src/app/pages/branch/orders/detail.tsx
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { usePermission } from "@/hooks/usePermissions";
@@ -15,6 +16,8 @@ import {
   OrderDetail, DeliveryInfo, ORDER_STATUS_OPTIONS,
   formatINR, getStatusBadge,
 } from "./data";
+
+const BASE_URL = "https://api.initcart.com";
 
 const DEFAULT_DELIVERY: Partial<DeliveryInfo> = {
   delivery_service: "self",
@@ -34,19 +37,19 @@ const cardCls =
 export default function OrderDetailPage() {
   const [searchParams] = useSearchParams();
   const branchId = searchParams.get("branch_id");
-  const { canEdit } = usePermission("/Orders"); // Update Status / Delivery form gate karne ke liye
+  const { canEdit } = usePermission("/Orders");
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
 
-  const withBranch = (url: string) => branchId ? `${url}${url.includes("?") ? "&" : "?"}branch_id=${branchId}` : url;
+  const withBranch = (url: string) =>
+    branchId ? `${url}${url.includes("?") ? "&" : "?"}branch_id=${branchId}` : url;
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("pending");
-  const [deliveryInfo, setDeliveryInfo] =
-    useState<Partial<DeliveryInfo>>(DEFAULT_DELIVERY);
+  const [deliveryInfo, setDeliveryInfo] = useState<Partial<DeliveryInfo>>(DEFAULT_DELIVERY);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -86,7 +89,7 @@ export default function OrderDetailPage() {
   const handleStatusUpdate = async () => {
     setUpdating(true);
     try {
-      const res = await Post(withBranch('pos/branch/orders/status/update/'), {
+      const res = await Post(withBranch("pos/branch/orders/status/update/"), {
         order_id: orderId,
         item_status: selectedStatus,
       }) as any;
@@ -204,7 +207,6 @@ export default function OrderDetailPage() {
   };
 
   const getProductImage = (item: OrderDetail["items"][number]) => {
-    const BASE_URL = "http://localhost:8000";
     let img =
       item.product_details.variant_image ||
       item.product_details.main_image ||

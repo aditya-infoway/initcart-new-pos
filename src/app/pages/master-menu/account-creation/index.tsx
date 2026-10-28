@@ -1,33 +1,18 @@
+// src/app/pages/account-creation/index.tsx
 import { WithIcon, type TabItem } from "@/components/ui/Tab";
 import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  Transition,
+  Menu, MenuButton, MenuItem, MenuItems, Transition,
 } from "@headlessui/react";
 import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-  ColumnDef,
-  CellContext,                                                             
-  RowSelectionState,
+  getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
+  getSortedRowModel, SortingState, useReactTable,
+  ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
 import {
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ArrowPathIcon,
-  EnvelopeIcon,
-  EllipsisHorizontalIcon,
-  MagnifyingGlassIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
+  CheckCircleIcon, XCircleIcon, ArrowPathIcon,
+  EllipsisHorizontalIcon, MagnifyingGlassIcon,
+  PencilIcon, PlusIcon, TrashIcon,
+  HomeIcon, UserGroupIcon, BuildingOfficeIcon, CubeIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -36,29 +21,14 @@ import { useNavigate } from "react-router";
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Input } from "@/components/ui";
 import { Delete, Get, toastsuccessmsg, toasterrormsg } from "@/ApiHelper";
-import { 
-  HomeIcon, 
-  UserGroupIcon, 
-  BuildingOfficeIcon, 
-  CubeIcon 
-} from "@heroicons/react/24/outline";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { SelectCell, SelectHeader } from "@/components/shared/table/SelectCheckbox";
 import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
-import {
-  Account,
-  AccountTabKey,
-  ACCOUNT_TABS,
-  mapApiAccount,
-} from "./data";
+import { Account, AccountTabKey, ACCOUNT_TABS, mapApiAccount } from "./data";
 import { usePermission } from "@/hooks/usePermissions";
-
-// ── No AccountDrawer import needed anymore ──
-
-// ----------------------------------------------------------------------
 
 const confirmMessages: ConfirmMessages = {
   pending: {
@@ -78,13 +48,8 @@ const confirmMessages: ConfirmMessages = {
   },
 };
 
-// ── Row actions ─────────────────────────────────────────────────────────────
 function AccountRowActions({
-  account,
-  onEdit,
-  onDelete,
-  canEdit,
-  canDelete,
+  account, onEdit, onDelete, canEdit, canDelete,
 }: {
   account: Account;
   onEdit: (a: Account) => void;
@@ -99,28 +64,19 @@ function AccountRowActions({
       </MenuButton>
       <Transition
         as={Fragment}
-        enter="transition ease-out"
-        enterFrom="opacity-0 translate-y-2"
-        enterTo="opacity-100 translate-y-0"
-        leave="transition ease-in"
-        leaveFrom="opacity-100 translate-y-0"
-        leaveTo="opacity-0 translate-y-2"
+        enter="transition ease-out" enterFrom="opacity-0 translate-y-2" enterTo="opacity-100 translate-y-0"
+        leave="transition ease-in" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 translate-y-2"
       >
-        <MenuItems
-          anchor={{ to: "bottom end", gap: 8 }}
-          className="dark:border-dark-500 dark:bg-dark-750 absolute z-100 w-36 rounded-lg border border-gray-300 bg-white py-1 shadow-lg shadow-gray-200/50 outline-hidden dark:shadow-none"
-        >
+        <MenuItems anchor={{ to: "bottom end", gap: 8 }}
+          className="dark:border-dark-500 dark:bg-dark-750 absolute z-100 w-36 rounded-lg border border-gray-300 bg-white py-1 shadow-lg shadow-gray-200/50 outline-hidden dark:shadow-none">
           {canEdit && (
             <MenuItem>
-              {({ focus }: { focus: boolean }) => (
-                <button
-                  type="button"
-                  onClick={() => onEdit(account)}
+              {({ focus }) => (
+                <button type="button" onClick={() => onEdit(account)}
                   className={clsx(
                     "flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
                     focus && "bg-gray-100 text-gray-800 dark:bg-dark-600 dark:text-dark-100",
-                  )}
-                >
+                  )}>
                   <PencilIcon className="size-4.5 stroke-1" />
                   <span>Edit</span>
                 </button>
@@ -129,15 +85,12 @@ function AccountRowActions({
           )}
           {canDelete && (
             <MenuItem>
-              {({ focus }: { focus: boolean }) => (
-                <button
-                  type="button"
-                  onClick={() => onDelete(account)}
+              {({ focus }) => (
+                <button type="button" onClick={() => onDelete(account)}
                   className={clsx(
                     "this:error text-this dark:text-this-light flex h-9 w-full items-center gap-3 px-3 tracking-wide outline-hidden transition-colors",
                     focus && "bg-this/10 dark:bg-this-light/10",
-                  )}
-                >
+                  )}>
                   <TrashIcon className="size-4.5 stroke-1" />
                   <span>Delete</span>
                 </button>
@@ -150,9 +103,8 @@ function AccountRowActions({
   );
 }
 
-// ── Main Page ───────────────────────────────────────────────────────────────
 export default function AccountCreationPage() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const { canAdd, canEdit, canDelete } = usePermission("/addAccounts");
   const [data, setData] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,28 +113,18 @@ export default function AccountCreationPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // ── REMOVE these drawer states ──
-  // const [drawerOpen, setDrawerOpen] = useState(false);
-  // const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-
-  // Delete states (keep these)
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
       const res = await Get("pos/account/", { page: 1, page_size: 200 }) as any;
       const body = res?.data ?? res;
-      const rows: any[] = Array.isArray(body?.results)
-        ? body.results
-        : Array.isArray(body)
-        ? body
-        : [];
+      const rows: any[] = Array.isArray(body?.results) ? body.results : Array.isArray(body) ? body : [];
       setData(rows.map(mapApiAccount));
     } catch {
       toasterrormsg("Failed to fetch accounts.");
@@ -193,13 +135,11 @@ export default function AccountCreationPage() {
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-  // ── Tab filtered data ────────────────────────────────────────────────────
   const filteredData = useMemo(() => {
     if (activeTab === "all") return data;
     return data.filter((item) => item.group === activeTab);
   }, [activeTab, data]);
 
-  // ── Tab counts ───────────────────────────────────────────────────────────
   const tabCounts = useMemo(() => ({
     all: data.length,
     "Sundry Creditor(Main)": data.filter((d) => d.group === "Sundry Creditor(Main)").length,
@@ -207,20 +147,10 @@ export default function AccountCreationPage() {
     "Case In Hand": data.filter((d) => d.group === "Case In Hand").length,
   }), [data]);
 
-  // ── Handlers ── 👈 Updated to use navigate ──
-  const onEdit = useCallback((a: Account) => {
-    navigate(`/accounts/edit/${a.id}`);
-  }, [navigate]);
-
-  const onAdd = useCallback(() => {
-    navigate("/accounts");
-  }, [navigate]);
-
+  const onEdit = useCallback((a: Account) => { navigate(`/accounts/edit/${a.id}`, { state: { accountData: a } }); }, [navigate]);
+  const onAdd = useCallback(() => { navigate("/accounts"); }, [navigate]);
   const onDelete = useCallback((a: Account) => {
-    setDeleteTarget(a);
-    setDeleteSuccess(false);
-    setDeleteError(false);
-    setDeleteOpen(true);
+    setDeleteTarget(a); setDeleteSuccess(false); setDeleteError(false); setDeleteOpen(true);
   }, []);
 
   const handleDelete = useCallback(async () => {
@@ -232,157 +162,90 @@ export default function AccountCreationPage() {
       setData((prev) => prev.filter((a) => a.id !== deleteTarget.id));
       setDeleteSuccess(true);
     } catch (e: any) {
-      toasterrormsg(
-        e?.response?.data?.detail || e?.response?.data?.message || "Failed to delete account.",
-      );
+      toasterrormsg(e?.response?.data?.detail || e?.response?.data?.message || "Failed to delete account.");
       setDeleteError(true);
-    } finally {
-      setDeleteLoading(false);
-    }
+    } finally { setDeleteLoading(false); }
   }, [deleteTarget]);
 
-  // ── Columns ──────────────────────────────────────────────────────────────
-  const columns = useMemo<ColumnDef<Account>[]>(
-    () => [
-      {
-        id: "select",
-        header: SelectHeader,
-        cell: SelectCell,
-        enableSorting: false,
-        enableGlobalFilter: false,
-      },
-      {
-        id: "srNo",
-        header: "#",
-        size: 55,
-        cell: ({ row }: CellContext<Account, unknown>) => (
-          <span className="text-gray-600 dark:text-dark-300">{row.index + 1}</span>
-        ),
-        enableSorting: false,
-        enableGlobalFilter: false,
-      },
-      {
-        id: "accountName",
-        accessorKey: "accountName",
-        header: "Account Name",
-        cell: ({ getValue, table }: CellContext<Account, unknown>) => {
-          const q = ensureString(table.getState().globalFilter);
-          return (
-            <span className="font-medium text-gray-900 dark:text-white">
-              <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
-            </span>
-          );
-        },
-      },
-      {
-        id: "group",
-        accessorKey: "group",
-        header: "Group",
-        cell: ({ getValue }: CellContext<Account, unknown>) => (
-          <Badge color="primary" variant="soft">
-            {String(getValue() ?? "—")}
-          </Badge>
-        ),
-      },
-      {
-        id: "city",
-        accessorKey: "city",
-        header: "City",
-        cell: ({ getValue }: CellContext<Account, unknown>) => (
-          <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>
-        ),
-      },
-      {
-        id: "state",
-        accessorKey: "state",
-        header: "State",
-        cell: ({ getValue }: CellContext<Account, unknown>) => (
-          <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>
-        ),
-      },
-      {
-        id: "mobile",
-        accessorKey: "mobile",
-        header: "Mobile No.",
-        cell: ({ getValue }: CellContext<Account, unknown>) => {
-          const v = String(getValue() ?? "");
-          if (!v) return <span className="text-gray-400">—</span>;
-          return (
-            <a href={`tel:${v}`} className="text-primary-600 hover:text-primary-700 dark:text-primary-400">
-              {v}
-            </a>
-          );
-        },
-      },
-      {
-        id: "openingBalance",
-        accessorKey: "openingBalance",
-        header: "Opening Balance",
-        cell: ({ row }: CellContext<Account, unknown>) => (
-          <span className="text-gray-700 dark:text-dark-200">
-            ₹{row.original.openingBalance}{" "}
-            <span className={clsx(
-              "text-xs font-semibold",
-              row.original.drcr === "Dr" ? "text-success-600" : "text-error-600",
-            )}>
-              {row.original.drcr}
-            </span>
+  const columns = useMemo<ColumnDef<Account>[]>(() => [
+    { id: "select", header: SelectHeader, cell: SelectCell, enableSorting: false, enableGlobalFilter: false },
+    {
+      id: "srNo", header: "#", size: 55,
+      cell: ({ row }) => <span className="text-gray-600 dark:text-dark-300">{row.index + 1}</span>,
+      enableSorting: false, enableGlobalFilter: false,
+    },
+    {
+      id: "accountName", accessorKey: "accountName", header: "Account Name",
+      cell: ({ getValue, table }: CellContext<Account, unknown>) => {
+        const q = ensureString(table.getState().globalFilter);
+        return (
+          <span className="font-medium text-gray-900 dark:text-white">
+            <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
           </span>
-        ),
+        );
       },
-      {
-        id: "currentBalance",
-        accessorKey: "currentBalance",
-        header: "Current Balance",
-        cell: ({ row }: CellContext<Account, unknown>) => (
-          <span className="text-gray-700 dark:text-dark-200">
-            ₹{row.original.currentBalance}{" "}
-            <span className={clsx(
-              "text-xs font-semibold",
-              row.original.currentDrcr === "Dr" ? "text-success-600" : "text-error-600",
-            )}>
-              {row.original.currentDrcr}
-            </span>
+    },
+    {
+      id: "group", accessorKey: "group", header: "Group",
+      cell: ({ getValue }) => <Badge color="primary" variant="soft">{String(getValue() ?? "—")}</Badge>,
+    },
+    {
+      id: "city", accessorKey: "city", header: "City",
+      cell: ({ getValue }) => <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>,
+    },
+    {
+      id: "state", accessorKey: "state", header: "State",
+      cell: ({ getValue }) => <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>,
+    },
+    {
+      id: "mobile", accessorKey: "mobile", header: "Mobile No.",
+      cell: ({ getValue }) => {
+        const v = String(getValue() ?? "");
+        if (!v) return <span className="text-gray-400">—</span>;
+        return <a href={`tel:${v}`} className="text-primary-600 hover:text-primary-700 dark:text-primary-400">{v}</a>;
+      },
+    },
+    {
+      id: "openingBalance", accessorKey: "openingBalance", header: "Opening Balance",
+      cell: ({ row }) => (
+        <span className="text-gray-700 dark:text-dark-200">
+          ₹{row.original.openingBalance}{" "}
+          <span className={clsx("text-xs font-semibold", row.original.drcr === "Dr" ? "text-success-600" : "text-error-600")}>
+            {row.original.drcr}
           </span>
-        ),
-      },
-      {
-        id: "createdByName",
-        accessorKey: "createdByName",
-        header: "Created By",
-        cell: ({ getValue }: CellContext<Account, unknown>) => (
-          <span className="text-gray-600 dark:text-dark-200">
-            {String(getValue() ?? "—")}
+        </span>
+      ),
+    },
+    {
+      id: "currentBalance", accessorKey: "currentBalance", header: "Current Balance",
+      cell: ({ row }) => (
+        <span className="text-gray-700 dark:text-dark-200">
+          ₹{row.original.currentBalance}{" "}
+          <span className={clsx("text-xs font-semibold", row.original.currentDrcr === "Dr" ? "text-success-600" : "text-error-600")}>
+            {row.original.currentDrcr}
           </span>
-        ),
-      },
-
-{
-  id: "actions",
-  header: "Action",
-  size: 60,
-  enableSorting: false,
-  enableGlobalFilter: false,
-  cell: ({ row }: CellContext<Account, unknown>) => (
-    <div className="flex justify-center">
-      <AccountRowActions
-        account={row.original}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        canEdit={canEdit}
-        canDelete={canDelete}
-      />
-    </div>
-  ),
-},
-],
-[onEdit, onDelete, canEdit, canDelete],
-);
-
+        </span>
+      ),
+    },
+    {
+      id: "createdByName", accessorKey: "createdByName", header: "Created By",
+      cell: ({ getValue }) => <span className="text-gray-600 dark:text-dark-200">{String(getValue() ?? "—")}</span>,
+    },
+    {
+      id: "actions", header: "Action", size: 60, enableSorting: false, enableGlobalFilter: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <AccountRowActions
+            account={row.original} onEdit={onEdit} onDelete={onDelete}
+            canEdit={canEdit} canDelete={canDelete}
+          />
+        </div>
+      ),
+    },
+  ], [onEdit, onDelete, canEdit, canDelete]);
 
   const table = useReactTable({
-    data: filteredData,
-    columns,
+    data: filteredData, columns,
     state: { globalFilter, sorting, rowSelection },
     enableRowSelection: true,
     getRowId: (row) => String(row.id),
@@ -403,57 +266,40 @@ export default function AccountCreationPage() {
   return (
     <Page title="Account List">
       <div className="transition-content w-full pb-5">
-
-        {/* Toolbar */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div>
-            <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">
-              Account List
-            </h2>
+            <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">Account List</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-dark-300">
               {data.length} account{data.length === 1 ? "" : "s"} found
             </p>
           </div>
-<div className="flex items-center gap-2">
-  <Button
-    variant="outlined"
-    className="h-9 gap-2 rounded-md px-3 text-sm"
-    onClick={fetchAccounts}
-    disabled={loading}
-  >
-    <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
-    <span>Refresh</span>
-  </Button>
-  {canAdd && (
-    <Button
-      color="primary"
-      className="h-9 gap-2 rounded-md px-4 text-sm"
-      onClick={onAdd}
-    >
-      <PlusIcon className="size-4" />
-      <span>Add Account</span>
-    </Button>
-  )}
-</div>
+          <div className="flex items-center gap-2">
+            <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
+              onClick={fetchAccounts} disabled={loading}>
+              <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
+              <span>Refresh</span>
+            </Button>
+            {canAdd && (
+              <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={onAdd}>
+                <PlusIcon className="size-4" />
+                <span>Add Account</span>
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Search */}
         <div className="px-(--margin-x) mt-2 max-w-sm">
-          <Input
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+          <Input value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)}
             prefix={<MagnifyingGlassIcon className="size-4" />}
             classNames={{ input: "ring-primary-500/50 h-9 text-sm focus:ring-3" }}
-            placeholder="Search accounts..."
-          />
+            placeholder="Search accounts..." />
         </div>
 
-        {/* Tab filters + table */}
         <div className="px-(--margin-x) pt-4">
           <WithIcon
             tabs={ACCOUNT_TABS.map((tab) => {
               const getIcon = () => {
-                switch(tab.key) {
+                switch (tab.key) {
                   case "all": return HomeIcon;
                   case "Sundry Creditor(Main)": return BuildingOfficeIcon;
                   case "Customer": return UserGroupIcon;
@@ -461,17 +307,13 @@ export default function AccountCreationPage() {
                   default: return HomeIcon;
                 }
               };
-              
               return {
                 id: tab.key,
                 title: `${tab.title} (${tabCounts[tab.key as keyof typeof tabCounts] ?? 0})`,
                 icon: getIcon(),
                 content: (
-                  <MasterTable
-                    table={table}
-                    columnCount={columns.length}
-                    emptyMessage={loading ? "Loading accounts..." : "No accounts found."}
-                  />
+                  <MasterTable table={table} columnCount={columns.length}
+                    emptyMessage={loading ? "Loading accounts..." : "No accounts found."} />
                 ),
               };
             })}
@@ -484,7 +326,6 @@ export default function AccountCreationPage() {
         </div>
       </div>
 
-      {/* Delete confirm modal - keep this */}
       <ConfirmModal
         show={deleteOpen}
         onClose={() => setDeleteOpen(false)}

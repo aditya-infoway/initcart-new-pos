@@ -1,3 +1,4 @@
+// src/app/pages/item-management/ItemFormPage.tsx
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
@@ -31,6 +32,7 @@ interface VariantRow {
   size?: string; color?: string; srno?: string; warrantydate?: string;
   purchasePrice: number; salesPrice: number; mrp: number;
   branchPrice: number; barcode: string; opStock: number;
+  location?: string;                                    // ← ADDED
   basicAmount: number; taxAmount: number; netValue: number;
 }
 
@@ -78,7 +80,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
-// ── ThemedInput (plain input matching our form-input styles) ────────────────
+// ── ThemedInput ─────────────────────────────────────────────────────────────
 function ThemedInput({ value, onChange, placeholder, type = "text", disabled, className, onBlur, maxLength, min }: {
   value: string; onChange: (v: string) => void; placeholder?: string;
   type?: string; disabled?: boolean; className?: string; onBlur?: () => void;
@@ -177,14 +179,11 @@ export default function ItemFormPage() {
   const role = (user as any)?.role;
   const isSuperAdmin = role === "superadmin";
   const isEmployee = role === "employee";
-  
-  // Employee ko bhi company items create karne do (same as Superadmin)
+
   const canCreateCompanyItems = isSuperAdmin || isEmployee;
-  
-  // Permission checks using the hook's returned booleans
+
   const { canAdd, canEdit } = usePermission("/AddItems");
-  
-  // Superadmin always has full access; employee needs explicit permission
+
   const hasAddPermission = isSuperAdmin || canAdd;
   const hasEditPermission = isSuperAdmin || canEdit;
 
@@ -219,7 +218,7 @@ export default function ItemFormPage() {
   const [subSubCats, setSubSubCats] = useState<Opt[]>([]);
   const [branchFields, setBranchFields] = useState<{ key: string; label: string; type: string }[]>([]);
 
-  // ── loading gates (mirrors old screen's branchLoaded / groupsAndUnitsLoaded / dataFetchComplete) ──
+  // ── loading gates ─────────────────────────────────────────────────────
   const [branchLoaded, setBranchLoaded] = useState(false);
   const [groupsUnitsLoaded, setGroupsUnitsLoaded] = useState(false);
   const [itemDataLoaded, setItemDataLoaded] = useState(!isEdit);
@@ -228,7 +227,8 @@ export default function ItemFormPage() {
   // ── variant row inputs ─────────────────────────────────────────────────
   const EMPTY = {
     size: "", color: "", srno: "", warrantydate: "",
-    purchasePrice: "", salesPrice: "", mrp: "", branchPrice: "", barcode: "", opStock: ""
+    purchasePrice: "", salesPrice: "", mrp: "", branchPrice: "", barcode: "", opStock: "",
+    location: "",                                          // ← ADDED
   };
   const [cur, setCur] = useState<any>({ ...EMPTY });
   const [barcodeError, setBarcodeError] = useState("");
@@ -239,7 +239,7 @@ export default function ItemFormPage() {
   // ── added variants ─────────────────────────────────────────────────────
   const [addedItems, setAddedItems] = useState<VariantRow[]>([]);
   const [uid, setUid] = useState(1);
-  const [editingUid, setEditingUid] = useState<number | null>(null); 
+  const [editingUid, setEditingUid] = useState<number | null>(null);
 
   // ── ui ─────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -303,14 +303,13 @@ export default function ItemFormPage() {
   // ── edit mode load ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isEdit) return;
-    
-    // Check edit permission for employees
+
     if (isEmployee && !hasEditPermission) {
       toasterrormsg("You don't have permission to edit items.");
       navigate("/AddItems");
       return;
     }
-    
+
     Get(`pos/items/${id}/with-variants/`).then((res: any) => {
       const b = res?.data ?? res;
       if (b?.item) {
@@ -335,7 +334,9 @@ export default function ItemFormPage() {
           size: v.size ?? "", color: v.color ?? "", srno: v.srno ?? "", warrantydate: v.warrantydate ?? "",
           purchasePrice: v.purchasePrice ?? 0, salesPrice: v.salesPrice ?? 0,
           mrp: v.mrp ?? 0, branchPrice: v.branchPrice ?? 0, barcode: v.barcode ?? "",
-          opStock: v.opStock ?? 0, basicAmount: v.basicAmount ?? 0, taxAmount: v.taxAmount ?? 0, netValue: v.netValue ?? 0,
+          opStock: v.opStock ?? 0,
+          location: v.location ?? "",                       // ← ADDED
+          basicAmount: v.basicAmount ?? 0, taxAmount: v.taxAmount ?? 0, netValue: v.netValue ?? 0,
         }));
         setAddedItems(vars); setUid(vars.length + 1);
       }
@@ -343,12 +344,11 @@ export default function ItemFormPage() {
       .finally(() => setItemDataLoaded(true));
   }, [id, isEdit, isEmployee, hasEditPermission]);
 
-  // ── barcode check (debounced, matches old screen's 500ms behaviour) ────
+  // ── barcode check ──────────────────────────────────────────────────────
   const checkBarcode = async (barcode: string): Promise<boolean> => {
     if (!isSuperAdmin || !barcode || barcode.length < 3) { setBarcodeError(""); return true; }
     setCheckingBarcode(true);
     try {
-      // jis row ko edit kar rahe hain uska apna barcode dobara conflict na dikhaye
       const editingRow = editingUid !== null ? addedItems.find(v => v.uid === editingUid) : null;
       const params: any = { barcode };
       if (editingRow?.serverId) params.exclude_variant = editingRow.serverId;
@@ -407,11 +407,11 @@ export default function ItemFormPage() {
       purchasePrice: pp, salesPrice: sp,
       mrp, branchPrice: Number(cur.branchPrice) || pp,
       barcode: cur.barcode ?? "", opStock: Number(cur.opStock) || 0,
+      location: cur.location ?? "",                        // ← ADDED
       basicAmount: basic, taxAmount: taxAmt, netValue: basic + taxAmt,
     };
 
     if (editingUid !== null) {
-      // pehle se list mein maujood row ko update karo (serverId preserve rehta hai)
       setAddedItems(prev => prev.map(v => (v.uid === editingUid ? { ...v, ...variantPayload } : v)));
       toastsuccessmsg("Variant updated successfully.");
       setEditingUid(null);
@@ -424,13 +424,13 @@ export default function ItemFormPage() {
     setCur({ ...EMPTY }); setBarcodeError(""); currentBarcodeRef.current = "";
   };
 
-  // table ke Edit icon se click hone par row ke values wapas form mein bhar do
   const handleEditVariant = (v: VariantRow) => {
     setCur({
       size: v.size ?? "", color: v.color ?? "", srno: v.srno ?? "", warrantydate: v.warrantydate ?? "",
       purchasePrice: String(v.purchasePrice ?? ""), salesPrice: String(v.salesPrice ?? ""),
       mrp: String(v.mrp ?? ""), branchPrice: String(v.branchPrice ?? ""),
       barcode: v.barcode ?? "", opStock: String(v.opStock ?? ""),
+      location: v.location ?? "",                          // ← ADDED
     });
     setEditingUid(v.uid);
     setBarcodeError("");
@@ -482,6 +482,7 @@ export default function ItemFormPage() {
           const vp: any = {
             purchasePrice: v.purchasePrice, salesPrice: v.salesPrice, mrp: v.mrp,
             branchPrice: v.branchPrice, barcode: v.barcode, opStock: v.opStock,
+            location: v.location ?? "",                    // ← ADDED
             basicAmount: v.basicAmount, discountAmount: 0,
             taxAmount: v.taxAmount, netValue: v.netValue,
           };
@@ -509,7 +510,7 @@ export default function ItemFormPage() {
     </Page>
   );
 
-  const barcodeRequired = false;   // purani screen ki tarah barcode kabhi mandatory nahi
+  const barcodeRequired = false;
   const barcodeMissing = false;
   return (
     <Page title={isEdit ? "Edit Item" : "Add Item"}>
@@ -621,15 +622,13 @@ export default function ItemFormPage() {
               <Listbox data={TAX_OPTS} displayField="label" placeholder="Select Tax Slab"
                 label="Tax Slab" value={selTax ?? null} onChange={(v: any) => setSelTax(v ?? null)} />
 
-
               {entryType === "company" && (
                 <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-dark-500 dark:bg-dark-800 sm:col-span-2">
                   <label className="text-sm font-semibold text-gray-700 dark:text-dark-200">
                     Website Display
                   </label>
 
-                  <Checkbox
-                    checked={websiteDisplay}
+                  <Checkbox                    checked={websiteDisplay}
                     onChange={() => setWebsite((v) => !v)}
                   />
 
@@ -699,12 +698,21 @@ export default function ItemFormPage() {
                       barcodeError && "border-error-500",
                       barcodeMissing && "border-amber-300 bg-amber-50",
                     )} />
-
                 </div>
                 {barcodeError && <p className="mt-1 text-xs text-error-600">{barcodeError}</p>}
                 {!isSuperAdmin && entryType === "company" && !cur.barcode && !barcodeError && (
                   <p className="mt-1 text-[10px] text-gray-400">Optional — you can leave it empty</p>
                 )}
+              </div>
+
+              {/* ✅ Location — ADDED */}
+              <div>
+                <FieldLabel>Location</FieldLabel>
+                <ThemedInput
+                  value={cur.location ?? ""}
+                  onChange={v => setCur((p: any) => ({ ...p, location: v }))}
+                  placeholder="Location"
+                />
               </div>
 
               <div>
@@ -769,7 +777,7 @@ export default function ItemFormPage() {
                   <tr>
                     {["#", ...branchFields.map(f => f.label),
                       ...((isSuperAdmin || isEmployee) ? ["Branch ₹"] : []),
-                      "Purchase ₹", "Sales ₹", "MRP", "Barcode", "Op.Stock", "Net Value", ""].map(h => (
+                      "Purchase ₹", "Sales ₹", "MRP", "Barcode", "Location", "Op.Stock", "Net Value", ""].map(h => (   // ← "Location" ADDED
                         <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase text-white">{h}</th>
                       ))}
                   </tr>
@@ -791,6 +799,7 @@ export default function ItemFormPage() {
                       <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.salesPrice}</td>
                       <td className="px-4 py-2.5 tabular-nums text-gray-600 dark:text-dark-200">₹{v.mrp}</td>
                       <td className="px-4 py-2.5  text-xs text-gray-500 dark:text-dark-300">{v.barcode || "—"}</td>
+                      <td className="px-4 py-2.5 text-gray-700 dark:text-dark-200">{v.location || "—"}</td>       {/* ← ADDED */}
                       <td className="px-4 py-2.5 tabular-nums text-gray-700 dark:text-dark-200">{v.opStock}</td>
                       <td className="px-4 py-2.5 font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{v.netValue.toFixed(2)}</td>
                       <td className="px-4 py-2.5">
@@ -811,7 +820,7 @@ export default function ItemFormPage() {
                 {addedItems.length > 0 && (
                   <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-dark-800">
                     <tr className="border-t-2 border-gray-200 dark:border-dark-500">
-                      <td colSpan={branchFields.length + ((isSuperAdmin || isEmployee) ? 5 : 4) + 1}
+                      <td colSpan={branchFields.length + ((isSuperAdmin || isEmployee) ? 6 : 5) + 1}   /* ← bumped +1 for Location */
                         className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">
                         Total — Qty: {totals.qty} · Tax: ₹{totals.tax.toFixed(2)}
                       </td>

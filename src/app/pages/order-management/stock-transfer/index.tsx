@@ -1,74 +1,52 @@
-﻿// src/app/pages/stock-transfer/index.tsx
+﻿// src/app/pages/order-management/stock-transfer/index.tsx
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
 import {
   ArrowLeftIcon, ArrowPathIcon, CheckCircleIcon, CheckIcon,
   ClipboardDocumentListIcon, CubeIcon, DocumentDuplicateIcon,
-  EyeIcon, FunnelIcon, MagnifyingGlassIcon, PlusIcon,
+  EyeIcon, MagnifyingGlassIcon, PlusIcon,
   TrashIcon, TruckIcon, XMarkIcon, BuildingStorefrontIcon,
-  ArrowsRightLeftIcon, BanknotesIcon, ReceiptPercentIcon,
-  PauseIcon, PlayIcon, ClockIcon, ListBulletIcon,
+  ArrowsRightLeftIcon, ReceiptPercentIcon,
+  PauseIcon, PlayIcon, ClockIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { toast } from "sonner";
+
 import { Badge, Button, Input, Table, THead, TBody, Tr, Th, Td } from "@/components/ui";
 import { Page } from "@/components/shared/Page";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
-import { Get, Post, toasterrormsg, toastsuccessmsg, formatDateDDMMYYYY } from "@/ApiHelper";
+import { Get, Post, formatDateDDMMYYYY } from "@/ApiHelper";
 import { usePermission } from "@/hooks/usePermissions";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-const round2 = (v: any) => { const n = Number(v); return isNaN(n) ? 0 : Math.round((n + Number.EPSILON) * 100) / 100; };
 const safeNum = (v: any) => { if (v === null || v === undefined) return 0; const n = parseFloat(String(v)); return isNaN(n) ? 0 : n; };
 const safeNumber = (val: any): number => {
   if (val === null || val === undefined) return 0;
-  if (typeof val === 'string') {
-    const parsed = parseFloat(val);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-  if (typeof val === 'number') return val;
+  if (typeof val === "string") { const p = parseFloat(val); return isNaN(p) ? 0 : p; }
+  if (typeof val === "number") return val;
   return 0;
 };
-
 const getMyBranchId = (): number | null => {
-  try {
-    const b = sessionStorage.getItem("branch");
-    return b ? JSON.parse(b).id : null;
-  } catch { return null; }
+  try { const b = sessionStorage.getItem("branch"); return b ? JSON.parse(b).id : null; }
+  catch { return null; }
 };
 
-// ── Hold Storage Types & Helpers ─────────────────────────────────────────
+// ── Hold Storage ──────────────────────────────────────────────────────────
 interface HeldTransfer {
-  holdId: string;
-  heldAt: string;
-  to_branch_id: string;
-  to_branch_name: string;
-  transfer_date: string;
-  note: string;
-  items: FormItem[];
+  holdId: string; heldAt: string; to_branch_id: string;
+  to_branch_name: string; transfer_date: string; note: string; items: FormItem[];
 }
-
 const HOLDS_STORAGE_KEY = "stock_transfer_holds";
-
 const loadHolds = (): HeldTransfer[] => {
-  try {
-    const raw = localStorage.getItem(HOLDS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  try { const raw = localStorage.getItem(HOLDS_STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+  catch { return []; }
 };
-
 const saveHolds = (holds: HeldTransfer[]) => {
-  try {
-    localStorage.setItem(HOLDS_STORAGE_KEY, JSON.stringify(holds));
-  } catch (e) {
-    console.error("Failed to save holds", e);
-  }
+  try { localStorage.setItem(HOLDS_STORAGE_KEY, JSON.stringify(holds)); }
+  catch (e) { console.error("Failed to save holds", e); }
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -106,9 +84,7 @@ interface TransferListItem {
 }
 interface TransferItemDetail {
   id: number; from_item_detail?: { item_name: string; variant_info: string };
-  quantity: number; rate: number;
-  discount_percent?: number;      // ✅ NEW
-  discount_amount?: number;       // ✅ NEW
+  quantity: number; rate: number; discount_percent?: number; discount_amount?: number;
   basic_amount?: number; tax_amount?: number; net_amount?: number;
   cgst?: number; sgst?: number; igst?: number;
 }
@@ -139,7 +115,7 @@ interface BranchOrderDetail {
 interface ItemGstValue { basic: number; tax: number; cgst: number; sgst: number; igst: number; net: number; }
 const EMPTY_GST: ItemGstValue = { basic: 0, tax: 0, cgst: 0, sgst: 0, igst: 0, net: 0 };
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// ── Status Maps ──────────────────────────────────────────────────────────
 const ORDER_STATUS_BADGE: Record<string, string> = {
   pending: "warning", processing: "info", partially_sent: "info",
   sent: "success", cancelled: "error",
@@ -160,7 +136,6 @@ const ORDER_STATUS_COLS: StatusCol[] = [
   { key: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" },
   { key: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400" },
 ];
-
 const MANUAL_STATUS_COLS: StatusCol[] = [
   { key: "pending", label: "Pending", color: "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400" },
   { key: "completed", label: "Completed", color: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" },
@@ -173,7 +148,7 @@ function flattenItems(items: ItemWithVariants[]) {
   return out;
 }
 
-// ── Branch Status Summary Table ────────────────────────────────────────────
+// ── Branch Status Summary Table ───────────────────────────────────────────
 function BranchStatusSummaryTable({
   title, icon, rows, statusCols, onSelect, loading,
 }: {
@@ -244,15 +219,12 @@ function BranchStatusSummaryTable({
 }
 
 // ── GST Summary Card ──────────────────────────────────────────────────────
-// ✅ UPDATED — now optionally shows discount breakdown
 function GstSummaryCard({
-  totals,
-  grossAmount,
-  discountAmount,
+  totals, grossAmount, discountAmount,
 }: {
   totals: ItemGstValue;
-  grossAmount?: number;      // (Rate × Qty) — sum of all items
-  discountAmount?: number;   // total discount
+  grossAmount?: number;
+  discountAmount?: number;
 }) {
   const showDiscount = (discountAmount ?? 0) > 0;
   const afterDiscount = (grossAmount ?? 0) - (discountAmount ?? 0);
@@ -316,15 +288,13 @@ function GstSummaryCard({
 }
 
 // ── Barcode Scanner ──────────────────────────────────────────────────────
-interface StockBarcodeScannerProps {
+function StockTransferBarcodeScanner({
+  myItems, toBranchId, onItemFound,
+}: {
   myItems: ItemWithVariants[];
   toBranchId: string;
   onItemFound: (item: ItemWithVariants, variant: VariantOption) => void;
-}
-
-const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
-  myItems, toBranchId, onItemFound,
-}) => {
+}) {
   const [barcodeValue, setBarcodeValue] = useState("");
   const [scanning, setScanning] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
@@ -337,29 +307,22 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
   const handleScan = (raw: string) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
-
     if (!toBranchId) {
-      toasterrormsg("select destination branch");
+      toast.error("Select destination branch first.");
       setBarcodeValue("");
       ref.current?.focus();
       return;
     }
-
     setScanning(true);
-
     const flat = flattenItems(myItems);
-    const match = flat.find(
-      ({ variant }) =>
-        variant.barcode &&
-        variant.barcode.toLowerCase() === trimmed.toLowerCase()
+    const match = flat.find(({ variant }) =>
+      variant.barcode && variant.barcode.toLowerCase() === trimmed.toLowerCase()
     );
-
     if (match) {
       onItemFound(match.item, match.variant);
     } else {
-      toasterrormsg(`from Barcode "${trimmed}" no item found`);
+      toast.error(`No item found with barcode "${trimmed}"`);
     }
-
     setBarcodeValue("");
     setScanning(false);
     ref.current?.focus();
@@ -372,12 +335,7 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
         type="text"
         value={barcodeValue}
         onChange={(e) => setBarcodeValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleScan(barcodeValue);
-          }
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScan(barcodeValue); } }}
         placeholder="Scan barcode..."
         className="flex-1 px-3 py-1.5 border border-blue-200 rounded-md focus:ring-1 focus:ring-blue-400 focus:border-blue-400 text-xs font-mono bg-white dark:bg-dark-700 dark:border-dark-500 dark:text-dark-100 min-w-0"
         autoComplete="off"
@@ -392,17 +350,17 @@ const StockTransferBarcodeScanner: React.FC<StockBarcodeScannerProps> = ({
           disabled={!barcodeValue.trim()}
           className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition flex items-center gap-1 text-xs disabled:opacity-50 flex-shrink-0"
         >
-           Scan
+          Scan
         </button>
       )}
     </div>
   );
-};
+}
 
-// ── Order Tracking ────────────────────────────────────────────────────────
+// ── Order Tracking ───────────────────────────────────────────────────────
 function OrderTracking() {
   const [allOrders, setAllOrders] = useState<BranchOrderListItem[]>([]);
-  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
+  const { canAdd, canDelete } = usePermission("/stockTransfer");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"branches" | "list">("branches");
   const [branchFilter, setBranchFilter] = useState<{ branch_name: string; status: string } | null>(null);
@@ -428,11 +386,10 @@ function OrderTracking() {
   useEffect(() => { loadAll(); }, []);
 
   async function fetchAllOrders(): Promise<BranchOrderListItem[]> {
-    let page = 1;
-    let all: BranchOrderListItem[] = [];
+    let page = 1; let all: BranchOrderListItem[] = [];
     try {
       while (true) {
-        const res = await Get(`pos/branch-orders/admin/list/`, { page }) as any;
+        const res: any = await Get(`pos/branch-orders/admin/list/`, { page });
         const body = res?.data ?? res;
         if (!body?.results?.success) break;
         const arr: BranchOrderListItem[] = body.results.orders || [];
@@ -447,17 +404,15 @@ function OrderTracking() {
 
   async function loadAll() {
     setLoading(true);
-    try {
-      const data = await fetchAllOrders();
-      setAllOrders(data);
-    } catch { toasterrormsg("Could not load orders"); }
-    setLoading(false);
+    try { setAllOrders(await fetchAllOrders()); }
+    catch { toast.error("Could not load orders"); }
+    finally { setLoading(false); }
   }
 
   async function fetchItemGst(orderBranchId: number, item: OrderItemDetail, qty: number) {
     if (!qty || qty <= 0) { setItemGstMap(p => ({ ...p, [item.id]: { ...EMPTY_GST } })); return; }
     try {
-      const res = await Post("pos/stock-transfer-item-tax/", { from_variant_id: item.source_variant_id, to_branch_id: orderBranchId, quantity: qty }) as any;
+      const res: any = await Post("pos/stock-transfer-item-tax/", { from_variant_id: item.source_variant_id, to_branch_id: orderBranchId, quantity: qty });
       const d = res?.data ?? res;
       setItemGstMap(p => ({ ...p, [item.id]: { basic: d.basic_amount||0, tax: d.tax_amount||0, cgst: d.cgst||0, sgst: d.sgst||0, igst: d.igst||0, net: d.net_amount||0 } }));
     } catch { /* silent */ }
@@ -465,7 +420,7 @@ function OrderTracking() {
 
   async function loadOrderDetail(id: number) {
     try {
-      const res = await Get(`pos/branch-orders/${id}/`) as any;
+      const res: any = await Get(`pos/branch-orders/${id}/`);
       const body = res?.data ?? res;
       if (body.success) {
         const order: BranchOrderDetail = body.order;
@@ -484,14 +439,14 @@ function OrderTracking() {
           if (rem > 0) fetchItemGst(order.branch_id, item, rem);
         });
       }
-    } catch { toasterrormsg("Could not load order detail"); }
+    } catch { toast.error("Could not load order detail"); }
   }
 
   async function processOrder() {
     if (!selectedOrder) return;
     setProcessing(true);
     try {
-      const res = await Post(`pos/branch-orders/${selectedOrder.id}/process/`, {
+      const res: any = await Post(`pos/branch-orders/${selectedOrder.id}/process/`, {
         transfer_date: transferDate, note: transferNote,
         items: selectedOrder.items.map(item => ({
           item_id: item.id,
@@ -499,27 +454,24 @@ function OrderTracking() {
           is_removed: adjustedItems[item.id]?.is_removed ?? false,
           admin_note: adjustedItems[item.id]?.admin_note ?? "",
         })),
-      }) as any;
+      });
       const body = res?.data ?? res;
       if (body.success) {
-        toastsuccessmsg(`Order processed! Transfer: ${body.linked_transfer}`);
-        setSelectedOrder(null);
-        setItemGstMap({});
-        loadAll();
-      } else { toasterrormsg(body.message || "Processing failed"); }
+        toast.success(`Order processed! Transfer: ${body.linked_transfer}`);
+        setSelectedOrder(null); setItemGstMap({}); loadAll();
+      } else { toast.error(body.message || "Processing failed"); }
     } catch (e: any) {
-      toasterrormsg(e.response?.data?.message || JSON.stringify(e.response?.data) || "Error processing order");
-    }
-    setProcessing(false);
+      toast.error(e.response?.data?.message || JSON.stringify(e.response?.data) || "Error processing order");
+    } finally { setProcessing(false); }
   }
 
   async function cancelOrder(id: number) {
     if (!confirm("Cancel this order?")) return;
     try {
-      const res = await Post(`pos/branch-orders/${id}/cancel/`, {}) as any;
+      const res: any = await Post(`pos/branch-orders/${id}/cancel/`, {});
       const body = res?.data ?? res;
-      if (body.success) { toastsuccessmsg("Order cancelled"); loadAll(); setSelectedOrder(null); setItemGstMap({}); }
-    } catch { toasterrormsg("Could not cancel order"); }
+      if (body.success) { toast.success("Order cancelled"); loadAll(); setSelectedOrder(null); setItemGstMap({}); }
+    } catch { toast.error("Could not cancel order"); }
   }
 
   const updateAdjust = (itemId: number, field: string, value: any) =>
@@ -832,10 +784,10 @@ function OrderTracking() {
               <XMarkIcon className="size-4" /> Cancel Order
             </Button>
             {canAdd && (
-            <Button color="primary" className="gap-2 px-7" disabled={processing || activeItems.length === 0} onClick={processOrder}>
-              <CheckCircleIcon className="size-4" />
-              {processing ? "Processing…" : "Send Items (Create Transfer)"}
-            </Button>
+              <Button color="primary" className="gap-2 px-7" disabled={processing || activeItems.length === 0} onClick={processOrder}>
+                <CheckCircleIcon className="size-4" />
+                {processing ? "Processing…" : "Send Items (Create Transfer)"}
+              </Button>
             )}
           </div>
         )}
@@ -844,43 +796,34 @@ function OrderTracking() {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// TRANSFER DETAIL DRAWER — ✅ UPDATED with discount display
-// ══════════════════════════════════════════════════════════════════════════
+// ── Transfer Detail Drawer ────────────────────────────────────────────────
 function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
   detail: TransferDetail | null; onClose: () => void;
   onComplete: (id: number) => void; onCancel: (id: number) => void;
 }) {
   const items = detail?.items || [];
-
-  // ── Per-item helpers (Rate × Qty, Discount, Amount after discount) ──
   const getGross = (i: TransferItemDetail): number => safeNumber(i.quantity) * safeNumber(i.rate);
   const getDiscountPercent = (i: TransferItemDetail): number => safeNumber(i.discount_percent);
   const getDiscountAmount = (i: TransferItemDetail): number => {
     const stored = safeNumber(i.discount_amount);
     if (stored > 0) return stored;
-    const pct = getDiscountPercent(i); // fallback agar sirf % saved ho
+    const pct = getDiscountPercent(i);
     return pct > 0 ? (getGross(i) * pct) / 100 : 0;
   };
   const getAmount = (i: TransferItemDetail): number => getGross(i) - getDiscountAmount(i);
 
-  // ── Amount / Discount totals ──
   const totalGross = items.reduce((sum, i) => sum + getGross(i), 0);
   const totalDiscount = items.reduce((sum, i) => sum + getDiscountAmount(i), 0);
   const totalAfterDiscount = totalGross - totalDiscount;
   const hasDiscount = totalDiscount > 0;
 
-  // ── GST totals (backend ne discounted price par calculate karke save kiye hain) ──
   const totalBasic = items.reduce((sum, i) => sum + safeNum(i.basic_amount), 0);
   const totalTax   = items.reduce((sum, i) => sum + safeNum(i.tax_amount), 0);
   const totalNet   = items.reduce((sum, i) => sum + safeNum(i.net_amount), 0);
   const totalCgst  = items.reduce((sum, i) => sum + safeNum(i.cgst), 0);
   const totalSgst  = items.reduce((sum, i) => sum + safeNum(i.sgst), 0);
   const totalIgst  = items.reduce((sum, i) => sum + safeNum(i.igst), 0);
-
   const hasGst = items.some(i => safeNum(i.basic_amount) > 0);
-
-  // Grand total: agar discount + gst present hai to Net (incl. tax) dikhao, warna Gross
   const grandTotal = hasGst ? totalNet : totalAfterDiscount;
 
   return (
@@ -930,7 +873,6 @@ function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
               ))}
             </div>
 
-            {/* ✅ Items table — now with Disc% and Amount-after-discount columns */}
             <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-500">
               <Table hoverable className="w-full min-w-[720px] text-left">
                 <THead>
@@ -947,38 +889,22 @@ function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
                     const rowHasDiscount = discAmt > 0;
                     return (
                       <Tr key={item.id}>
-                        <Td className="font-semibold text-gray-800 dark:text-dark-100">
-                          {item.from_item_detail?.item_name}
-                        </Td>
-                        <Td>
-                          <Badge color="info" variant="soft" className="text-xs">
-                            {item.from_item_detail?.variant_info}
-                          </Badge>
-                        </Td>
+                        <Td className="font-semibold text-gray-800 dark:text-dark-100">{item.from_item_detail?.item_name}</Td>
+                        <Td><Badge color="info" variant="soft" className="text-xs">{item.from_item_detail?.variant_info}</Badge></Td>
                         <Td className="text-center font-bold tabular-nums">{item.quantity}</Td>
-                        <Td className="text-right font-mono tabular-nums">
-                          ₹{safeNumber(item.rate).toFixed(2)}
-                        </Td>
+                        <Td className="text-right font-mono tabular-nums">₹{safeNumber(item.rate).toFixed(2)}</Td>
                         <Td className="text-center">
                           {rowHasDiscount ? (
                             <div className="leading-tight">
                               <span className="inline-block rounded-lg bg-success-50 px-2 py-0.5 text-xs font-bold text-success-700 dark:bg-success-900/30 dark:text-success-400">
                                 {discPct > 0 ? `${Number(discPct.toFixed(2))}%` : "—"}
                               </span>
-                              <div className="mt-0.5 text-[11px] text-success-600 dark:text-success-400">
-                                − ₹{discAmt.toFixed(2)}
-                              </div>
+                              <div className="mt-0.5 text-[11px] text-success-600 dark:text-success-400">− ₹{discAmt.toFixed(2)}</div>
                             </div>
-                          ) : (
-                            <span className="text-gray-300 dark:text-dark-500">—</span>
-                          )}
+                          ) : <span className="text-gray-300 dark:text-dark-500">—</span>}
                         </Td>
                         <Td className="text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">
-                          {rowHasDiscount && (
-                            <div className="text-[11px] font-normal text-gray-400 line-through">
-                              ₹{getGross(item).toFixed(2)}
-                            </div>
-                          )}
+                          {rowHasDiscount && <div className="text-[11px] font-normal text-gray-400 line-through">₹{getGross(item).toFixed(2)}</div>}
                           ₹{getAmount(item).toFixed(2)}
                         </Td>
                       </Tr>
@@ -996,29 +922,17 @@ function TransferDetailDrawer({ detail, onClose, onComplete, onCancel }: {
               </Table>
             </div>
 
-            {/* ✅ GST Summary Card — shows discount breakdown when discount exists */}
             {(hasGst || hasDiscount) && (
-              <GstSummaryCard
-                totals={{
-                  basic: totalBasic,
-                  tax: totalTax,
-                  cgst: totalCgst,
-                  sgst: totalSgst,
-                  igst: totalIgst,
-                  net: totalNet,
-                }}
-                grossAmount={totalGross}
-                discountAmount={totalDiscount}
-              />
+              <GstSummaryCard totals={{
+                basic: totalBasic, tax: totalTax, cgst: totalCgst, sgst: totalSgst, igst: totalIgst, net: totalNet,
+              }} grossAmount={totalGross} discountAmount={totalDiscount} />
             )}
           </div>
 
           <div className="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-4 dark:border-dark-500">
             <p className="text-xs text-gray-400 dark:text-dark-400">
               {items.length} item(s) · Grand Total:{" "}
-              <span className="font-semibold text-primary-600 dark:text-primary-400">
-                ₹{grandTotal.toFixed(2)}
-              </span>
+              <span className="font-semibold text-primary-600 dark:text-primary-400">₹{grandTotal.toFixed(2)}</span>
             </p>
             {detail?.status === "pending" ? (
               <div className="flex gap-3">
@@ -1062,8 +976,8 @@ function SelectItemsDrawer({
   });
 
   const toggleSelect = (vid: string, item: ItemWithVariants, variant: VariantOption) => {
-    if (selectedVariantIds.has(vid)) { toasterrormsg("Item already added"); return; }
-    if (variant.current_stock <= 0) { toasterrormsg("Out of stock"); return; }
+    if (selectedVariantIds.has(vid)) { toast.error("Item already added"); return; }
+    if (variant.current_stock <= 0) { toast.error("Out of stock"); return; }
     setSelected(prev => { const n = new Map(prev); n.has(vid) ? n.delete(vid) : n.set(vid, { item, variant, quantity: 1 }); return n; });
   };
 
@@ -1133,7 +1047,9 @@ function SelectItemsDrawer({
                         noStock && !isAlready && "opacity-40 cursor-not-allowed",
                         isSel && !isAlready && "bg-primary/10 dark:bg-primary/20",
                       )}>
-                      <Td className="w-10" onClick={(e: { stopPropagation: () => any; }) => e.stopPropagation()}>
+        
+<Td className="w-10" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+
                         {isAlready
                           ? <span className="text-xs text-primary-500 font-semibold">Added</span>
                           : <div onClick={() => !noStock && toggleSelect(vid, item, variant)}
@@ -1155,7 +1071,7 @@ function SelectItemsDrawer({
                           {variant.current_stock}
                         </Badge>
                       </Td>
-                      <Td onClick={(e: { stopPropagation: () => any; }) => e.stopPropagation()} className="w-24">
+                     <Td onClick={(e: React.MouseEvent) => e.stopPropagation()} className="w-24">
                         {isSel && (
                           <Input type="number" min={1} max={variant.current_stock}
                             value={selected.get(vid)?.quantity ?? 1}
@@ -1189,15 +1105,12 @@ function SelectItemsDrawer({
   );
 }
 
-// ── Hold List Modal (NEW) ────────────────────────────────────────────────
+// ── Hold List Modal ───────────────────────────────────────────────────────
 function HoldListModal({
   isOpen, holds, onClose, onResume, onDelete, formatTime,
 }: {
-  isOpen: boolean;
-  holds: HeldTransfer[];
-  onClose: () => void;
-  onResume: (h: HeldTransfer) => void;
-  onDelete: (holdId: string) => void;
+  isOpen: boolean; holds: HeldTransfer[]; onClose: () => void;
+  onResume: (h: HeldTransfer) => void; onDelete: (holdId: string) => void;
   formatTime: (iso: string) => string;
 }) {
   return (
@@ -1266,9 +1179,7 @@ function HoldListModal({
                         </span>
                       ))}
                       {h.items.length > 5 && (
-                        <span className="px-2 py-0.5 text-[11px] text-gray-500 dark:text-dark-400">
-                          +{h.items.length - 5} more
-                        </span>
+                        <span className="px-2 py-0.5 text-[11px] text-gray-500 dark:text-dark-400">+{h.items.length - 5} more</span>
                       )}
                     </div>
                   </div>
@@ -1276,7 +1187,6 @@ function HoldListModal({
               </div>
             )}
           </div>
-
           <div className="flex shrink-0 justify-center border-t border-gray-200 bg-gray-50 px-5 py-4 dark:border-dark-500 dark:bg-dark-800">
             <Button variant="outlined" className="px-8" onClick={onClose}>Close</Button>
           </div>
@@ -1286,20 +1196,496 @@ function HoldListModal({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────
-export default function StockTransferPage() {
-  const [mode, setMode] = useState<"manual" | "order_tracking">("manual");
-  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
-  const [tab, setTab] = useState<"list" | "create">("list");
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [myItems, setMyItems] = useState<ItemWithVariants[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [itemModalOpen, setItemModalOpen] = useState(false);
-  const [detail, setDetail] = useState<TransferDetail | null>(null);
+// ── New Transfer Modal (form) ─────────────────────────────────────────────
+function NewTransferModal({
+  isOpen, onClose, branches, myItems, onSuccess,
+}: {
+  isOpen: boolean; onClose: () => void;
+  branches: BranchOption[]; myItems: ItemWithVariants[];
+  onSuccess: () => void;
+}) {
   const [form, setForm] = useState<TransferForm>({
     to_branch_id: "", transfer_date: new Date().toISOString().slice(0, 10), note: "", items: [],
   });
   const [destBranchDetails, setDestBranchDetails] = useState<BranchOption | null>(null);
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [holds, setHolds] = useState<HeldTransfer[]>([]);
+  const [showHoldListModal, setShowHoldListModal] = useState(false);
+
+  useEffect(() => { setHolds(loadHolds()); }, []);
+  useEffect(() => {
+    setDestBranchDetails(form.to_branch_id ? (branches.find(b => b.id === parseInt(form.to_branch_id)) || null) : null);
+  }, [form.to_branch_id, branches]);
+
+  // reset form when closed
+  useEffect(() => {
+    if (!isOpen) {
+      setForm({ to_branch_id: "", transfer_date: new Date().toISOString().slice(0, 10), note: "", items: [] });
+      setDestBranchDetails(null);
+    }
+  }, [isOpen]);
+
+  const selectedVariantIds = new Set(form.items.map(i => i.from_variant_id));
+  const destBranchName = branches.find(b => String(b.id) === form.to_branch_id)?.branch_name || "";
+
+  const parseTaxPercent = (taxSlab?: string): number => {
+    if (!taxSlab) return 0;
+    const n = parseFloat(taxSlab.replace("%", ""));
+    return isNaN(n) ? 0 : n;
+  };
+
+  const updateRow = (i: number, key: "quantity" | "rate" | "discountPercent", val: string | number) => {
+    setForm(f => {
+      const items = [...f.items];
+      const item = items[i];
+      let quantity = item.quantity;
+      let rate = parseFloat(item.rate || "0");
+      let discountPercent = Number(item.discountPercent || 0);
+
+      if (key === "quantity") { let n = Number(val); if (isNaN(n)) n = 0; quantity = Math.min(Math.max(0, n), item.max_stock); }
+      else if (key === "rate") { rate = isNaN(Number(val)) ? 0 : Number(val); }
+      else { let n = Number(val); if (isNaN(n) || n < 0) n = 0; if (n > 100) n = 100; discountPercent = n; }
+
+      const discountedRate = rate - (rate * discountPercent) / 100;
+      const taxPercent = parseTaxPercent(item.taxSlab);
+      const basicPerUnit = taxPercent > 0 ? discountedRate / (1 + taxPercent / 100) : discountedRate;
+      const taxPerUnit = discountedRate - basicPerUnit;
+
+      const prevTax = item.taxPerUnit || 0;
+      const cgstPerUnit = prevTax > 0 ? taxPerUnit * ((item.cgstPerUnit || 0) / prevTax) : 0;
+      const sgstPerUnit = prevTax > 0 ? taxPerUnit * ((item.sgstPerUnit || 0) / prevTax) : 0;
+      const igstPerUnit = prevTax > 0 ? taxPerUnit * ((item.igstPerUnit || 0) / prevTax) : (cgstPerUnit === 0 && sgstPerUnit === 0 ? taxPerUnit : 0);
+
+      items[i] = {
+        ...item, quantity,
+        rate: key === "rate" ? String(rate) : item.rate,
+        discountPercent: key === "discountPercent" ? String(discountPercent) : item.discountPercent,
+        basicPerUnit, taxPerUnit, cgstPerUnit, sgstPerUnit, igstPerUnit,
+        netPerUnit: discountedRate,
+      };
+      return { ...f, items };
+    });
+  };
+
+  const recalcItemGst = async (idx: number) => {
+    const item = form.items[idx];
+    if (!item || !form.to_branch_id) return;
+    const qty = Number(item.quantity) || 1;
+    const discountPercent = Number(item.discountPercent || 0);
+    try {
+      const res: any = await Post("pos/stock-transfer-item-tax/", {
+        from_variant_id: parseInt(item.from_variant_id),
+        to_branch_id: parseInt(form.to_branch_id),
+        quantity: qty, discount_percent: discountPercent,
+      });
+      const d = res?.data ?? res;
+      setForm(f => {
+        const items = [...f.items];
+        if (!items[idx]) return f;
+        items[idx] = {
+          ...items[idx],
+          basicPerUnit: (d.basic_amount || 0) / qty,
+          taxPerUnit: (d.tax_amount || 0) / qty,
+          cgstPerUnit: (d.cgst || 0) / qty,
+          sgstPerUnit: (d.sgst || 0) / qty,
+          igstPerUnit: (d.igst || 0) / qty,
+          netPerUnit: (d.net_amount || 0) / qty,
+        };
+        return { ...f, items };
+      });
+    } catch { toast.error("Could not recalculate GST for discount"); }
+  };
+
+  const getDiscountedAmount = (item: FormItem): number => {
+    const rate = parseFloat(item.rate || "0");
+    const disc = Number(item.discountPercent || 0);
+    const discountedRate = rate - (rate * disc) / 100;
+    return discountedRate * Number(item.quantity || 0);
+  };
+
+  const handleBarcodeItemFound = async (item: ItemWithVariants, variant: VariantOption) => {
+    if (!form.to_branch_id) { toast.error("Select destination branch first"); return; }
+    if (variant.current_stock <= 0) { toast.error("Item out of stock"); return; }
+    const vid = String(variant.variant_id);
+    const existingIndex = form.items.findIndex(i => i.from_variant_id === vid);
+    if (existingIndex !== -1) {
+      const row = form.items[existingIndex];
+      const newQty = Math.min(row.max_stock, Number(row.quantity) + 1);
+      updateRow(existingIndex, "quantity", newQty);
+      toast.success(`Quantity updated: ${item.item_name}`);
+      return;
+    }
+    await handleConfirm([{ item, variant, quantity: 1 }]);
+  };
+
+  const handleConfirm = async (rows: { item: ItemWithVariants; variant: VariantOption; quantity: number }[]) => {
+    if (!form.to_branch_id) { toast.error("Select destination branch first"); return; }
+    const newItems: FormItem[] = [];
+    for (const { item, variant, quantity } of rows) {
+      const branchPrice = variant.branch_price || 0;
+      let gst = { basicAmount: 0, taxAmount: 0, cgst: 0, sgst: 0, igst: 0, netAmount: branchPrice * quantity };
+      try {
+        const res: any = await Post("pos/stock-transfer-item-tax/", {
+          from_variant_id: variant.variant_id,
+          to_branch_id: parseInt(form.to_branch_id),
+          quantity, discount_percent: 0,
+        });
+        const d = res?.data ?? res;
+        gst = { basicAmount: d.basic_amount||0, taxAmount: d.tax_amount||0, cgst: d.cgst||0, sgst: d.sgst||0, igst: d.igst||0, netAmount: d.net_amount||0 };
+      } catch { /* silent */ }
+
+      newItems.push({
+        from_variant_id: String(variant.variant_id),
+        from_item_name: item.item_name,
+        from_variant_label: variant.variant_label,
+        quantity, rate: String(branchPrice), discountPercent: "0",
+        max_stock: variant.current_stock,
+        size: variant.size, color: variant.color, barcode: variant.barcode,
+        item_id: item.item_id,
+        hsnCode: variant.hsnCode || item.hsnCode,
+        taxSlab: variant.taxSlab || item.taxSlab,
+        basicPerUnit: gst.basicAmount / quantity,
+        taxPerUnit: gst.taxAmount / quantity,
+        cgstPerUnit: gst.cgst / quantity,
+        sgstPerUnit: gst.sgst / quantity,
+        igstPerUnit: gst.igst / quantity,
+        netPerUnit: gst.netAmount / quantity,
+      });
+    }
+    setForm(f => ({ ...f, items: [...f.items, ...newItems] }));
+    toast.success(`${newItems.length} variant(s) added`);
+  };
+
+  const removeRow = (i: number) => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }));
+
+  const handleHold = () => {
+    if (!form.to_branch_id) { toast.error("Select destination branch before holding"); return; }
+    if (form.items.length === 0) { toast.error("Add at least one item before holding"); return; }
+
+    const branch = branches.find(b => String(b.id) === form.to_branch_id);
+    const newHold: HeldTransfer = {
+      holdId: `HOLD-${Date.now()}`,
+      heldAt: new Date().toISOString(),
+      to_branch_id: form.to_branch_id,
+      to_branch_name: branch?.branch_name || `Branch #${form.to_branch_id}`,
+      transfer_date: form.transfer_date,
+      note: form.note || "",
+      items: form.items,
+    };
+    const updated = [newHold, ...holds];
+    setHolds(updated); saveHolds(updated);
+    setForm({ to_branch_id: "", transfer_date: new Date().toISOString().slice(0, 10), note: "", items: [] });
+    toast.success("Transfer held successfully! Find it in Hold List.");
+    setShowHoldListModal(true);
+  };
+
+  const handleResumeHold = (hold: HeldTransfer) => {
+    setForm({ to_branch_id: hold.to_branch_id, transfer_date: hold.transfer_date, note: hold.note || "", items: hold.items });
+    const updated = holds.filter(h => h.holdId !== hold.holdId);
+    setHolds(updated); saveHolds(updated);
+    setShowHoldListModal(false);
+    toast.success("Held transfer resumed!");
+  };
+
+  const handleDeleteHold = (holdId: string) => {
+    const updated = holds.filter(h => h.holdId !== holdId);
+    setHolds(updated); saveHolds(updated);
+    toast.success("Hold removed");
+  };
+
+  const formatHoldTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch { return iso; }
+  };
+
+  const createTransfer = async () => {
+    if (!form.items.length) { toast.error("Add at least one item"); return; }
+    if (!form.to_branch_id) { toast.error("Select destination branch"); return; }
+    if (form.items.some(r => Number(r.quantity) === 0)) { toast.error("Remove items with 0 qty"); return; }
+    setSaving(true);
+    try {
+      const res: any = await Post("pos/stock-transfers/", {
+        to_branch_id: parseInt(form.to_branch_id),
+        transfer_date: form.transfer_date,
+        note: form.note,
+        items: form.items.map(r => ({
+          from_variant_id: parseInt(r.from_variant_id),
+          quantity: parseInt(String(r.quantity)),
+          rate: parseFloat(r.rate || "0"),
+          discount_percent: parseFloat(r.discountPercent || "0"),
+        })),
+      });
+      const body = res?.data ?? res;
+      if (body.success) {
+        toast.success("Transfer created!");
+        onSuccess();
+        onClose();
+      } else { toast.error(body.message || "Error"); }
+    } catch (e: any) { toast.error(e.response?.data?.message || "Error creating transfer"); }
+    finally { setSaving(false); }
+  };
+
+  const totals = useMemo(() => ({
+    qty: form.items.reduce((a, b) => a + Number(b.quantity || 0), 0),
+    value: form.items.reduce((a, b) => {
+      const rate = parseFloat(b.rate || "0");
+      const disc = Number(b.discountPercent || 0);
+      const discountedRate = rate - (rate * disc) / 100;
+      return a + discountedRate * Number(b.quantity || 0);
+    }, 0),
+    basic: form.items.reduce((a, b) => a + (b.basicPerUnit || 0) * (b.quantity || 0), 0),
+    tax: form.items.reduce((a, b) => a + (b.taxPerUnit || 0) * (b.quantity || 0), 0),
+    cgst: form.items.reduce((a, b) => a + (b.cgstPerUnit || 0) * (b.quantity || 0), 0),
+    sgst: form.items.reduce((a, b) => a + (b.sgstPerUnit || 0) * (b.quantity || 0), 0),
+    igst: form.items.reduce((a, b) => a + (b.igstPerUnit || 0) * (b.quantity || 0), 0),
+    netTotal: form.items.reduce((a, b) => a + (b.netPerUnit || 0) * (b.quantity || 0), 0),
+  }), [form.items]);
+
+  return (
+    <>
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-[200]" onClose={onClose}>
+          <TransitionChild as="div"
+            enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
+            leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity dark:bg-black/50" />
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <TransitionChild as={DialogPanel}
+                enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
+                className="w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-dark-700 flex flex-col max-h-[90vh]">
+                {/* Header */}
+                <div className="bg-primary flex items-center justify-between px-5 py-4 shrink-0">
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <DocumentDuplicateIcon className="size-5" /> New Stock Transfer
+                    </h3>
+                    <p className="mt-0.5 text-xs text-white/70">Create a new manual transfer</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="flat" className="h-8 gap-1.5 text-white hover:bg-white/10 relative"
+                      onClick={() => setShowHoldListModal(true)}>
+                      <ClipboardDocumentListIcon className="size-4" /> Hold List
+                      {holds.length > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold text-white">
+                          {holds.length}
+                        </span>
+                      )}
+                    </Button>
+                    <Button onClick={onClose} variant="flat" isIcon className="size-8 rounded-full text-white hover:bg-white/10">
+                      <XMarkIcon className="size-5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4 overflow-y-auto">
+                  {/* Transfer Details Card */}
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-500 dark:bg-dark-800/50">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-dark-200 mb-3 flex items-center gap-2">
+                      <TruckIcon className="size-4 text-primary-500" /> Transfer Details
+                    </h4>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
+                          Destination Branch <span className="text-error-500">*</span>
+                        </label>
+                        <Combobox
+                          data={branches.map(b => {
+                            const acct = b.sundry_debitor_account_name || b.sundry_creditor_account_name;
+                            return { ...b, label: acct ? `${b.branch_name} → ${acct}` : `${b.branch_name} (No account linked)` };
+                          })}
+                          displayField="label"
+                          searchFields={["label"]}
+                          value={(() => {
+                            const b = branches.find(b => String(b.id) === form.to_branch_id);
+                            if (!b) return null;
+                            const acct = b.sundry_debitor_account_name || b.sundry_creditor_account_name;
+                            return { ...b, label: acct ? `${b.branch_name} → ${acct}` : `${b.branch_name} (No account linked)` };
+                          })()}
+                          onChange={(val: any) => setForm(f => ({ ...f, to_branch_id: val ? String(val.id) : "", items: [] }))}
+                          placeholder="Select branch…"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
+                          Transfer Date <span className="text-error-500">*</span>
+                        </label>
+                        <DatePicker value={form.transfer_date} onChange={(v: string) => setForm(f => ({ ...f, transfer_date: v || f.transfer_date }))} />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
+                          Note
+                        </label>
+                        <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Optional…" classNames={{ input: "h-9 text-sm" }} />
+                      </div>
+                    </div>
+                    {destBranchDetails && (
+                      <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 dark:border-primary/30 dark:bg-primary/10">
+                        <div className="mb-2 flex items-center gap-2">
+                          <BuildingStorefrontIcon className="size-4 text-primary-600" />
+                          <span className="text-[11px] font-bold uppercase tracking-wide text-primary-700 dark:text-primary-400">
+                            Destination: {destBranchDetails.branch_name}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-5">
+                          {[
+                            { label: "Owner", value: destBranchDetails.owner_name || "—" },
+                            { label: "Phone", value: destBranchDetails.phone || "—" },
+                            { label: "Email", value: destBranchDetails.email || "—" },
+                            { label: "Address", value: destBranchDetails.address || "—" },
+                            { label: "Linked A/c", value: destBranchDetails.sundry_debitor_account_name || destBranchDetails.sundry_creditor_account_name || null },
+                          ].map(({ label, value }) => (
+                            <div key={label}>
+                              <span className="text-[10px] text-gray-400 dark:text-dark-400 block">{label}</span>
+                              <div className={clsx("text-xs font-medium truncate", label === "Linked A/c" && !value ? "text-error-500" : "text-gray-700 dark:text-dark-200")}>
+                                {label === "Linked A/c" ? (value || "Not linked") : value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Items */}
+                  <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-dark-500">
+                      <div className="flex items-center gap-2">
+                        <CubeIcon className="size-4 text-primary-500" />
+                        <span className="text-sm font-bold text-gray-800 dark:text-dark-100">Items</span>
+                        {form.items.length > 0 && <Badge color="primary" className="text-xs font-bold">{form.items.length}</Badge>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <StockTransferBarcodeScanner
+                          myItems={myItems}
+                          toBranchId={form.to_branch_id}
+                          onItemFound={handleBarcodeItemFound}
+                        />
+                        <Button color="primary" className="h-9 gap-2 rounded-md px-3 text-xs"
+                          onClick={() => { if (!form.to_branch_id) { toast.error("Select destination first"); return; } setItemModalOpen(true); }}>
+                          <ArrowsRightLeftIcon className="size-3.5" /> Select Items
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto" style={{ maxHeight: "280px" }}>
+                      <Table hoverable className="w-full min-w-[800px] text-left">
+                        <THead>
+                          <Tr>
+                            {["#","Item","Variant","HSN","GST%","Stock","Qty","Disc%","Rate ₹","Amount ₹","Del"].map(h => (
+                              <Th key={h} className="bg-primary/10 text-xs font-semibold text-primary-700 dark:bg-primary/20 dark:text-primary-300 whitespace-nowrap">{h}</Th>
+                            ))}
+                          </Tr>
+                        </THead>
+                        <TBody>
+                          {form.items.length === 0 ? (
+                            <Tr><Td colSpan={11} className="py-12 text-center text-sm text-gray-400 dark:text-dark-400">
+                              No items added yet
+                            </Td></Tr>
+                          ) : form.items.map((item, idx) => {
+                            const low = Number(item.quantity) > item.max_stock;
+                            const zero = Number(item.quantity) === 0;
+                            const amount = getDiscountedAmount(item);
+                            return (
+                              <Tr key={item.from_variant_id + idx} className={clsx(low && "bg-error-50/30 dark:bg-error-900/10", zero && !low && "bg-warning-50/30 dark:bg-warning-900/10")}>
+                                <Td className="text-xs text-gray-400">{idx + 1}</Td>
+                                <Td className="font-semibold text-gray-800 dark:text-dark-100">{item.from_item_name}</Td>
+                                <Td className="text-center"><Badge color="info" variant="soft" className="text-xs">{item.from_variant_label}</Badge></Td>
+                                <Td className="text-center font-mono text-xs text-gray-500">{item.hsnCode || "—"}</Td>
+                                <Td className="text-center"><Badge color="warning" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge></Td>
+                                <Td className="text-center"><Badge color={item.max_stock <= 5 ? "warning" : "success"} variant="soft" className="text-xs font-bold">{item.max_stock}</Badge></Td>
+                                <Td className="text-center w-20">
+                                  <Input type="number" min={0} max={item.max_stock} value={item.quantity}
+                                    onChange={e => updateRow(idx, "quantity", e.target.value === "" ? 0 : parseInt(e.target.value))}
+                                    onBlur={() => recalcItemGst(idx)}
+                                    classNames={{ input: clsx("h-7 w-16 text-center text-xs font-semibold", (low || zero) && "border-warning-400") }} />
+                                </Td>
+                                <Td className="text-center w-16">
+                                  <Input type="number" min={0} max={100} step="0.01" value={item.discountPercent ?? "0"}
+                                    onChange={e => updateRow(idx, "discountPercent", e.target.value)}
+                                    onBlur={() => recalcItemGst(idx)}
+                                    classNames={{ input: "h-7 w-14 text-center text-xs font-semibold" }} />
+                                </Td>
+                                <Td className="text-right w-24">
+                                  <Input type="number" min={0} value={item.rate}
+                                    onChange={e => updateRow(idx, "rate", e.target.value)}
+                                    onBlur={() => recalcItemGst(idx)}
+                                    classNames={{ input: "h-7 w-20 text-right text-xs" }} />
+                                </Td>
+                                <Td className="text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{amount.toFixed(2)}</Td>
+                                <Td className="text-center">
+                                  <Button isIcon variant="flat" className="size-6 rounded-full text-error-400 hover:bg-error-50"
+                                    onClick={() => removeRow(idx)}><TrashIcon className="size-3.5" /></Button>
+                                </Td>
+                              </Tr>
+                            );
+                          })}
+                        </TBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* GST Summary */}
+                  {form.items.length > 0 && (
+                    <GstSummaryCard totals={{ basic: totals.basic, tax: totals.tax, cgst: totals.cgst, sgst: totals.sgst, igst: totals.igst, net: totals.netTotal }} />
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-5 py-3 dark:border-dark-500 dark:bg-dark-800 shrink-0 flex-wrap">
+                  <p className="mr-auto text-sm text-gray-500 dark:text-dark-400">
+                    {form.items.length > 0 ? <><span className="font-semibold">{form.items.length} variants</span>{form.to_branch_id && <span className="ml-2 text-gray-400">→ {destBranchName}</span>}</> : "No items selected"}
+                  </p>
+                  <Button variant="outlined" className="gap-1.5 px-4" onClick={onClose}>
+                    <XMarkIcon className="size-4" /> Cancel
+                  </Button>
+                  <Button variant="outlined" className="gap-1.5 border-amber-300 px-4 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+                    onClick={handleHold}
+                    disabled={form.items.length === 0 || !form.to_branch_id}>
+                    <PauseIcon className="size-4" /> Hold
+                  </Button>
+                  <Button color="primary" className="gap-2 px-6"
+                    disabled={saving || !form.items.length || !form.to_branch_id || form.items.some(r => Number(r.quantity) > r.max_stock)}
+                    onClick={createTransfer}>
+                    <CheckCircleIcon className="size-4" />
+                    {saving ? "Creating…" : "Create Transfer"}
+                  </Button>
+                </div>
+              </TransitionChild>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      <SelectItemsDrawer isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)}
+        myItems={myItems} selectedVariantIds={selectedVariantIds} onConfirm={handleConfirm} />
+
+      <HoldListModal
+        isOpen={showHoldListModal}
+        holds={holds}
+        onClose={() => setShowHoldListModal(false)}
+        onResume={handleResumeHold}
+        onDelete={handleDeleteHold}
+        formatTime={formatHoldTime}
+      />
+    </>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────
+export default function StockTransferPage() {
+  const [mode, setMode] = useState<"manual" | "order_tracking">("manual");
+  const { canAdd, canEdit, canDelete } = usePermission("/stockTransfer");
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [myItems, setMyItems] = useState<ItemWithVariants[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState<TransferDetail | null>(null);
+  
+  // Modal state for New Transfer
+  const [showNewTransferModal, setShowNewTransferModal] = useState(false);
 
   const [manualView, setManualView] = useState<"branches" | "list">("branches");
   const [allTransfers, setAllTransfers] = useState<TransferListItem[]>([]);
@@ -1308,21 +1694,9 @@ export default function StockTransferPage() {
   const [manualListPage, setManualListPage] = useState(1);
   const MANUAL_PAGE_SIZE = 15;
 
-  // ── HOLD feature state ──
-  const [holds, setHolds] = useState<HeldTransfer[]>([]);
-  const [showHoldListModal, setShowHoldListModal] = useState(false);
-
   useEffect(() => {
     if (mode === "manual") { loadAll(); setManualView("branches"); setManualBranchFilter(null); }
   }, [mode]);
-
-  useEffect(() => {
-    setDestBranchDetails(form.to_branch_id ? (branches.find(b => b.id === parseInt(form.to_branch_id)) || null) : null);
-  }, [form.to_branch_id, branches]);
-
-  useEffect(() => {
-    setHolds(loadHolds());
-  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -1335,7 +1709,7 @@ export default function StockTransferPage() {
     try {
       let page = 1; let all: TransferListItem[] = [];
       while (true) {
-        const res = await Get(`pos/stock-transfers/`, { page }) as any;
+        const res: any = await Get(`pos/stock-transfers/`, { page });
         const body = res?.data ?? res;
         if (!body?.success) break;
         const arr: TransferListItem[] = body.results || body.data || [];
@@ -1344,29 +1718,26 @@ export default function StockTransferPage() {
         if (++page > 200) break;
       }
       setAllTransfers(all);
-    } catch { toasterrormsg("Error loading transfers"); }
+    } catch { toast.error("Error loading transfers"); }
     setManualLoading(false);
   }
 
   async function loadBranches() {
     try {
-      const res = await Get("pos/branches/", { ownership_type: "branch" }) as any;
+      const res: any = await Get("pos/branches/", { ownership_type: "branch" });
       const body = res?.data ?? res;
       const myId = getMyBranchId();
       setBranches((body.data || []).filter((b: BranchOption) => b.id !== myId && b.status === "active"));
-    } catch { toasterrormsg("Error loading branches"); }
+    } catch { toast.error("Error loading branches"); }
   }
 
   async function loadMyItems() {
     try {
-      const res = await Get("pos/stock-transfers/my-items/") as any;
+      const res: any = await Get("pos/stock-transfers/my-items/");
       const body = res?.data ?? res;
       if (body.success) setMyItems(body.data || []);
-    } catch { toasterrormsg("Could not load items"); }
+    } catch { toast.error("Could not load items"); }
   }
-
-  const selectedVariantIds = new Set(form.items.map(i => i.from_variant_id));
-  const destBranchName = branches.find(b => String(b.id) === form.to_branch_id)?.branch_name || "";
 
   const manualBranchSummary = useMemo(() => {
     const map = new Map<string, any>();
@@ -1386,290 +1757,31 @@ export default function StockTransferPage() {
   const manualTotalPages = Math.max(1, Math.ceil(manualFiltered.length / MANUAL_PAGE_SIZE));
   const manualPaged = manualFiltered.slice((manualListPage - 1) * MANUAL_PAGE_SIZE, manualListPage * MANUAL_PAGE_SIZE);
 
-  const parseTaxPercent = (taxSlab?: string): number => {
-    if (!taxSlab) return 0;
-    const n = parseFloat(taxSlab.replace("%", ""));
-    return isNaN(n) ? 0 : n;
-  };
-
-  const updateRow = (i: number, key: "quantity" | "rate" | "discountPercent", val: string | number) => {
-    setForm(f => {
-      const items = [...f.items];
-      const item = items[i];
-      let quantity = item.quantity;
-      let rate = parseFloat(item.rate || "0");
-      let discountPercent = Number(item.discountPercent || 0);
-
-      if (key === "quantity") {
-        let n = Number(val);
-        if (isNaN(n)) n = 0;
-        quantity = Math.min(Math.max(0, n), item.max_stock);
-      } else if (key === "rate") {
-        rate = isNaN(Number(val)) ? 0 : Number(val);
-      } else {
-        let n = Number(val);
-        if (isNaN(n) || n < 0) n = 0;
-        if (n > 100) n = 100;
-        discountPercent = n;
-      }
-
-      const discountedRate = rate - (rate * discountPercent) / 100;
-      const taxPercent = parseTaxPercent(item.taxSlab);
-      const basicPerUnit = taxPercent > 0 ? discountedRate / (1 + taxPercent / 100) : discountedRate;
-      const taxPerUnit = discountedRate - basicPerUnit;
-
-      const prevTax = item.taxPerUnit || 0;
-      const cgstPerUnit = prevTax > 0 ? taxPerUnit * ((item.cgstPerUnit || 0) / prevTax) : 0;
-      const sgstPerUnit = prevTax > 0 ? taxPerUnit * ((item.sgstPerUnit || 0) / prevTax) : 0;
-      const igstPerUnit = prevTax > 0
-        ? taxPerUnit * ((item.igstPerUnit || 0) / prevTax)
-        : (cgstPerUnit === 0 && sgstPerUnit === 0 ? taxPerUnit : 0);
-
-      items[i] = {
-        ...item,
-        quantity,
-        rate: key === "rate" ? String(rate) : item.rate,
-        discountPercent: key === "discountPercent" ? String(discountPercent) : item.discountPercent,
-        basicPerUnit,
-        taxPerUnit,
-        cgstPerUnit,
-        sgstPerUnit,
-        igstPerUnit,
-        netPerUnit: discountedRate,
-      };
-      return { ...f, items };
-    });
-  };
-
-  const recalcItemGst = async (idx: number) => {
-    const item = form.items[idx];
-    if (!item || !form.to_branch_id) return;
-    const qty = Number(item.quantity) || 1;
-    const discountPercent = Number(item.discountPercent || 0);
-    try {
-      const res = await Post("pos/stock-transfer-item-tax/", {
-        from_variant_id: parseInt(item.from_variant_id),
-        to_branch_id: parseInt(form.to_branch_id),
-        quantity: qty,
-        discount_percent: discountPercent,
-      }) as any;
-      const d = res?.data ?? res;
-      setForm(f => {
-        const items = [...f.items];
-        if (!items[idx]) return f;
-        items[idx] = {
-          ...items[idx],
-          basicPerUnit: (d.basic_amount || 0) / qty,
-          taxPerUnit: (d.tax_amount || 0) / qty,
-          cgstPerUnit: (d.cgst || 0) / qty,
-          sgstPerUnit: (d.sgst || 0) / qty,
-          igstPerUnit: (d.igst || 0) / qty,
-          netPerUnit: (d.net_amount || 0) / qty,
-        };
-        return { ...f, items };
-      });
-    } catch { toasterrormsg("Could not recalculate GST for discount"); }
-  };
-
-  const getDiscountedAmount = (item: FormItem): number => {
-    const rate = parseFloat(item.rate || "0");
-    const disc = Number(item.discountPercent || 0);
-    const discountedRate = rate - (rate * disc) / 100;
-    return discountedRate * Number(item.quantity || 0);
-  };
-
-  const handleBarcodeItemFound = async (item: ItemWithVariants, variant: VariantOption) => {
-    if (!form.to_branch_id) { toasterrormsg("Select destination branch first"); return; }
-    if (variant.current_stock <= 0) { toasterrormsg("Item out of stock"); return; }
-
-    const vid = String(variant.variant_id);
-    const existingIndex = form.items.findIndex(i => i.from_variant_id === vid);
-
-    if (existingIndex !== -1) {
-      const row = form.items[existingIndex];
-      const newQty = Math.min(row.max_stock, Number(row.quantity) + 1);
-      updateRow(existingIndex, "quantity", newQty);
-      toastsuccessmsg(`Quantity updated: ${item.item_name}`);
-      return;
-    }
-
-    await handleConfirm([{ item, variant, quantity: 1 }]);
-  };
-
-  const handleConfirm = async (rows: { item: ItemWithVariants; variant: VariantOption; quantity: number }[]) => {
-    if (!form.to_branch_id) { toasterrormsg("Select destination branch first"); return; }
-
-    const newItems: FormItem[] = [];
-    for (const { item, variant, quantity } of rows) {
-      const branchPrice = variant.branch_price || 0;
-      let gst = { basicAmount: 0, taxAmount: 0, cgst: 0, sgst: 0, igst: 0, netAmount: branchPrice * quantity };
-      try {
-        const res = await Post("pos/stock-transfer-item-tax/", {
-          from_variant_id: variant.variant_id,
-          to_branch_id: parseInt(form.to_branch_id),
-          quantity: quantity,
-          discount_percent: 0,
-        }) as any;
-        const d = res?.data ?? res;
-        gst = { basicAmount: d.basic_amount||0, taxAmount: d.tax_amount||0, cgst: d.cgst||0, sgst: d.sgst||0, igst: d.igst||0, netAmount: d.net_amount||0 };
-      } catch { /* silent */ }
-
-      newItems.push({
-        from_variant_id: String(variant.variant_id),
-        from_item_name: item.item_name,
-        from_variant_label: variant.variant_label,
-        quantity,
-        rate: String(branchPrice),
-        discountPercent: "0",
-        max_stock: variant.current_stock,
-        size: variant.size,
-        color: variant.color,
-        barcode: variant.barcode,
-        item_id: item.item_id,
-        hsnCode: variant.hsnCode || item.hsnCode,
-        taxSlab: variant.taxSlab || item.taxSlab,
-        basicPerUnit: gst.basicAmount / quantity,
-        taxPerUnit: gst.taxAmount / quantity,
-        cgstPerUnit: gst.cgst / quantity,
-        sgstPerUnit: gst.sgst / quantity,
-        igstPerUnit: gst.igst / quantity,
-        netPerUnit: gst.netAmount / quantity,
-      });
-    }
-    setForm(f => ({ ...f, items: [...f.items, ...newItems] }));
-    toastsuccessmsg(`${newItems.length} variant(s) added`);
-  };
-
-  function removeRow(i: number) { setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) })); }
-
-  function resetForm() { setForm({ to_branch_id: "", transfer_date: new Date().toISOString().slice(0, 10), note: "", items: [] }); setDestBranchDetails(null); }
-
-  // ══════════════════════════════════════════════════════════════════
-  // HOLD FEATURE HANDLERS
-  // ══════════════════════════════════════════════════════════════════
-  const handleHold = () => {
-    if (!form.to_branch_id) { toasterrormsg("Select destination branch before holding"); return; }
-    if (form.items.length === 0) { toasterrormsg("Add at least one item before holding"); return; }
-
-    const branch = branches.find(b => String(b.id) === form.to_branch_id);
-    const newHold: HeldTransfer = {
-      holdId: `HOLD-${Date.now()}`,
-      heldAt: new Date().toISOString(),
-      to_branch_id: form.to_branch_id,
-      to_branch_name: branch?.branch_name || `Branch #${form.to_branch_id}`,
-      transfer_date: form.transfer_date,
-      note: form.note || "",
-      items: form.items,
-    };
-
-    const updated = [newHold, ...holds];
-    setHolds(updated);
-    saveHolds(updated);
-
-    resetForm();
-    toastsuccessmsg("Transfer held successfully! Find it in Hold List.");
-    setShowHoldListModal(true);
-  };
-
-  const handleResumeHold = (hold: HeldTransfer) => {
-    setForm({
-      to_branch_id: hold.to_branch_id,
-      transfer_date: hold.transfer_date,
-      note: hold.note || "",
-      items: hold.items,
-    });
-
-    const updated = holds.filter(h => h.holdId !== hold.holdId);
-    setHolds(updated);
-    saveHolds(updated);
-
-    setTab("create");
-    setShowHoldListModal(false);
-    toastsuccessmsg("Held transfer resumed!");
-  };
-
-  const handleDeleteHold = (holdId: string) => {
-    const updated = holds.filter(h => h.holdId !== holdId);
-    setHolds(updated);
-    saveHolds(updated);
-    toastsuccessmsg("Hold removed");
-  };
-
-  const formatHoldTime = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString("en-IN", {
-        day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-      });
-    } catch { return iso; }
-  };
-
-  async function createTransfer() {
-    if (!form.items.length) { toasterrormsg("Add at least one item"); return; }
-    if (!form.to_branch_id) { toasterrormsg("Select destination branch"); return; }
-    if (form.items.some(r => Number(r.quantity) === 0)) { toasterrormsg("Remove items with 0 qty"); return; }
-    setLoading(true);
-    try {
-      const res = await Post("pos/stock-transfers/", {
-        to_branch_id: parseInt(form.to_branch_id),
-        transfer_date: form.transfer_date,
-        note: form.note,
-        items: form.items.map(r => ({
-          from_variant_id: parseInt(r.from_variant_id),
-          quantity: parseInt(String(r.quantity)),
-          rate: parseFloat(r.rate || "0"),
-          discount_percent: parseFloat(r.discountPercent || "0"),
-        })),
-      }) as any;
-      const body = res?.data ?? res;
-      if (body.success) { toastsuccessmsg("Transfer created!"); setTab("list"); resetForm(); loadAllTransfers(); }
-      else toasterrormsg(body.message || "Error");
-    } catch (e: any) { toasterrormsg(e.response?.data?.message || "Error creating transfer"); }
-    setLoading(false);
-  }
-
   async function completeTransfer(id: number) {
     if (!confirm("Complete transfer?")) return;
     try {
-      const res = await Post(`pos/stock-transfers/${id}/complete/`, {}) as any;
+      const res: any = await Post(`pos/stock-transfers/${id}/complete/`, {});
       const body = res?.data ?? res;
-      if (body.success) { toastsuccessmsg(body.message); loadAllTransfers(); if (detail?.id === id) setDetail(null); }
-    } catch (e: any) { toasterrormsg(e.response?.data?.message || "Error"); }
+      if (body.success) { toast.success(body.message); loadAllTransfers(); if (detail?.id === id) setDetail(null); }
+    } catch (e: any) { toast.error(e.response?.data?.message || "Error"); }
   }
 
   async function cancelTransfer(id: number) {
     if (!confirm("Cancel this transfer?")) return;
     try {
-      const res = await Post(`pos/stock-transfers/${id}/cancel/`, {}) as any;
+      const res: any = await Post(`pos/stock-transfers/${id}/cancel/`, {});
       const body = res?.data ?? res;
-      if (body.success) { toastsuccessmsg("Transfer cancelled."); loadAllTransfers(); setDetail(null); }
-    } catch { toasterrormsg("Error cancelling"); }
+      if (body.success) { toast.success("Transfer cancelled."); loadAllTransfers(); setDetail(null); }
+    } catch { toast.error("Error cancelling"); }
   }
 
   async function loadDetail(id: number) {
     try {
-      const res = await Get(`pos/stock-transfers/${id}/`) as any;
+      const res: any = await Get(`pos/stock-transfers/${id}/`);
       const body = res?.data ?? res;
       if (body.success) setDetail(body.data);
-    } catch { toasterrormsg("Error loading details"); }
+    } catch { toast.error("Error loading details"); }
   }
-
-  const totals = useMemo(() => ({
-    qty: form.items.reduce((a, b) => a + Number(b.quantity || 0), 0),
-    value: form.items.reduce((a, b) => {
-      const rate = parseFloat(b.rate || "0");
-      const disc = Number(b.discountPercent || 0);
-      const discountedRate = rate - (rate * disc) / 100;
-      return a + discountedRate * Number(b.quantity || 0);
-    }, 0),
-    basic: form.items.reduce((a, b) => a + (b.basicPerUnit || 0) * (b.quantity || 0), 0),
-    tax: form.items.reduce((a, b) => a + (b.taxPerUnit || 0) * (b.quantity || 0), 0),
-    cgst: form.items.reduce((a, b) => a + (b.cgstPerUnit || 0) * (b.quantity || 0), 0),
-    sgst: form.items.reduce((a, b) => a + (b.sgstPerUnit || 0) * (b.quantity || 0), 0),
-    igst: form.items.reduce((a, b) => a + (b.igstPerUnit || 0) * (b.quantity || 0), 0),
-    netTotal: form.items.reduce((a, b) => a + (b.netPerUnit || 0) * (b.quantity || 0), 0),
-  }), [form.items]);
 
   return (
     <Page title="Stock Transfer">
@@ -1679,32 +1791,16 @@ export default function StockTransferPage() {
             <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">Stock Transfer</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-dark-300">Manage manual transfers &amp; branch orders</p>
           </div>
-          {mode === "manual" && tab === "list" && (
+          {mode === "manual" && !detail && (
             <div className="flex items-center gap-2">
               <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm" onClick={loadAll} disabled={loading}>
                 <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} /> Refresh
               </Button>
               {canAdd && (
-              <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={() => { setTab("create"); resetForm(); }}>
-                <PlusIcon className="size-4" /> New Transfer
-              </Button>
+                <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm" onClick={() => setShowNewTransferModal(true)}>
+                  <PlusIcon className="size-4" /> New Transfer
+                </Button>
               )}
-            </div>
-          )}
-          {mode === "manual" && tab === "create" && (
-            <div className="flex items-center gap-2">
-              <Button variant="outlined" className="relative h-9 gap-2 rounded-md px-3 text-sm" onClick={() => setShowHoldListModal(true)}>
-                <ClipboardDocumentListIcon className="size-4" /> Hold List
-                {holds.length > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold text-white">
-                    {holds.length}
-                  </span>
-                )}
-              </Button>
-              <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
-                onClick={() => { setTab("list"); resetForm(); }}>
-                <ArrowLeftIcon className="size-4" /> Back to List
-              </Button>
             </div>
           )}
         </div>
@@ -1716,7 +1812,7 @@ export default function StockTransferPage() {
               { key: "order_tracking", label: "Order Tracking", Icon: ClipboardDocumentListIcon },
             ] as const).map(({ key, label, Icon }) => (
               <button key={key}
-                onClick={() => { setMode(key); if (key === "manual") setTab("list"); }}
+                onClick={() => { setMode(key); if (key === "manual") { setManualView("branches"); setDetail(null); } }}
                 className={clsx("flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
                   mode === key ? "bg-primary text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-700")}>
                 <Icon className="size-4" /> {label}
@@ -1731,7 +1827,7 @@ export default function StockTransferPage() {
 
         {mode === "manual" && (
           <div className="px-(--margin-x) space-y-4">
-            {tab === "list" && !detail && manualView === "branches" && (
+            {!detail && manualView === "branches" && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
                   <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
@@ -1747,7 +1843,7 @@ export default function StockTransferPage() {
               </div>
             )}
 
-            {tab === "list" && !detail && manualView === "list" && (
+            {!detail && manualView === "list" && (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
                   <Button variant="flat" className="h-8 gap-1.5 rounded-lg px-3 text-sm text-primary-600"
@@ -1830,212 +1926,20 @@ export default function StockTransferPage() {
                 </div>
               </div>
             )}
-
-            {tab === "create" && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-dark-500 dark:bg-dark-750">
-                  <h3 className="mb-4 flex items-center gap-2 font-bold text-gray-800 dark:text-dark-100">
-                    <DocumentDuplicateIcon className="size-4 text-primary-500" /> Transfer Details
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Destination Branch <span className="text-error-500">*</span></label>
-                      <Combobox
-                        data={branches.map(b => {
-                          const acct = b.sundry_debitor_account_name || b.sundry_creditor_account_name;
-                          return { ...b, label: acct ? `${b.branch_name} → ${acct}` : `${b.branch_name} (No account linked)` };
-                        })}
-                        displayField="label"
-                        searchFields={["label"]}
-                        value={(() => {
-                          const b = branches.find(b => String(b.id) === form.to_branch_id);
-                          if (!b) return null;
-                          const acct = b.sundry_debitor_account_name || b.sundry_creditor_account_name;
-                          return { ...b, label: acct ? `${b.branch_name} → ${acct}` : `${b.branch_name} (No account linked)` };
-                        })()}
-                        onChange={(val: any) => setForm(f => ({ ...f, to_branch_id: val ? String(val.id) : "", items: [] }))}
-                        placeholder="Select branch…"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Transfer Date <span className="text-error-500">*</span></label>
-                      <DatePicker value={form.transfer_date} onChange={(v: string) => setForm(f => ({ ...f, transfer_date: v || f.transfer_date }))} />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Note</label>
-                      <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Optional…" classNames={{ input: "h-9 text-sm" }} />
-                    </div>
-                  </div>
-                  {destBranchDetails && (
-                    <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10">
-                      <div className="mb-2 flex items-center gap-2">
-                        <BuildingStorefrontIcon className="size-4 text-primary-600" />
-                        <span className="text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-400">
-                          Destination: {destBranchDetails.branch_name}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
-                        {[
-                          { label: "Owner", value: destBranchDetails.owner_name || "—" },
-                          { label: "Phone", value: destBranchDetails.phone || "—" },
-                          { label: "Email", value: destBranchDetails.email || "—" },
-                          { label: "Address", value: destBranchDetails.address || "—" },
-                          { label: "Linked A/c", value: destBranchDetails.sundry_debitor_account_name || destBranchDetails.sundry_creditor_account_name || null },
-                        ].map(({ label, value }) => (
-                          <div key={label}>
-                            <span className="text-xs text-gray-400 dark:text-dark-400">{label}</span>
-                            <div className={clsx("text-xs font-medium truncate", label === "Linked A/c" && !value ? "text-error-500" : "text-gray-700 dark:text-dark-200")}>
-                              {label === "Linked A/c" ? (value || "Not linked") : value}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-750">
-                  <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-dark-500">
-                    <div className="flex items-center gap-2">
-                      <CubeIcon className="size-4 text-primary-500" />
-                      <span className="font-bold text-gray-800 dark:text-dark-100">Items</span>
-                      {form.items.length > 0 && <Badge color="primary" className="text-xs font-bold">{form.items.length}</Badge>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <StockTransferBarcodeScanner
-                        myItems={myItems}
-                        toBranchId={form.to_branch_id}
-                        onItemFound={handleBarcodeItemFound}
-                      />
-                      <Button color="primary" className="h-9 gap-2 rounded-md px-4 text-sm"
-                        onClick={() => { if (!form.to_branch_id) { toasterrormsg("Select destination first"); return; } setItemModalOpen(true); }}>
-                        <ArrowsRightLeftIcon className="size-4" /> Select Items
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <Table hoverable className="w-full min-w-[900px] text-left">
-                      <THead>
-                        <Tr>
-                          {["#","Item","Variant","Barcode","HSN","GST%","Max Stock","Qty","Disc%","Rate ₹","Amount ₹","Del"].map(h => (
-                            <Th key={h} className="bg-primary/10 text-xs font-semibold text-primary-700 dark:bg-primary/20 dark:text-primary-300 whitespace-nowrap">{h}</Th>
-                          ))}
-                        </Tr>
-                      </THead>
-                      <TBody>
-                        {form.items.length === 0 ? (
-                          <Tr><Td colSpan={12} className="py-16 text-center text-sm text-gray-400 dark:text-dark-400">
-                            <ArrowsRightLeftIcon className="mx-auto mb-3 size-10 text-gray-200 dark:text-dark-600" />
-                            No items added yet
-                          </Td></Tr>
-                        ) : form.items.map((item, idx) => {
-                          const low = Number(item.quantity) > item.max_stock;
-                          const zero = Number(item.quantity) === 0;
-                          const amount = getDiscountedAmount(item);
-                          return (
-                            <Tr key={item.from_variant_id + idx} className={clsx(low && "bg-error-50/30 dark:bg-error-900/10", zero && !low && "bg-warning-50/30 dark:bg-warning-900/10")}>
-                              <Td className="text-xs text-gray-400 dark:text-dark-500">{idx + 1}</Td>
-                              <Td className="font-semibold text-gray-800 dark:text-dark-100">{item.from_item_name}</Td>
-                              <Td className="text-center"><Badge color="info" variant="soft" className="text-xs">{item.from_variant_label}</Badge></Td>
-                              <Td className="text-center font-mono text-xs text-gray-400">{item.barcode || "—"}</Td>
-                              <Td className="text-center font-mono text-xs text-gray-500">{item.hsnCode || "—"}</Td>
-                              <Td className="text-center"><Badge color="warning" variant="soft" className="text-xs">{item.taxSlab || "0%"}</Badge></Td>
-                              <Td className="text-center">
-                                <Badge color={item.max_stock <= 5 ? "warning" : "success"} variant="soft" className="text-xs font-bold">{item.max_stock}</Badge>
-                              </Td>
-                              <Td className="text-center w-24">
-                                <Input type="number" min={0} max={item.max_stock} value={item.quantity}
-                                  onChange={e => updateRow(idx, "quantity", e.target.value === "" ? 0 : parseInt(e.target.value))}
-                                  onBlur={() => recalcItemGst(idx)}
-                                  classNames={{ input: clsx("h-8 w-20 text-center text-sm font-semibold", (low || zero) && "border-warning-400 dark:border-warning-600") }} />
-                              </Td>
-                              <Td className="text-center w-20">
-                                <Input type="number" min={0} max={100} step="0.01" value={item.discountPercent ?? "0"}
-                                  onChange={e => updateRow(idx, "discountPercent", e.target.value)}
-                                  onBlur={() => recalcItemGst(idx)}
-                                  classNames={{ input: "h-8 w-16 text-center text-sm font-semibold" }} />
-                              </Td>
-                              <Td className="text-right w-28">
-                                <Input type="number" min={0} value={item.rate}
-                                  onChange={e => updateRow(idx, "rate", e.target.value)}
-                                  onBlur={() => recalcItemGst(idx)}
-                                  classNames={{ input: "h-8 w-24 text-right text-sm" }} />
-                              </Td>
-                              <Td className="text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{amount.toFixed(2)}</Td>
-                              <Td className="text-center">
-                                <Button isIcon variant="flat" className="size-7 rounded-full text-error-400 hover:bg-error-50 hover:text-error-600"
-                                  onClick={() => removeRow(idx)}><TrashIcon className="size-3.5" /></Button>
-                              </Td>
-                            </Tr>
-                          );
-                        })}
-                      </TBody>
-                      {form.items.length > 0 && (
-                        <TBody>
-                          <Tr className="border-t-2 border-primary/20 dark:border-primary/30">
-                            <Td colSpan={6} className="bg-primary/5 dark:bg-primary/10 text-xs font-bold uppercase text-primary-700 dark:text-primary-300 text-right">Totals</Td>
-                            <Td className="bg-primary/5 dark:bg-primary/10" />
-                            <Td className="bg-primary/5 dark:bg-primary/10 text-center font-bold tabular-nums text-primary-600 dark:text-primary-400">{totals.qty}</Td>
-                            <Td className="bg-primary/5 dark:bg-primary/10" />
-                            <Td className="bg-primary/5 dark:bg-primary/10" />
-                            <Td className="bg-primary/5 dark:bg-primary/10 text-right font-bold tabular-nums text-primary-600 dark:text-primary-400">₹{totals.value.toFixed(2)}</Td>
-                            <Td className="bg-primary/5 dark:bg-primary/10" />
-                          </Tr>
-                        </TBody>
-                      )}
-                    </Table>
-                  </div>
-                </div>
-
-                {form.items.length > 0 && (
-                  <GstSummaryCard totals={{ basic: totals.basic, tax: totals.tax, cgst: totals.cgst, sgst: totals.sgst, igst: totals.igst, net: totals.netTotal }} />
-                )}
-
-                <div className="flex items-center justify-end gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-dark-500 dark:bg-dark-750">
-                  <p className="mr-auto text-sm text-gray-500 dark:text-dark-400">
-                    {form.items.length > 0
-                      ? <><span className="font-semibold">{form.items.length} variants</span>{form.to_branch_id && <span className="ml-2 text-gray-400">→ {destBranchName}</span>}</>
-                      : "No items selected"}
-                  </p>
-                  <Button variant="outlined" className="gap-1.5 px-5" onClick={() => { setTab("list"); resetForm(); }}>
-                    <XMarkIcon className="size-4" /> Cancel
-                  </Button>
-                  <Button variant="outlined" className="gap-1.5 border-amber-300 px-5 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
-                    onClick={handleHold}
-                    disabled={form.items.length === 0 || !form.to_branch_id}>
-                    <PauseIcon className="size-4" /> Hold
-                  </Button>
-                  <Button variant="outlined" className="gap-1.5 border-error-200 px-5 text-error-500 hover:bg-error-50"
-                    onClick={() => setForm(f => ({ ...f, items: [] }))}>
-                    <TrashIcon className="size-4" /> Clear All
-                  </Button>
-                  <Button color="primary" className="gap-2 px-7"
-                    disabled={loading || !form.items.length || !form.to_branch_id || form.items.some(r => Number(r.quantity) > r.max_stock)}
-                    onClick={createTransfer}>
-                    <CheckCircleIcon className="size-4" />
-                    {loading ? "Creating…" : "Create Transfer"}
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
 
-      <SelectItemsDrawer isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)}
-        myItems={myItems} selectedVariantIds={selectedVariantIds} onConfirm={handleConfirm} />
+      <NewTransferModal
+        isOpen={showNewTransferModal}
+        onClose={() => setShowNewTransferModal(false)}
+        branches={branches}
+        myItems={myItems}
+        onSuccess={() => { loadAllTransfers(); setManualView("list"); }}
+      />
 
       <TransferDetailDrawer detail={detail} onClose={() => setDetail(null)}
         onComplete={completeTransfer} onCancel={cancelTransfer} />
-
-      <HoldListModal
-        isOpen={showHoldListModal}
-        holds={holds}
-        onClose={() => setShowHoldListModal(false)}
-        onResume={handleResumeHold}
-        onDelete={handleDeleteHold}
-        formatTime={formatHoldTime}
-      />
     </Page>
   );
 }

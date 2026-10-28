@@ -1,26 +1,24 @@
-// src/pages/b2bsales/create.tsx
-// B2B SALES — Create page with HOLD / HOLD LIST / RESUME feature
-// Storage: localStorage key "b2b_sales_holds"
-
+// src/app/pages/sales-master/b2b-sales/create.tsx
 import {
   Dialog, DialogPanel, Transition, TransitionChild,
 } from "@headlessui/react";
 import {
-  ArrowLeftIcon, CheckCircleIcon, CubeIcon,
-  MagnifyingGlassIcon, TrashIcon, XMarkIcon,
-  DocumentCheckIcon, BuildingOfficeIcon, QrCodeIcon,
-  InformationCircleIcon, PauseIcon, PlayIcon, ClockIcon,
-  ClipboardDocumentListIcon,
+  ArrowLeftIcon, BuildingOfficeIcon, CheckCircleIcon,
+  ClipboardDocumentListIcon, ClockIcon, CubeIcon,
+  DocumentCheckIcon, MagnifyingGlassIcon, PauseIcon,
+  PlayIcon, QrCodeIcon, TrashIcon, XMarkIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 
 import { Page } from "@/components/shared/Page";
 import { Badge, Button, Card, Input, Table, THead, TBody, Tr, Th, Td, Textarea } from "@/components/ui";
 import { DatePicker } from "@/components/shared/form/DatePicker";
 import { Combobox } from "@/components/shared/form/StyledCombobox";
-import { Get, Post, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { Get, Post } from "@/ApiHelper";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOLD STORAGE
@@ -34,7 +32,6 @@ interface HeldSale {
   note: string;
   cart: CartRow[];
 }
-
 const HOLDS_STORAGE_KEY = "b2b_sales_holds";
 
 const loadHolds = (): HeldSale[] => {
@@ -45,13 +42,14 @@ const loadHolds = (): HeldSale[] => {
     return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
 };
-
 const saveHolds = (holds: HeldSale[]) => {
   try { localStorage.setItem(HOLDS_STORAGE_KEY, JSON.stringify(holds)); }
   catch (e) { console.error("Failed to save holds", e); }
 };
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 interface FranchiseBranch {
   id: number;
   branch_name: string;
@@ -105,7 +103,9 @@ interface CartRow {
   igst: number;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
 const safeNum = (val: any): number => {
   if (val === null || val === undefined || val === "") return 0;
   const n = typeof val === "string" ? parseFloat(val) : val;
@@ -137,11 +137,11 @@ function BranchDetailsCard({ branch }: { branch: FranchiseBranch }) {
     <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
         <BuildingOfficeIcon className="size-5 text-primary" />
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100">Destination Branch Details</h3>
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-100">Destination Branch</h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
         <div>
-          <p className="text-xs text-gray-500 dark:text-dark-400">Branch Name</p>
+          <p className="text-xs text-gray-500 dark:text-dark-400">Branch</p>
           <p className="font-semibold text-gray-800 dark:text-dark-100">{branch.branch_name || "-"}</p>
         </div>
         <div>
@@ -156,7 +156,7 @@ function BranchDetailsCard({ branch }: { branch: FranchiseBranch }) {
           <p className="text-xs text-gray-500 dark:text-dark-400">Email</p>
           <p className="font-medium text-gray-700 dark:text-dark-200 truncate">{branch.email || "-"}</p>
         </div>
-        <div className="sm:col-span-2 lg:col-span-2">
+        <div className="sm:col-span-2">
           <p className="text-xs text-gray-500 dark:text-dark-400">Address</p>
           <p className="font-medium text-gray-700 dark:text-dark-200">{branch.address || "-"}</p>
         </div>
@@ -166,7 +166,9 @@ function BranchDetailsCard({ branch }: { branch: FranchiseBranch }) {
         </div>
         <div>
           <p className="text-xs text-gray-500 dark:text-dark-400">State</p>
-          <p className="font-medium text-gray-700 dark:text-dark-200">{branch.state || "-"} {branch.pincode ? `— ${branch.pincode}` : ""}</p>
+          <p className="font-medium text-gray-700 dark:text-dark-200">
+            {branch.state || "-"} {branch.pincode ? `— ${branch.pincode}` : ""}
+          </p>
         </div>
       </div>
     </div>
@@ -201,7 +203,7 @@ function ItemPickModal({
     try {
       const params: any = { page: p, page_size: 50 };
       if (dq) params.search = dq;
-      const res = await Get("pos/b2b-sales/my-branch-items/", params) as any;
+      const res: any = await Get("pos/b2b-sales/my-branch-items/", params);
       let rows: SourceItem[] = [];
       if (res?.data?.results?.success) rows = res.data.results.data || [];
       else if (res?.data?.success) rows = res.data.data || [];
@@ -211,7 +213,7 @@ function ItemPickModal({
       setTotal(body?.count ?? rows.length);
       setHasNext(!!body?.next);
       setPage(p);
-    } catch { toasterrormsg("Could not load items."); }
+    } catch { toast.error("Could not load items."); }
     finally { setLoading(false); }
   }, [dq, toBranchId]);
 
@@ -238,16 +240,16 @@ function ItemPickModal({
                   <h3 className="text-base font-bold text-white">Select Item Variant</h3>
                   <p className="mt-0.5 text-xs text-white/70">{total} items available</p>
                 </div>
-                <Button onClick={onClose} variant="flat" isIcon className="size-8 rounded-full text-white hover:bg-white/10">
+                <Button onClick={onClose} variant="flat" isIcon
+                  className="size-8 rounded-full text-white hover:bg-white/10">
                   <XMarkIcon className="size-5" />
                 </Button>
               </div>
               <div className="border-b border-gray-200 px-5 py-3 dark:border-dark-500">
-                <Input value={query} onChange={e => setQuery(e.target.value)}
+                <Input value={query} onChange={(e) => setQuery(e.target.value)}
                   prefix={<MagnifyingGlassIcon className="size-4" />}
                   placeholder="Search item, barcode, size, color…"
-                  classNames={{ input: "h-9 text-sm" }} autoFocus
-                />
+                  classNames={{ input: "h-9 text-sm" }} autoFocus />
               </div>
               <div className="max-h-[55vh] overflow-y-auto overflow-x-auto">
                 {loading ? (
@@ -255,52 +257,48 @@ function ItemPickModal({
                     <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   </div>
                 ) : items.length === 0 ? (
-                  <div className="py-16 text-center text-sm text-gray-400 dark:text-dark-400">No items available.</div>
+                  <div className="py-16 text-center text-sm text-gray-400">No items available.</div>
                 ) : (
                   <div className="min-w-full overflow-x-auto">
                     <Table hoverable className="w-full text-left">
                       <THead>
                         <Tr>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Action</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Item Name</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Variant</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Size</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Color</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Barcode</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">HSN</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">GST%</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Price ₹</Th>
-                          <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Stock</Th>
+                          {["Action", "Item", "Variant", "Size", "Color", "Barcode", "HSN", "GST%", "Price ₹", "Stock"].map((h) => (
+                            <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">
+                              {h}
+                            </Th>
+                          ))}
                         </Tr>
                       </THead>
                       <TBody>
-                        {items.flatMap(item => item.variants.map(variant => {
-                          const inCart = addedVariantIds.has(variant.variant_id);
+                        {items.flatMap((item) => item.variants.map((v) => {
+                          const inCart = addedVariantIds.has(v.variant_id);
                           return (
-                            <Tr key={`${item.item_id}-${variant.variant_id}`} className={clsx("dark:border-b-dark-500 border-b border-gray-100", inCart && "opacity-40")}>
-                              <Td className="bg-white dark:bg-dark-900">
+                            <Tr key={`${item.item_id}-${v.variant_id}`}
+                              className={clsx("dark:border-b-dark-500 border-b border-gray-100", inCart && "opacity-40")}>
+                              <Td>
                                 {inCart ? (
                                   <Badge color="primary" variant="soft" className="text-xs font-semibold">✓ Added</Badge>
                                 ) : (
                                   <Button color="primary" className="h-7 rounded-md px-3 text-xs"
-                                    onClick={() => { onPick(item, variant); onClose(); }}>
+                                    onClick={() => { onPick(item, v); onClose(); }}>
                                     Select
                                   </Button>
                                 )}
                               </Td>
-                              <Td className="bg-white dark:bg-dark-900 font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
-                              <Td className="bg-white dark:bg-dark-900"><Badge color="info" variant="soft" className="text-xs">{variant.variant_label}</Badge></Td>
-                              <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{variant.size || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 text-gray-600 dark:text-dark-200">{variant.color || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 text-xs text-gray-500 dark:text-dark-300">{variant.barcode || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 text-xs text-gray-500 dark:text-dark-300">{variant.hsnCode || item.hsnCode || "—"}</Td>
-                              <Td className="bg-white dark:bg-dark-900 text-center">
-                                <Badge color="info" variant="soft" className="text-xs">{variant.taxSlab || item.taxSlab || "0%"}</Badge>
+                              <Td className="font-medium text-gray-800 dark:text-dark-100">{item.item_name}</Td>
+                              <Td><Badge color="info" variant="soft" className="text-xs">{v.variant_label}</Badge></Td>
+                              <Td className="text-gray-600 dark:text-dark-200">{v.size || "—"}</Td>
+                              <Td className="text-gray-600 dark:text-dark-200">{v.color || "—"}</Td>
+                              <Td className="text-xs text-gray-500">{v.barcode || "—"}</Td>
+                              <Td className="text-xs text-gray-500">{v.hsnCode || item.hsnCode || "—"}</Td>
+                              <Td className="text-center">
+                                <Badge color="info" variant="soft" className="text-xs">{v.taxSlab || item.taxSlab || "0%"}</Badge>
                               </Td>
-                              <Td className="bg-white dark:bg-dark-900 tabular-nums text-gray-700 dark:text-dark-200">₹{variant.branch_price}</Td>
-                              <Td className="bg-white dark:bg-dark-900 text-center">
-                                <Badge color={variant.current_stock > 0 ? "success" : "error"} variant="soft" className="text-xs font-semibold">
-                                  {variant.current_stock}
+                              <Td className="tabular-nums text-gray-700">₹{v.branch_price}</Td>
+                              <Td className="text-center">
+                                <Badge color={v.current_stock > 0 ? "success" : "error"} variant="soft" className="text-xs font-semibold">
+                                  {v.current_stock}
                                 </Badge>
                               </Td>
                             </Tr>
@@ -362,21 +360,21 @@ function HoldListModal({
                   </h3>
                   <p className="mt-0.5 text-xs text-white/70">Resume a draft or delete it</p>
                 </div>
-                <Button onClick={onClose} variant="flat" isIcon className="size-8 rounded-full text-white hover:bg-white/10">
+                <Button onClick={onClose} variant="flat" isIcon
+                  className="size-8 rounded-full text-white hover:bg-white/10">
                   <XMarkIcon className="size-5" />
                 </Button>
               </div>
-
               <div className="max-h-[65vh] overflow-y-auto p-5">
                 {holds.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-dark-400">
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                     <PauseIcon className="mb-3 size-12 text-gray-200 dark:text-dark-600" />
                     <p className="text-base">No held sales yet</p>
                     <p className="mt-1 text-xs">Add items and click <b>Hold</b> to save a draft</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {holds.map(h => (
+                    {holds.map((h) => (
                       <div key={h.holdId}
                         className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:border-primary/40 hover:shadow-md dark:border-dark-500 dark:bg-dark-800">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -423,7 +421,6 @@ function HoldListModal({
                   </div>
                 )}
               </div>
-
               <div className="flex justify-end border-t border-gray-200 px-5 py-3 dark:border-dark-500">
                 <Button variant="outlined" className="px-6" onClick={onClose}>Close</Button>
               </div>
@@ -435,14 +432,14 @@ function HoldListModal({
   );
 }
 
-// ── Inline Barcode Scanner (compact, used inside Items Table header) ──────
+// ── Inline Barcode Scanner ────────────────────────────────────────────────
 function InlineBarcodeScanner({
-  flatItems, toBranchId, onItemSelected, onNeedParent,
+  flatItems, toBranchId, onNeedParent,
 }: {
   flatItems: VariantOption[];
   toBranchId: number;
-  onItemSelected: (variant: VariantOption) => void;
-  onNeedParent: (variant: VariantOption) => void;
+  onItemSelected?: (v: VariantOption) => void;
+  onNeedParent: (v: VariantOption) => void;
 }) {
   const [barcodeValue, setBarcodeValue] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -450,43 +447,39 @@ function InlineBarcodeScanner({
   const handleBarcodeSearch = async (barcode: string) => {
     const trimmed = barcode.trim();
     if (!trimmed) return;
-
     if (!toBranchId) {
-      toasterrormsg("Please select destination (franchise) branch first");
+      toast.error("Please select destination branch first.");
       setBarcodeValue("");
       return;
     }
-
     setScanning(true);
     try {
       const localMatch = flatItems.find(
-        (item) => item.barcode && item.barcode.toLowerCase() === trimmed.toLowerCase()
+        (item) => item.barcode && item.barcode.toLowerCase() === trimmed.toLowerCase(),
       );
-
       if (localMatch) {
-        if (localMatch.current_stock <= 0) toasterrormsg(`Item is out of stock`);
-        else { onNeedParent(localMatch); toastsuccessmsg(`✓ Item selected`); }
-        setBarcodeValue(""); setScanning(false); return;
+        if (localMatch.current_stock <= 0) toast.error("Item is out of stock.");
+        else { onNeedParent(localMatch); toast.success("✓ Item selected"); }
+        return;
       }
-
-      const res = await Get("pos/b2b-sales/my-branch-items/", { search: trimmed }) as any;
+      const res: any = await Get("pos/b2b-sales/my-branch-items/", { search: trimmed });
       let items: SourceItem[] = [];
       if (res?.data?.results?.success) items = res.data.results.data || [];
       else if (res?.data?.success) items = res.data.data || [];
       else if (Array.isArray(res?.data)) items = res.data;
 
-      const allVariants: VariantOption[] = items.flatMap(item => item.variants);
+      const allVariants: VariantOption[] = items.flatMap((i) => i.variants);
       const apiMatch = allVariants.find(
-        (item) => item.barcode && item.barcode.toLowerCase() === trimmed.toLowerCase()
+        (i) => i.barcode && i.barcode.toLowerCase() === trimmed.toLowerCase(),
       );
-
-      if (!apiMatch) toasterrormsg(`No item found with barcode "${trimmed}"`);
-      else if (apiMatch.current_stock <= 0) toasterrormsg(`Item is out of stock`);
-      else { onNeedParent(apiMatch); toastsuccessmsg(`✓ Item selected`); }
-    } catch (err) {
-      toasterrormsg("Barcode search failed. Please try again.");
+      if (!apiMatch) toast.error(`No item with barcode "${trimmed}".`);
+      else if (apiMatch.current_stock <= 0) toast.error("Item is out of stock.");
+      else { onNeedParent(apiMatch); toast.success("✓ Item selected"); }
+    } catch {
+      toast.error("Barcode search failed.");
     } finally {
-      setBarcodeValue(""); setScanning(false);
+      setBarcodeValue("");
+      setScanning(false);
     }
   };
 
@@ -494,8 +487,8 @@ function InlineBarcodeScanner({
     <div className="flex items-center gap-2">
       <Input
         value={barcodeValue}
-        onChange={e => setBarcodeValue(e.target.value)}
-        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleBarcodeSearch(barcodeValue); } }}
+        onChange={(e) => setBarcodeValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBarcodeSearch(barcodeValue); } }}
         placeholder="Scan barcode..."
         disabled={scanning}
         prefix={<QrCodeIcon className="size-4" />}
@@ -509,7 +502,7 @@ function InlineBarcodeScanner({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE COMPONENT
+// MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 export default function CreateB2BSalesPage() {
   const navigate = useNavigate();
@@ -530,8 +523,6 @@ export default function CreateB2BSalesPage() {
   const [idCounter, setIdCounter] = useState(1);
 
   const [flatItems, setFlatItems] = useState<VariantOption[]>([]);
-
-  // ── HOLD state ──
   const [holds, setHolds] = useState<HeldSale[]>([]);
   const [showHoldListModal, setShowHoldListModal] = useState(false);
 
@@ -543,26 +534,22 @@ export default function CreateB2BSalesPage() {
   });
   const [currentItemErrors, setCurrentItemErrors] = useState<Record<string, string>>({});
 
-  // ── Load holds on mount ──
   useEffect(() => { setHolds(loadHolds()); }, []);
 
-  // ── Load next sale number ──
   useEffect(() => {
     Get("pos/b2b-sales/next-number/")
       .then((res: any) => { if (res?.data?.success) setSaleNo(res.data.sale_no); })
       .catch(() => setSaleNo("—"));
   }, []);
 
-  // ── Load franchise branches ──
   useEffect(() => {
     setBranchesLoading(true);
     Get("pos/b2b-sales/franchise-branches/")
-      .then((res: any) => { setBranches(res?.data?.data || []); })
-      .catch(() => toasterrormsg("Failed to load franchise branches"))
+      .then((res: any) => setBranches(res?.data?.data || []))
+      .catch(() => toast.error("Failed to load franchise branches"))
       .finally(() => setBranchesLoading(false));
   }, []);
 
-  // ── Load items for barcode scanner ──
   useEffect(() => {
     Get("pos/b2b-sales/my-branch-items/")
       .then((res: any) => {
@@ -570,38 +557,35 @@ export default function CreateB2BSalesPage() {
         if (res?.data?.results?.success) items = res.data.results.data || [];
         else if (res?.data?.success) items = res.data.data || [];
         else if (Array.isArray(res?.data)) items = res.data;
-        setFlatItems(items.flatMap(item => item.variants));
+        setFlatItems(items.flatMap((i) => i.variants));
       })
-      .catch(() => toasterrormsg("Failed to load items"));
+      .catch(() => toast.error("Failed to load items"));
   }, []);
 
-  // ── Branch details sync ──
   useEffect(() => {
     if (selectedBranch) {
-      setBranchDetails(branches.find(b => b.id === selectedBranch.value) || null);
-    } else {
-      setBranchDetails(null);
-    }
+      setBranchDetails(branches.find((b) => b.id === selectedBranch.value) || null);
+    } else setBranchDetails(null);
   }, [selectedBranch, branches]);
 
-  // ── Tax calculation ──
   useEffect(() => {
     if (!currentItem.variantId || !selectedBranch?.value || !currentItem.quantity) {
-      setCurrentItem(prev => ({
-        ...prev, basicAmount: "0.00", taxAmount: "0.00", netValue: "0.00",
+      setCurrentItem((prev) => ({
+        ...prev,
+        basicAmount: "0.00", taxAmount: "0.00", netValue: "0.00",
         cgst: "0.00", sgst: "0.00", igst: "0.00",
       }));
       return;
     }
     const calcTax = async () => {
       try {
-        const res = await Post("pos/b2b-sales/item-tax/", {
+        const res: any = await Post("pos/b2b-sales/item-tax/", {
           from_variant_id: currentItem.variantId,
           to_branch_id: selectedBranch.value,
           quantity: Number(currentItem.quantity) || 0,
-        }) as any;
+        });
         const d = res?.data;
-        setCurrentItem(prev => ({
+        setCurrentItem((prev) => ({
           ...prev,
           rate: d?.rate || 0,
           basicAmount: d?.basic_amount?.toFixed(2) || "0.00",
@@ -611,14 +595,14 @@ export default function CreateB2BSalesPage() {
           sgst: d?.sgst?.toFixed(2) || "0.00",
           igst: d?.igst?.toFixed(2) || "0.00",
         }));
-      } catch (e) { console.error("Tax calculation failed", e); }
+      } catch (e) { console.error("Tax calc failed", e); }
     };
     calcTax();
   }, [currentItem.variantId, currentItem.quantity, selectedBranch?.value]);
 
-  const branchOptions = useMemo(() =>
-    branches.map(b => ({ value: b.id, label: `${b.branch_name}${b.city ? ` — ${b.city}` : ""}` })),
-    [branches]
+  const branchOptions = useMemo(
+    () => branches.map((b) => ({ value: b.id, label: `${b.branch_name}${b.city ? ` — ${b.city}` : ""}` })),
+    [branches],
   );
 
   const totals = useMemo(() => {
@@ -651,30 +635,27 @@ export default function CreateB2BSalesPage() {
     setCurrentItemErrors({});
   };
 
-  // Barcode scanner handler — find parent item and apply
   const handleBarcodeVariant = (variant: VariantOption) => {
-    Get("pos/b2b-sales/my-branch-items/")
-      .then((res: any) => {
-        let items: SourceItem[] = [];
-        if (res?.data?.results?.success) items = res.data.results.data || [];
-        else if (res?.data?.success) items = res.data.data || [];
-        else if (Array.isArray(res?.data)) items = res.data;
-        const parentItem = items.find(item => item.variants.some(v => v.variant_id === variant.variant_id));
-        if (parentItem) applyItemToForm(parentItem, variant);
-      });
+    Get("pos/b2b-sales/my-branch-items/").then((res: any) => {
+      let items: SourceItem[] = [];
+      if (res?.data?.results?.success) items = res.data.results.data || [];
+      else if (res?.data?.success) items = res.data.data || [];
+      else if (Array.isArray(res?.data)) items = res.data;
+      const parent = items.find((i) => i.variants.some((v) => v.variant_id === variant.variant_id));
+      if (parent) applyItemToForm(parent, variant);
+    });
   };
 
   const handleAddItem = () => {
     const errors: Record<string, string> = {};
-    if (!selectedBranch?.value) { toasterrormsg("Please select destination branch first"); return; }
+    if (!selectedBranch?.value) { toast.error("Please select destination branch first."); return; }
     if (!currentItem.variantId) errors.variantId = "Please select an item";
     if (!currentItem.quantity || Number(currentItem.quantity) <= 0) errors.quantity = "Please enter valid quantity";
     if (Number(currentItem.quantity) > currentItem.availableStock) errors.quantity = `Max available: ${currentItem.availableStock}`;
-
     if (Object.keys(errors).length > 0) { setCurrentItemErrors(errors); return; }
     setCurrentItemErrors({});
 
-    setCart(prev => [
+    setCart((prev) => [
       ...prev,
       {
         id: idCounter,
@@ -694,7 +675,7 @@ export default function CreateB2BSalesPage() {
         igst: Number(currentItem.igst),
       },
     ]);
-    setIdCounter(p => p + 1);
+    setIdCounter((p) => p + 1);
     setCurrentItem({
       variantId: 0, itemName: "", hsnCode: "", barcode: "", unit: "",
       quantity: "", rate: 0, taxSlab: "", availableStock: 0,
@@ -702,18 +683,16 @@ export default function CreateB2BSalesPage() {
       cgst: "0.00", sgst: "0.00", igst: "0.00",
     });
     setCurrentItemErrors({});
-    toastsuccessmsg("Item added successfully!");
+    toast.success("Item added.");
   };
 
-  const handleDeleteItem = (id: number) => setCart(prev => prev.filter(item => item.id !== id));
+  const handleDeleteItem = (id: number) => setCart((prev) => prev.filter((i) => i.id !== id));
   const handleClearAll = () => { setCart([]); setIdCounter(1); };
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // HOLD HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════
+  // ── Hold handlers ──────────────────────────────────────────────────────
   const handleHold = () => {
-    if (!selectedBranch?.value) { toasterrormsg("Select destination branch before holding"); return; }
-    if (cart.length === 0) { toasterrormsg("Add at least one item before holding"); return; }
+    if (!selectedBranch?.value) { toast.error("Select destination branch before holding."); return; }
+    if (cart.length === 0) { toast.error("Add at least one item before holding."); return; }
 
     const newHold: HeldSale = {
       holdId: `HOLD-${Date.now()}`,
@@ -724,12 +703,9 @@ export default function CreateB2BSalesPage() {
       note: note || "",
       cart,
     };
-
     const updated = [newHold, ...holds];
     setHolds(updated);
     saveHolds(updated);
-
-    // Reset form
     setCart([]);
     setIdCounter(1);
     setNote("");
@@ -741,81 +717,73 @@ export default function CreateB2BSalesPage() {
       cgst: "0.00", sgst: "0.00", igst: "0.00",
     });
     setCurrentItemErrors({});
-
-    toastsuccessmsg("Sale held successfully! Find it in Hold List.");
+    toast.success("Sale held. Find it in Hold List.");
     setShowHoldListModal(true);
   };
 
   const handleResumeHold = (hold: HeldSale) => {
-    const branchOpt = branchOptions.find(b => b.value === hold.toBranchId);
-    if (branchOpt) setSelectedBranch(branchOpt);
-
+    const opt = branchOptions.find((b) => b.value === hold.toBranchId);
+    if (opt) setSelectedBranch(opt);
     setSaleDate(hold.saleDate);
     setNote(hold.note || "");
     const restored = hold.cart.map((it, idx) => ({ ...it, id: idx + 1 }));
     setCart(restored);
     setIdCounter(restored.length + 1);
-
-    const updated = holds.filter(h => h.holdId !== hold.holdId);
+    const updated = holds.filter((h) => h.holdId !== hold.holdId);
     setHolds(updated);
     saveHolds(updated);
-
     setShowHoldListModal(false);
-    toastsuccessmsg("Held sale resumed!");
+    toast.success("Held sale resumed.");
   };
 
   const handleDeleteHold = (holdId: string) => {
-    const updated = holds.filter(h => h.holdId !== holdId);
+    const updated = holds.filter((h) => h.holdId !== holdId);
     setHolds(updated);
     saveHolds(updated);
-    toastsuccessmsg("Hold removed");
+    toast.success("Hold removed.");
   };
 
   const formatHoldTime = (iso: string) => {
     try {
-      const d = new Date(iso);
-      return d.toLocaleString("en-IN", {
+      return new Date(iso).toLocaleString("en-IN", {
         day: "2-digit", month: "short", year: "numeric",
         hour: "2-digit", minute: "2-digit",
       });
     } catch { return iso; }
   };
 
-  // ── Submit ──
   const handleSubmit = async () => {
-    if (cart.length === 0) { toasterrormsg("At least one item is required"); return; }
-    if (!selectedBranch?.value) { toasterrormsg("Select destination franchise branch"); return; }
-
+    if (cart.length === 0) { toast.error("At least one item required."); return; }
+    if (!selectedBranch?.value) { toast.error("Select destination branch."); return; }
     const payload = {
       to_branch_id: selectedBranch.value,
       sale_date: saleDate,
       note: note || "",
-      items: cart.map(it => ({
+      items: cart.map((it) => ({
         from_variant_id: it.variantId,
         quantity: it.quantity,
         rate: it.rate,
       })),
     };
-
     setCreating(true);
     try {
-      const res = await Post("pos/b2b-sales/", payload) as any;
+      const res: any = await Post("pos/b2b-sales/", payload);
       if (res?.data?.success) {
-        toastsuccessmsg(res.data.message || "B2B Sale created successfully");
-        navigate("/b2bsales");
+        toast.success(res.data.message || "B2B Sale created.");
+        navigate("/b2b-sales");
       } else {
-        toasterrormsg(res?.data?.message || "Error while saving B2B sale");
+        toast.error(res?.data?.message || "Error saving B2B sale.");
       }
-    } catch (error: any) {
-      const errs = error?.response?.data?.errors;
-      const msg = Array.isArray(errs) ? errs.join(", ") : (error?.response?.data?.message || "Error while saving B2B sale");
-      toasterrormsg(msg);
+    } catch (err: any) {
+      const errs = err?.response?.data?.errors;
+      const msg = Array.isArray(errs) ? errs.join(", ") : (err?.response?.data?.message || "Error saving B2B sale.");
+      toast.error(msg);
     } finally {
       setCreating(false);
     }
   };
 
-  const addedVariantIds = useMemo(() => new Set(cart.map(c => c.variantId)), [cart]);
+  const addedVariantIds = useMemo(() => new Set(cart.map((c) => c.variantId)), [cart]);
 
   return (
     <Page title="Create B2B Sale">
@@ -823,15 +791,15 @@ export default function CreateB2BSalesPage() {
         {/* Header */}
         <div className="px-(--margin-x) flex flex-wrap items-center justify-between gap-4 pt-4 pb-2">
           <div className="flex items-center gap-3">
-            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm" onClick={() => navigate("/b2bsales")}>
-              <ArrowLeftIcon className="size-4" /> Back to Sales
+            <Button variant="outlined" className="h-8 gap-2 rounded-md px-3 text-sm"
+              onClick={() => navigate("/b2b-sales")}>
+              <ArrowLeftIcon className="size-4" /> Back
             </Button>
             <div>
               <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">Create B2B Sale</h2>
               <p className="mt-0.5 text-sm text-gray-500 dark:text-dark-300">Superadmin → Franchise branch stock transfer</p>
             </div>
           </div>
-          {/* ── HOLD LIST button (header) ── */}
           <Button variant="outlined" className="relative h-8 gap-2 rounded-md px-3 text-sm"
             onClick={() => setShowHoldListModal(true)}>
             <ClipboardDocumentListIcon className="size-4" /> Hold List
@@ -843,7 +811,7 @@ export default function CreateB2BSalesPage() {
           </Button>
         </div>
 
-        {/* Sale Details */}
+        {/* Sale details */}
         <div className="px-(--margin-x)">
           <Card skin="bordered" className="p-4">
             <SectionHeader icon={DocumentCheckIcon} title="Sale Details" />
@@ -860,18 +828,17 @@ export default function CreateB2BSalesPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Note</label>
-                <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Optional notes..." rows={1} className="h-9" />
+                <Textarea value={note} onChange={(e: any) => setNote(e.target.value)} placeholder="Optional notes..." rows={1} className="h-9" />
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Branch Details */}
         {branchDetails && (
           <div className="px-(--margin-x)"><BranchDetailsCard branch={branchDetails} /></div>
         )}
 
-        {/* Item Entry */}
+        {/* Item entry */}
         <div className="px-(--margin-x)">
           <Card skin="bordered" className="p-4">
             <SectionHeader icon={CubeIcon} title="Item Entry" />
@@ -881,10 +848,10 @@ export default function CreateB2BSalesPage() {
               </div>
             )}
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 items-end">
-              <div className="lg:col-span-1">
+              <div>
                 <Button color="primary" className="w-full h-9" disabled={!selectedBranch?.value}
                   onClick={() => setModalOpen(true)}>
-                  <MagnifyingGlassIcon className="size-4" /> Select Item
+                  <MagnifyingGlassIcon className="size-4" /> Select
                 </Button>
                 {currentItemErrors.variantId && <p className="text-xs text-error-600 mt-1">{currentItemErrors.variantId}</p>}
               </div>
@@ -892,12 +859,12 @@ export default function CreateB2BSalesPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-dark-200">Qty</label>
                 <Input type="number" value={currentItem.quantity}
-                  onChange={e => {
-                    setCurrentItem(prev => ({ ...prev, quantity: e.target.value }));
-                    if (currentItemErrors.quantity) setCurrentItemErrors(prev => { const n = { ...prev }; delete n.quantity; return n; });
+                  onChange={(e) => {
+                    setCurrentItem((prev) => ({ ...prev, quantity: e.target.value }));
+                    if (currentItemErrors.quantity) setCurrentItemErrors((prev) => { const n = { ...prev }; delete n.quantity; return n; });
                   }}
                   placeholder="0"
-                  className={clsx("h-9", currentItemErrors.quantity && "border-error-500")} />
+                  classNames={{ input: clsx("h-9", currentItemErrors.quantity && "border-error-500") }} />
                 {currentItemErrors.quantity && <p className="text-xs text-error-600 mt-1">{currentItemErrors.quantity}</p>}
               </div>
               <ReadField label="Rate" value={`₹${currentItem.rate.toFixed(2)}`} />
@@ -916,10 +883,9 @@ export default function CreateB2BSalesPage() {
           </Card>
         </div>
 
-        {/* ── Items Table (barcode scanner INLINE in header) ── */}
+        {/* Items table + barcode */}
         <div className="px-(--margin-x)">
           <Card skin="bordered" className="overflow-hidden">
-            {/* Header with barcode scanner */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-dark-500 dark:bg-dark-800">
               <div className="flex items-center gap-2">
                 <CubeIcon className="size-4 text-primary-500" />
@@ -929,26 +895,18 @@ export default function CreateB2BSalesPage() {
               <InlineBarcodeScanner
                 flatItems={flatItems}
                 toBranchId={selectedBranch?.value || 0}
-                onItemSelected={applyItemToForm as any}
                 onNeedParent={handleBarcodeVariant}
               />
             </div>
-
             <div className="max-h-[320px] overflow-y-auto">
               <Table hoverable className="w-full text-left">
                 <THead className="sticky top-0 z-10">
                   <Tr>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">#</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Item</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">HSN</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Qty</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Rate</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Unit</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Tax%</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Basic</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Tax Amt</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Net</Th>
-                    <Th className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">Action</Th>
+                    {["#", "Item", "HSN", "Qty", "Rate", "Unit", "Tax%", "Basic", "Tax Amt", "Net", "Action"].map((h) => (
+                      <Th key={h} className="dark:bg-dark-800 dark:text-dark-100 bg-gray-100 font-semibold text-gray-700 uppercase tracking-wide text-xs whitespace-nowrap">
+                        {h}
+                      </Th>
+                    ))}
                   </Tr>
                 </THead>
                 <TBody>
@@ -961,17 +919,17 @@ export default function CreateB2BSalesPage() {
                     </Tr>
                   ) : cart.map((item, idx) => (
                     <Tr key={item.id} className="dark:border-b-dark-500 border-b border-gray-100">
-                      <Td className="bg-white dark:bg-dark-900 text-gray-400">{idx + 1}</Td>
-                      <Td className="bg-white dark:bg-dark-900 font-medium text-gray-800 dark:text-dark-100">{item.itemName}</Td>
-                      <Td className="bg-white dark:bg-dark-900 text-xs text-gray-500 dark:text-dark-300">{item.hsnCode}</Td>
-                      <Td className="bg-white dark:bg-dark-900">{item.quantity}</Td>
-                      <Td className="bg-white dark:bg-dark-900">₹{item.rate.toFixed(2)}</Td>
-                      <Td className="bg-white dark:bg-dark-900">{item.unit}</Td>
-                      <Td className="bg-white dark:bg-dark-900">{item.taxSlab}%</Td>
-                      <Td className="bg-white dark:bg-dark-900">₹{item.basicAmount.toFixed(2)}</Td>
-                      <Td className="bg-white dark:bg-dark-900">₹{item.taxAmount.toFixed(2)}</Td>
-                      <Td className="bg-white dark:bg-dark-900 font-bold">₹{item.netValue.toFixed(2)}</Td>
-                      <Td className="bg-white dark:bg-dark-900">
+                      <Td className="text-gray-400">{idx + 1}</Td>
+                      <Td className="font-medium text-gray-800 dark:text-dark-100">{item.itemName}</Td>
+                      <Td className="text-xs text-gray-500">{item.hsnCode}</Td>
+                      <Td>{item.quantity}</Td>
+                      <Td>₹{item.rate.toFixed(2)}</Td>
+                      <Td>{item.unit}</Td>
+                      <Td>{item.taxSlab}%</Td>
+                      <Td>₹{item.basicAmount.toFixed(2)}</Td>
+                      <Td>₹{item.taxAmount.toFixed(2)}</Td>
+                      <Td className="font-bold">₹{item.netValue.toFixed(2)}</Td>
+                      <Td>
                         <Button isIcon variant="flat" className="size-8 rounded-full" onClick={() => handleDeleteItem(item.id)}>
                           <TrashIcon className="size-4 text-error-600" />
                         </Button>
@@ -991,7 +949,7 @@ export default function CreateB2BSalesPage() {
           </Card>
         </div>
 
-        {/* GST Summary */}
+        {/* GST summary */}
         {cart.length > 0 && (
           <div className="px-(--margin-x)">
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
@@ -1001,7 +959,7 @@ export default function CreateB2BSalesPage() {
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between py-1.5 border-b border-primary/10">
-                  <span className="text-gray-600 dark:text-dark-400">Total Basic Amount</span>
+                  <span className="text-gray-600 dark:text-dark-400">Total Basic</span>
                   <span className="font-medium text-gray-800 dark:text-dark-100">₹ {totals.totalBasic.toFixed(2)}</span>
                 </div>
                 {totals.totalCgst > 0 || totals.totalSgst > 0 ? (
@@ -1022,11 +980,11 @@ export default function CreateB2BSalesPage() {
                   </div>
                 ) : null}
                 <div className="flex justify-between pt-2 text-base font-bold border-t-2 border-primary/20">
-                  <span className="text-gray-800 dark:text-dark-100">Total Tax Amount</span>
+                  <span className="text-gray-800 dark:text-dark-100">Total Tax</span>
                   <span className="text-primary">₹ {totals.totalTax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between pt-2 text-base font-bold">
-                  <span className="text-gray-800 dark:text-dark-100">Net Total (incl. GST)</span>
+                  <span className="text-gray-800 dark:text-dark-100">Net Total</span>
                   <span className="text-primary">₹ {totals.totalNet.toFixed(2)}</span>
                 </div>
               </div>
@@ -1034,12 +992,13 @@ export default function CreateB2BSalesPage() {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="px-(--margin-x) flex flex-wrap gap-3 justify-end">
           <Button variant="outlined" color="error" onClick={handleClearAll}>
-            <TrashIcon className="size-4" /> Clear All
+            <TrashIcon className="size-4" /> Clear
           </Button>
-          <Button variant="outlined" className="gap-1.5 border-amber-300 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+          <Button variant="outlined"
+            className="gap-1.5 border-amber-300 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
             onClick={handleHold}
             disabled={cart.length === 0 || !selectedBranch?.value}>
             <PauseIcon className="size-4" /> Hold
@@ -1049,7 +1008,6 @@ export default function CreateB2BSalesPage() {
           </Button>
         </div>
 
-        {/* Item Selection Modal */}
         <ItemPickModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
@@ -1058,7 +1016,6 @@ export default function CreateB2BSalesPage() {
           addedVariantIds={addedVariantIds}
         />
 
-        {/* ── Hold List Modal ── */}
         <HoldListModal
           isOpen={showHoldListModal}
           holds={holds}

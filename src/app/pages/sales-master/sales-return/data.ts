@@ -1,4 +1,4 @@
-// ── Sales Return — types & helpers ───────────────────────────────────────────
+// src/app/pages/sales-master/sales-return/data.ts
 
 export interface SalesReturnRecord {
   id: number;
@@ -67,7 +67,7 @@ export function mapApiSalesReturn(raw: any): SalesReturnRecord {
     returnType: String(raw.return_type ?? ""),
     approvedBy: String(raw.approved_by ?? ""),
     grandTotal: Number(raw.grand_total ?? 0),
-    items: Array.isArray(raw.items) ? raw.items : [], 
+    items: Array.isArray(raw.items) ? raw.items : [],
     createdByName: String(raw.created_by_name ?? ""),
   };
 }
@@ -91,13 +91,13 @@ export function mapBillReturnItem(raw: any, returnType: string): BillReturnItem 
     tax_amount: Number(raw.tax_amount ?? 0),
     net_amount: Number(raw.net_amount ?? 0),
     unit: String(raw.unit ?? "Pcs"),
-    
   };
 }
 
 export function calcReturnTotals(items: BillReturnItem[]) {
-  const sel = items.filter(i => i.return_quantity > 0);
-  const ratio = (i: BillReturnItem) => i.max_quantity > 0 ? i.return_quantity / i.max_quantity : 0;
+  const sel = items.filter((i) => i.return_quantity > 0);
+  const ratio = (i: BillReturnItem) =>
+    i.max_quantity > 0 ? i.return_quantity / i.max_quantity : 0;
   return {
     qty: sel.reduce((s, i) => s + i.return_quantity, 0),
     basic: sel.reduce((s, i) => s + i.basic_amount * ratio(i), 0),

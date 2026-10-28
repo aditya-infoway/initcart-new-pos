@@ -1,4 +1,4 @@
-// Account Creation – TypeScript types & helpers
+// src/app/pages/account-creation/data.ts
 
 export interface Account {
   id: number;
@@ -20,9 +20,9 @@ export interface Account {
   currentDrcr: string;
   createdBy?: number;
   createdByName?: string;
+  isSystemDefault?: boolean;
 }
 
-// NAYA
 export interface AccountFormValues {
   accountName: string;
   group: string;
@@ -49,7 +49,8 @@ export const GROUP_OPTIONS = [
   { id: "Sundry Debitor(Internal)", label: "Sundry Debitor(Internal)" },
   { id: "Sundry Creditor(Internal)", label: "Sundry Creditor(Internal)" },
   { id: "Sundry Creditor(Main)", label: "Sundry Creditor(Main)" },
-];
+  { id: "Duties & Taxes", label: "Duties & Taxes" },
+];  
 
 export const DRCR_OPTIONS = [
   { id: "Dr", label: "Dr. (Receivable)" },
@@ -77,10 +78,10 @@ export function mapApiAccount(raw: Record<string, any>): Account {
     currentDrcr: String(raw.current_drcr ?? "Dr"),
     createdBy: raw.created_by,
     createdByName: raw.created_by_name,
+    isSystemDefault: !!raw.is_system_default,
   };
 }
 
-// NAYA
 export function buildAccountFormValues(account: Account | null): AccountFormValues {
   return {
     accountName: account?.accountName ?? "",
@@ -99,7 +100,6 @@ export function buildAccountFormValues(account: Account | null): AccountFormValu
   };
 }
 
-// NAYA
 export function buildAccountPayload(values: AccountFormValues): Record<string, any> {
   return {
     account_name: values.accountName,
@@ -118,7 +118,6 @@ export function buildAccountPayload(values: AccountFormValues): Record<string, a
   };
 }
 
-// Tab filter type
 export type AccountTabKey = "all" | "Sundry Creditor(Main)" | "Customer" | "Case In Hand";
 
 export const ACCOUNT_TABS: { key: AccountTabKey; title: string }[] = [
