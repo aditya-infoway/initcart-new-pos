@@ -1,3 +1,4 @@
+// src/app/pages/branch/orders/data.tsx
 export type OrderStatus =
   | "all"
   | "pending"
@@ -14,7 +15,9 @@ export interface Order {
   orderId: string;
   orderDate: string;
   customer: string;
+  customerPhone: string;
   totalAmount: string;
+  paymentStatus: string;
   status: string;
 }
 
@@ -37,13 +40,20 @@ export interface OrderPagination {
   total_pages: number;
 }
 
+export interface BranchOption {
+  id: string;
+  label: string;
+}
+
 export function mapApiOrder(raw: Record<string, any>): Order {
   return {
     id: Number(raw.id ?? 0),
     orderId: String(raw.order_number ?? raw.order_id ?? raw.orderId ?? `#${raw.id}`),
     orderDate: String(raw.created_at ?? raw.order_date ?? ""),
     customer: String(raw.billing_name ?? raw.customer_name ?? raw.customer ?? "—"),
+    customerPhone: String(raw.billing_phone ?? raw.customer_phone ?? ""),
     totalAmount: String(raw.totalAmount ?? raw.total_amount ?? raw.vendor_total ?? raw.total ?? "0.00"),
+    paymentStatus: String(raw.payment_status ?? raw.paymentStatus ?? "Pending"),
     status: String(raw.order_status ?? raw.vendor_item_status ?? raw.status ?? "pending"),
   };
 }
@@ -153,15 +163,26 @@ export const STATUS_TABS: { key: OrderStatus; label: string }[] = [
   { key: "failed", label: "Failed" },
 ];
 
+// ✅ Status mapping — tab key → backend status string
+export const STATUS_MAP: Record<string, string> = {
+  packaging: "processing",
+  out_for_delivery: "shipped",
+  returned: "refunded",
+};
+
 export const STATUS_BADGE: Record<string, { color: string; bg: string }> = {
   delivered:        { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
   pending:          { color: "text-amber-700 dark:text-amber-300",     bg: "bg-amber-50 dark:bg-amber-500/10" },
   confirmed:        { color: "text-blue-700 dark:text-blue-300",       bg: "bg-blue-50 dark:bg-blue-500/10" },
   packaging:        { color: "text-purple-700 dark:text-purple-300",   bg: "bg-purple-50 dark:bg-purple-500/10" },
+  processing:       { color: "text-purple-700 dark:text-purple-300",   bg: "bg-purple-50 dark:bg-purple-500/10" },
   out_for_delivery: { color: "text-indigo-700 dark:text-indigo-300",   bg: "bg-indigo-50 dark:bg-indigo-500/10" },
+  shipped:          { color: "text-indigo-700 dark:text-indigo-300",   bg: "bg-indigo-50 dark:bg-indigo-500/10" },
   cancelled:        { color: "text-red-700 dark:text-red-300",         bg: "bg-red-50 dark:bg-red-500/10" },
   returned:         { color: "text-orange-700 dark:text-orange-300",   bg: "bg-orange-50 dark:bg-orange-500/10" },
+  refunded:         { color: "text-orange-700 dark:text-orange-300",   bg: "bg-orange-50 dark:bg-orange-500/10" },
   failed:           { color: "text-rose-700 dark:text-rose-300",       bg: "bg-rose-50 dark:bg-rose-500/10" },
+  failed_to_deliver:{ color: "text-rose-700 dark:text-rose-300",       bg: "bg-rose-50 dark:bg-rose-500/10" },
 };
 
 export function getStatusBadge(status: string) {
@@ -175,13 +196,13 @@ export const STATS_CONFIG: {
   cardBg: string;
   iconBg: string;
 }[] = [
-  { key: "total",            label: "Total",            cardBg: "bg-gradient-to-br from-primary-500 to-primary-700",         iconBg: "bg-white/20" },
-  { key: "pending",          label: "Pending",          cardBg: "bg-gradient-to-br from-amber-400 to-amber-600",             iconBg: "bg-white/20" },
-  { key: "confirmed",        label: "Confirmed",        cardBg: "bg-gradient-to-br from-blue-500 to-blue-700",               iconBg: "bg-white/20" },
-  { key: "packaging",        label: "Packaging",        cardBg: "bg-gradient-to-br from-purple-500 to-purple-700",           iconBg: "bg-white/20" },
-  { key: "out_for_delivery", label: "Out for Delivery", cardBg: "bg-gradient-to-br from-indigo-500 to-indigo-700",           iconBg: "bg-white/20" },
-  { key: "delivered",        label: "Delivered",        cardBg: "bg-gradient-to-br from-emerald-500 to-emerald-700",         iconBg: "bg-white/20" },
-  { key: "cancelled",        label: "Cancelled",        cardBg: "bg-gradient-to-br from-red-500 to-red-700",                 iconBg: "bg-white/20" },
-  { key: "returned",         label: "Returned",         cardBg: "bg-gradient-to-br from-orange-500 to-orange-600",           iconBg: "bg-white/20" },
-  { key: "failed",           label: "Failed",           cardBg: "bg-gradient-to-br from-rose-500 to-rose-700",               iconBg: "bg-white/20" },
+  { key: "total",            label: "Total",            cardBg: "bg-gradient-to-br from-primary-500 to-primary-700", iconBg: "bg-white/20" },
+  { key: "pending",          label: "Pending",          cardBg: "bg-gradient-to-br from-amber-400 to-amber-600",     iconBg: "bg-white/20" },
+  { key: "confirmed",        label: "Confirmed",        cardBg: "bg-gradient-to-br from-blue-500 to-blue-700",       iconBg: "bg-white/20" },
+  { key: "packaging",        label: "Packaging",        cardBg: "bg-gradient-to-br from-purple-500 to-purple-700",   iconBg: "bg-white/20" },
+  { key: "out_for_delivery", label: "Out for Delivery", cardBg: "bg-gradient-to-br from-indigo-500 to-indigo-700",   iconBg: "bg-white/20" },
+  { key: "delivered",        label: "Delivered",        cardBg: "bg-gradient-to-br from-emerald-500 to-emerald-700", iconBg: "bg-white/20" },
+  { key: "cancelled",        label: "Cancelled",        cardBg: "bg-gradient-to-br from-red-500 to-red-700",         iconBg: "bg-white/20" },
+  { key: "returned",         label: "Returned",         cardBg: "bg-gradient-to-br from-orange-500 to-orange-600",   iconBg: "bg-white/20" },
+  { key: "failed",           label: "Failed",           cardBg: "bg-gradient-to-br from-rose-500 to-rose-700",       iconBg: "bg-white/20" },
 ];

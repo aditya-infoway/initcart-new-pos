@@ -124,6 +124,18 @@ const protectedRoutes: RouteObject = {
           }),
         },
         {
+          path: "returnlist",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/master-menu/returns")).default,
+          }),
+        },
+        {
+          path: "refundlist",
+          lazy: async () => ({
+            Component: (await import("@/app/pages/master-menu/refunds")).default,
+          }),
+        },
+        {
           path: "branch/orders/:orderId",
           lazy: async () => ({
             Component: (await import("@/app/pages/master-menu/orders/detail")).default,

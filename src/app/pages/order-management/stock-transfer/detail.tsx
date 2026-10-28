@@ -1,10 +1,10 @@
-//stock-transfer/detail.tsx
+// src/app/pages/order-management/stock-transfer/detail.tsx
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
 /**
- * Stock Transfer Detail — detail view is now handled inline as a drawer
- * on the main Stock Transfer page. This route redirects back there.
+ * Stock Transfer Detail — now handled inline as a drawer on the main page.
+ * Redirect there.
  */
 export default function StockTransferDetail() {
   const navigate = useNavigate();

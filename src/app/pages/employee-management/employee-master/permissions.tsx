@@ -38,6 +38,8 @@ const PAGE_ALLOWED_ACTIONS: Record<string, AllowedActions> = {
   "/WebItems": { can_view: true, can_add: true, can_edit: true, can_delete: true },
   "/PendingBarcodes": { can_view: true, can_add: true, can_edit: true, can_delete: false },
   "/Orders": { can_view: true, can_add: false, can_edit: false, can_delete: false },
+  "/returnlist": { can_view: true, can_add: false, can_edit: true, can_delete: false },
+  "/refundlist": { can_view: true, can_add: false, can_edit: false, can_delete: false },
   "/createGroup": { can_view: true, can_add: true, can_edit: true, can_delete: true },
   "/ExcelImportExport": { can_view: true, can_add: true, can_edit: false, can_delete: false },
 
@@ -103,6 +105,8 @@ const flattenMenu = (): FlatPage[] => {
     { page_key: "/WebItems", page_label: "Website Items", group: "Master" },
     { page_key: "/PendingBarcodes", page_label: "Item Barcodes", group: "Master" },
     { page_key: "/Orders", page_label: "Orders", group: "Master" },
+    { page_key: "/returnlist", page_label: "Returns", group: "Master" },
+    { page_key: "/refundlist", page_label: "Refunds", group: "Master" },
     { page_key: "/createGroup", page_label: "Group", group: "Master" },
     { page_key: "/ExcelImportExport", page_label: "Item Import", group: "Master" },
 

@@ -1,32 +1,34 @@
+// src/app/pages/branch/orders/index.tsx
 import {
   getCoreRowModel, getFilteredRowModel, getPaginationRowModel,
   getSortedRowModel, SortingState, useReactTable,
   ColumnDef, CellContext, RowSelectionState,
 } from "@tanstack/react-table";
-import { WithIcon, type TabItem } from "@/components/ui/Tab";
+import { WithIcon } from "@/components/ui/Tab";
 import {
   ArchiveBoxIcon, ArrowPathIcon, CheckCircleIcon, ClockIcon,
   CubeIcon, ExclamationCircleIcon, EyeIcon, MagnifyingGlassIcon,
   ShoppingBagIcon, TruckIcon, XCircleIcon, ArrowUturnLeftIcon,
+  BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import {
-  useCallback, useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useRef, useState,
   type ComponentType, type SVGProps,
 } from "react";
 import { useNavigate } from "react-router";
 
 import { Page } from "@/components/shared/Page";
 import { usePermission } from "@/hooks/usePermissions";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Select } from "@/components/ui";
 import { Get, toasterrormsg, formatDateDDMMYYYY } from "@/ApiHelper";
 import { MasterTable } from "@/app/pages/master/shared/MasterTable";
 import { fuzzyFilter } from "@/utils/react-table/fuzzyFilter";
 import { Highlight } from "@/components/shared/Highlight";
 import { ensureString } from "@/utils/ensureString";
 import {
-  Order, OrderStats, OrderStatus,
-  STATUS_TABS, STATS_CONFIG, getStatusBadge, mapApiOrder,
+  Order, OrderStats, OrderStatus, BranchOption,
+  STATUS_TABS, STATS_CONFIG, STATUS_MAP, getStatusBadge, mapApiOrder,
 } from "./data";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -43,10 +45,11 @@ const PAGE_SIZE = 10;
 export default function BranchOrdersPage() {
   const navigate = useNavigate();
   const isSuperAdmin = useMemo(() => localStorage.getItem("role") === "superadmin", []);
-const isEmployee   = useMemo(() => localStorage.getItem("role") === "employee", []);
-const canViewAllBranches = isSuperAdmin || isEmployee; 
+  const isEmployee   = useMemo(() => localStorage.getItem("role") === "employee", []);
+  const canViewAllBranches = isSuperAdmin || isEmployee;
 
-const { canView } = usePermission("/Orders"); 
+  const { canView } = usePermission("/Orders");
+
   const [stats, setStats] = useState<OrderStats>(DEFAULT_STATS);
   const [orders, setOrders] = useState<Order[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -59,45 +62,84 @@ const { canView } = usePermission("/Orders");
   const [statsLoading, setStatsLoading] = useState(true);
   const [page, setPage] = useState(1);
 
-  
-  
-// Branch dropdown state
-const [branchOpts, setBranchOpts] = useState<{ id: string; label: string }[]>([]);
-const [selectedBranch, setSelectedBranch] = useState<{ id: string; label: string } | null>(null);
+  // Branch dropdown state
+  const [branchOpts, setBranchOpts] = useState<BranchOption[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<BranchOption | null>(null);
 
+  // Debounce for search
+  const searchTimeoutRef = useRef<number | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
- const fetchStats = useCallback(async () => {
-  setStatsLoading(true);
-  try {
-    const params: any = {};
-    if (selectedBranch?.id) params.branch_id = selectedBranch.id;
-    const res = await Get("pos/branch/orders/stats/", params) as any;
-    const d = res?.data ?? res;
-    setStats({ ...DEFAULT_STATS, ...(d?.data ?? d) });
-  } catch { /* silent */ } finally { setStatsLoading(false); }
-}, [selectedBranch]);
+  // ✅ Fetch branches (superadmin + employee)
+  useEffect(() => {
+    if (!canViewAllBranches) return;
+    Get("branches/")
+      .then((res: any) => {
+        const body = res?.data ?? res;
+        let rows: any[] = [];
+        if (Array.isArray(body?.data)) rows = body.data;
+        else if (Array.isArray(body)) rows = body;
+        setBranchOpts(
+          rows.map((b: any) => ({
+            id: String(b.id),
+            label: String(b.branch_name ?? b.name ?? `Branch ${b.id}`),
+          }))
+        );
+      })
+      .catch(err => console.error("Branches fetch failed:", err));
+  }, [canViewAllBranches]);
 
-const fetchOrders = useCallback(async (status: OrderStatus, pg: number) => {
-  setLoading(true);
-  try {
-    const params: any = { status, page: pg, page_size: PAGE_SIZE };
-    if (selectedBranch?.id) params.branch_id = selectedBranch.id;
-    const res = await Get("pos/branch/orders/", params) as any;
-    const body = res?.data ?? res;
-    const rows: any[] = body?.data?.orders ?? body?.orders ?? [];
-    const pag = body?.data?.pagination ?? body?.pagination ?? {};
-    setOrders(rows.map(mapApiOrder));
-    setTotalCount(pag.total ?? rows.length);
-    setTotalPages(pag.total_pages ?? 1);
-  } catch { toasterrormsg("Failed to fetch orders."); }
-  finally { setLoading(false); }
-}, [selectedBranch]);
+  // ✅ Debounce globalFilter → debouncedSearch (500ms)
+  useEffect(() => {
+    if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = window.setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+      setPage(1);
+    }, 500);
+    return () => {
+      if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+    };
+  }, [globalFilter]);
 
-useEffect(() => { fetchStats(); }, [fetchStats]);
-useEffect(() => { fetchOrders(activeStatus, page); }, [fetchOrders, activeStatus, page]);
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const params: any = {};
+      if (selectedBranch?.id) params.branch_id = selectedBranch.id;
+      const res = await Get("pos/branch/orders/stats/", params) as any;
+      const d = res?.data ?? res;
+      setStats({ ...DEFAULT_STATS, ...(d?.data ?? d) });
+    } catch { /* silent */ } finally { setStatsLoading(false); }
+  }, [selectedBranch]);
 
-const handleBranchChange = (v: any) => {
-  setSelectedBranch(v?.id ? v : null);
+  const fetchOrders = useCallback(async (status: OrderStatus, pg: number, search: string) => {
+    setLoading(true);
+    try {
+      // ✅ Map tab key → backend status
+      let statusParam: string = status === "all" ? "all" : status;
+      if (STATUS_MAP[statusParam]) statusParam = STATUS_MAP[statusParam];
+
+      const params: any = { status: statusParam, page: pg, page_size: PAGE_SIZE };
+      if (selectedBranch?.id) params.branch_id = selectedBranch.id;
+      if (search) params.search = search;
+
+      const res = await Get("pos/branch/orders/", params) as any;
+      const body = res?.data ?? res;
+      const rows: any[] = body?.data?.orders ?? body?.orders ?? [];
+      const pag = body?.data?.pagination ?? body?.pagination ?? {};
+      setOrders(rows.map(mapApiOrder));
+      setTotalCount(pag.total ?? rows.length);
+      setTotalPages(pag.total_pages ?? 1);
+    } catch { toasterrormsg("Failed to fetch orders."); }
+    finally { setLoading(false); }
+  }, [selectedBranch]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchOrders(activeStatus, page, debouncedSearch); }, [fetchOrders, activeStatus, page, debouncedSearch]);
+
+const handleBranchChange = (id: string) => {
+  const opt = branchOpts.find(b => b.id === String(id)) ?? null;
+  setSelectedBranch(opt);
   setPage(1);
 };
 
@@ -133,22 +175,40 @@ const handleBranchChange = (v: any) => {
     },
     {
       id: "customer", accessorKey: "customer", header: "Customer",
-      cell: ({ getValue, table }: CellContext<Order, unknown>) => {
+      cell: ({ row, getValue, table }: CellContext<Order, unknown>) => {
         const q = ensureString(table.getState().globalFilter);
+        const phone = row.original.customerPhone;
         return (
-          <span className="font-medium text-gray-800 dark:text-dark-100">
-            <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
-          </span>
+          <div>
+            <div className="font-medium text-gray-800 dark:text-dark-100">
+              <Highlight query={q}>{String(getValue() ?? "—")}</Highlight>
+            </div>
+            {phone && (
+              <div className="text-xs text-gray-500 dark:text-dark-300">{phone}</div>
+            )}
+          </div>
         );
       },
     },
     {
       id: "totalAmount", accessorKey: "totalAmount", header: "Total Amount",
-      cell: ({ getValue }: CellContext<Order, unknown>) => (
-        <span className="font-semibold tabular-nums text-gray-800 dark:text-dark-100">
-          ₹{String(getValue() ?? "0")}
-        </span>
-      ),
+      cell: ({ row, getValue }: CellContext<Order, unknown>) => {
+        const ps = row.original.paymentStatus;
+        const isPaid = ps?.toLowerCase() === "completed" || ps?.toLowerCase() === "paid";
+        return (
+          <div className="flex flex-col">
+            <span className="font-semibold tabular-nums text-gray-800 dark:text-dark-100">
+              ₹{String(getValue() ?? "0")}
+            </span>
+            <span className={clsx(
+              "text-xs font-medium",
+              isPaid ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
+            )}>
+              {ps || "Pending"}
+            </span>
+          </div>
+        );
+      },
     },
     {
       id: "status", accessorKey: "status", header: "Status",
@@ -170,14 +230,17 @@ const handleBranchChange = (v: any) => {
       cell: ({ row }: CellContext<Order, unknown>) => (
         <div className="flex justify-center">
           <Button isIcon variant="flat" className="size-8 rounded-full"
-            onClick={() => navigate(`/branch/orders/${row.original.id}`)}
+            onClick={() => {
+              const q = selectedBranch?.id ? `?branch_id=${selectedBranch.id}` : "";
+              navigate(`/branch/orders/${row.original.id}${q}`);
+            }}
             title="View Order">
             <EyeIcon className="size-4" />
           </Button>
         </div>
       ),
     },
-  ], [navigate, page]);
+  ], [navigate, page, selectedBranch]);
 
   const table = useReactTable({
     data: orders,
@@ -195,6 +258,7 @@ const handleBranchChange = (v: any) => {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
+    manualFiltering: true,
     pageCount: totalPages,
   });
 
@@ -207,14 +271,40 @@ const handleBranchChange = (v: any) => {
           <div>
             <h2 className="text-xl font-medium tracking-wide text-gray-800 dark:text-dark-50">Branch Orders</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-dark-300">
+              {canViewAllBranches && selectedBranch && (
+                <span className="font-semibold text-gray-700 dark:text-dark-100">{selectedBranch.label} · </span>
+              )}
               Manage and track all orders from your branch
             </p>
           </div>
-          <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
-            onClick={() => { fetchStats(); fetchOrders(activeStatus, page); }} disabled={loading}>
-            <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
-            <span>Refresh</span>
-          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* ✅ Branch filter — superadmin + employee */}
+{/* ✅ Branch filter — superadmin + employee */}
+{canViewAllBranches && (
+  <div className="flex items-center gap-2">
+    <label className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-dark-300">
+      <BuildingOffice2Icon className="size-3.5" /> Branch:
+    </label>
+    <Select
+      value={selectedBranch?.id ?? ""}
+      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleBranchChange(e.target.value)}
+      classNames={{ root: "min-w-[180px]" }}
+    >
+      <option value="">My Branch (Main)</option>
+      {branchOpts.map(b => (
+        <option key={b.id} value={b.id}>{b.label}</option>
+      ))}
+    </Select>
+  </div>
+)}
+
+            <Button variant="outlined" className="h-9 gap-2 rounded-md px-3 text-sm"
+              onClick={() => { fetchStats(); fetchOrders(activeStatus, page, debouncedSearch); }} disabled={loading}>
+              <ArrowPathIcon className={clsx("size-4", loading && "animate-spin")} />
+              <span>Refresh</span>
+            </Button>
+          </div>
         </div>
 
         {/* Stats cards */}
@@ -265,9 +355,8 @@ const handleBranchChange = (v: any) => {
             <WithIcon
               tabs={STATUS_TABS.map(tab => {
                 const count = stats[tab.key as keyof OrderStats] ?? 0;
-                // Map appropriate icons based on status
                 const getIcon = () => {
-                  switch(tab.key) {
+                  switch (tab.key) {
                     case "all": return ShoppingBagIcon;
                     case "pending": return ClockIcon;
                     case "confirmed": return CheckCircleIcon;
@@ -280,12 +369,11 @@ const handleBranchChange = (v: any) => {
                     default: return ShoppingBagIcon;
                   }
                 };
-                
                 return {
                   id: tab.key,
                   title: `${tab.label} (${count})`,
                   icon: getIcon(),
-                  content: null, // Content is handled separately via activeStatus state
+                  content: null,
                 };
               })}
               selectedIndex={STATUS_TABS.findIndex(t => t.key === activeStatus)}
@@ -327,4 +415,3 @@ const handleBranchChange = (v: any) => {
     </Page>
   );
 }
-

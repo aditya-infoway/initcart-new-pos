@@ -5,15 +5,13 @@ import {
   ColumnDef,
   CellContext,
 } from "@tanstack/react-table";
-import { WithIcon, type TabItem } from "@/components/ui/Tab";
+import { WithIcon } from "@/components/ui/Tab";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ClockIcon,
-  XCircleIcon,
   CubeIcon,
   PhotoIcon,
-  DocumentTextIcon,
   Squares2X2Icon,
   ShieldCheckIcon,
   ListBulletIcon,
@@ -25,12 +23,25 @@ import {
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Page } from "@/components/shared/Page";
-import { Badge, Button, Card, Input, Checkbox } from "@/components/ui";
+import { Badge, Button, Card, Checkbox } from "@/components/ui";
 import { Get, Patch, toasterrormsg, toastsuccessmsg } from "@/ApiHelper";
+import { ConfirmModal, type ConfirmMessages } from "@/components/shared/ConfirmModal";
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const RETURN_OPTIONS = [
+  { label: "7 Days Return",  days: 7 },
+  { label: "15 Days Return", days: 15 },
+  { label: "30 Days Return", days: 30 },
+  { label: "No Return",      days: 0 },
+  { label: "Exchange Only",  days: 0 },
+];
+
+const MAX_GALLERY_IMAGES = 5;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type WebsiteStatus = "pending" | "approved" | "rejected" | "draft";
@@ -42,6 +53,10 @@ interface Variant {
   mrp: number;
   barcode: string;
   opStock: number;
+  basicAmount?: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  netValue?: number;
   current_stock: number;
   size?: string;
   color?: string;
@@ -58,11 +73,13 @@ interface WebsiteItem {
   brand: { id: number | null; name: string } | null;
   category: { id: number | null; name: string } | null;
   subCategory: { id: number | null; name: string } | null;
+  subsubCategory?: { id: number | null; name: string } | null;
   unit: { id: number; name: string; symbol: string } | string | null;
   hsnCode: string;
   taxSlab: string;
   variants: Variant[];
   gallery?: string[];
+  return_days: number;
   short_description: string;
   full_description: string;
   keywords: string;
@@ -80,10 +97,12 @@ interface WebsiteItem {
   specifications: { id: number; title: string; value: string }[];
   website_status: WebsiteStatus;
   linked_product: number | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/", "") ?? "https://api.initcart.com";
 
 function getFullUrl(mediaPath: string | null | undefined): string | null {
   if (!mediaPath) return null;
@@ -109,20 +128,6 @@ const STATUS_CONFIG: Record<WebsiteStatus, {
 };
 
 // ── Reusable sub-components ────────────────────────────────────────────────
-function SectionCard({ title, icon: Icon, children }: {
-  title: string; icon: React.ComponentType<any>; children: React.ReactNode;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-5 py-3 dark:border-dark-600 dark:bg-dark-800">
-        <Icon className="size-4 text-primary-500" />
-        <h4 className="text-sm font-semibold text-primary-600 dark:text-primary-400">{title}</h4>
-      </div>
-      <div className="p-5">{children}</div>
-    </Card>
-  );
-}
-
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-300">
@@ -226,7 +231,12 @@ function ImageUploadBox({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={e => { if (e.target.files?.[0]) onUpload(e.target.files[0]); }}
+          onClick={e => e.stopPropagation()}
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) onUpload(f);
+            e.target.value = "";
+          }}
         />
       </div>
       {hint && <p className="mt-1 text-xs text-gray-400 dark:text-dark-500">{hint}</p>}
@@ -264,12 +274,36 @@ export default function WebsiteItemDetailPage() {
   const [galleryPreviews,   setGalleryPreviews]   = useState<string[]>([]);
   const [existingGallery,   setExistingGallery]   = useState<string[]>([]);
 
+  // submit-for-approval confirm modal state
+  const [submitOpen,    setSubmitOpen]    = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError,   setSubmitError]   = useState(false);
+  const submitState = submitError ? "error" : submitSuccess ? "success" : "pending";
+
   const isVariantProduct = !!(item && item.variants && item.variants.length > 1);
 
+  const submitMessages = useMemo<ConfirmMessages>(() => ({
+    pending: {
+      title: "Submit for Approval?",
+      description: `Submit "${item?.itemName ?? "this item"}" for website approval? The admin will review this item and approve it for the website.`,
+      actionText: "Yes, Submit",
+    },
+    success: {
+      title: "Submitted!",
+      description: "Item has been submitted for admin approval.",
+    },
+    error: {
+      title: "Submission Failed",
+      description: "Failed to submit item for approval. Please try again.",
+    },
+  }), [item?.itemName]);
+
   // ── Fetch ────────────────────────────────────────────────────────────────
-  const fetchItem = useCallback(async () => {
+  // silent = true → refresh data without replacing the whole page with a spinner
+  const fetchItem = useCallback(async (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const res  = await Get(`pos/website-items/${id}/`) as any;
       const body = res?.data ?? res;
@@ -280,26 +314,26 @@ export default function WebsiteItemDetailPage() {
       data.gallery               = data.gallery               || [];
 
       setItem(data);
-      if (data.main_image)      setMainPreview(getFullUrl(data.main_image));
-      if (data.thumbnail_image) setThumbPreview(getFullUrl(data.thumbnail_image));
-
-      if (data.gallery?.length) {
-        setExistingGallery(data.gallery.map(p => getFullUrl(p) ?? "").filter(Boolean));
-      }
+      setMainPreview(data.main_image ? getFullUrl(data.main_image) : null);
+      setThumbPreview(data.thumbnail_image ? getFullUrl(data.thumbnail_image) : null);
+      setExistingGallery((data.gallery ?? []).map(p => getFullUrl(p) ?? "").filter(Boolean));
     } catch {
       toasterrormsg("Failed to load item details.");
       navigate("/WebItems");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [id, navigate]);
 
   useEffect(() => { fetchItem(); }, [fetchItem]);
 
-  // cleanup blob URLs
+  // cleanup blob URLs only on unmount (using a ref so removing one preview
+  // does not revoke the URLs of the previews that are still shown)
+  const previewsRef = useRef<string[]>([]);
+  useEffect(() => { previewsRef.current = galleryPreviews; }, [galleryPreviews]);
   useEffect(() => {
-    return () => { galleryPreviews.forEach(u => URL.revokeObjectURL(u)); };
-  }, [galleryPreviews]);
+    return () => { previewsRef.current.forEach(u => URL.revokeObjectURL(u)); };
+  }, []);
 
   // ── Field helpers ────────────────────────────────────────────────────────
   const set = (field: string, value: any) => {
@@ -340,6 +374,16 @@ export default function WebsiteItemDetailPage() {
     setItem({ ...item, specifications: item.specifications.map(s => s.id === sid ? { ...s, [field]: value } : s) });
   };
 
+  const handleReturnPolicyChange = (value: string) => {
+    if (!item) return;
+    const opt = RETURN_OPTIONS.find(o => o.label === value);
+    setItem({
+      ...item,
+      return_policy: value,
+      return_days: opt ? opt.days : 7,
+    });
+  };
+
   // ── Build gallery paths helper ───────────────────────────────────────────
   const buildGalleryPaths = (urls: string[]): string[] =>
     urls.map(url => url.replace(API_BASE_URL, ""));
@@ -348,26 +392,26 @@ export default function WebsiteItemDetailPage() {
   function buildFormData(extra?: Record<string, string | File>): FormData {
     const fd = new FormData();
     if (!item) return fd;
-    fd.append("short_description",     item.short_description    || "");
-    fd.append("full_description",      item.full_description     || "");
-    fd.append("keywords",              item.keywords             || "");
-    fd.append("product_condition",     item.product_condition    || "New");
-    fd.append("return_policy",         item.return_policy        || "");
+    fd.append("short_description",       item.short_description    || "");
+    fd.append("full_description",        item.full_description     || "");
+    fd.append("keywords",                item.keywords             || "");
+    fd.append("product_condition",       item.product_condition    || "New");
+    fd.append("return_policy",           item.return_policy        || "");
+    fd.append("return_days",             String(item.return_days ?? 7));
     fd.append("estimated_delivery_time", item.estimated_delivery_time || "");
-    fd.append("free_shipping",         item.free_shipping        ? "true" : "false");
-    fd.append("warranty_available",    item.warranty_available   ? "true" : "false");
-    fd.append("warranty_period",       item.warranty_period      || "");
-    fd.append("warranty_type",         item.warranty_type        || "");
-    fd.append("warranty_description",  item.warranty_description || "");
-    fd.append("description_features",  JSON.stringify(item.description_features || []));
-    fd.append("specifications",        JSON.stringify(item.specifications        || []));
+    fd.append("free_shipping",           item.free_shipping        ? "true" : "false");
+    fd.append("warranty_available",      item.warranty_available   ? "true" : "false");
+    fd.append("warranty_period",         item.warranty_period      || "");
+    fd.append("warranty_type",           item.warranty_type        || "");
+    fd.append("warranty_description",    item.warranty_description || "");
+    fd.append("description_features",    JSON.stringify(item.description_features || []));
+    fd.append("specifications",         JSON.stringify(item.specifications        || []));
     if (existingGallery.length) {
       fd.append("existing_gallery_urls", JSON.stringify(buildGalleryPaths(existingGallery)));
     }
     if (extra) {
       for (const [k, v] of Object.entries(extra)) {
-        if (v instanceof File) fd.append(k, v);
-        else fd.append(k, v);
+        fd.append(k, v);
       }
     }
     return fd;
@@ -381,7 +425,7 @@ export default function WebsiteItemDetailPage() {
       if (type === "main") setMainPreview(URL.createObjectURL(file));
       else setThumbPreview(URL.createObjectURL(file));
       toastsuccessmsg("Image uploaded successfully.");
-      await fetchItem();
+      await fetchItem(true);
     } catch {
       toasterrormsg("Failed to upload image.");
     }
@@ -393,19 +437,38 @@ export default function WebsiteItemDetailPage() {
       const fd = buildFormData();
       fd.append(`variant_images_${idx}`, file);
       await Patch(`pos/website-items/${id}/update/`, fd, true);
-      toastsuccessmsg("Variant image uploaded.");
-      await fetchItem();
+      toastsuccessmsg("Variant image uploaded successfully.");
+      await fetchItem(true);
     } catch {
       toasterrormsg("Failed to upload variant image.");
     }
   };
 
-  // ── Add gallery images ─────────────────────────────────────────────────────
+  // ── Add gallery images (with validation) ──────────────────────────────────
   const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).slice(0, 5);
-    setGalleryFiles(files);
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+
+    if (files.length > MAX_GALLERY_IMAGES) {
+      toasterrormsg(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    const validFiles = files.filter(file => {
+      if (!file.type.startsWith("image/")) {
+        toasterrormsg(`File ${file.name} is not an image.`);
+        return false;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        toasterrormsg(`File ${file.name} is too large (max 5 MB).`);
+        return false;
+      }
+      return true;
+    });
+
+    setGalleryFiles(validFiles);
     galleryPreviews.forEach(u => URL.revokeObjectURL(u));
-    setGalleryPreviews(files.map(f => URL.createObjectURL(f)));
+    setGalleryPreviews(validFiles.map(f => URL.createObjectURL(f)));
   };
 
   const removeGalleryPreview = (idx: number) => {
@@ -431,31 +494,39 @@ export default function WebsiteItemDetailPage() {
     try {
       const fd = buildFormData();
       galleryFiles.forEach(f => fd.append("gallery_images", f));
-      await Patch(`pos/website-items/${id}/update/`, fd, true);
-      toastsuccessmsg("Item details saved successfully.");
-      await fetchItem();
+      const res = await Patch(`pos/website-items/${id}/update/`, fd, true) as any;
+      toastsuccessmsg(res?.data?.message ?? "Item details saved successfully.");
+      await fetchItem(true);
       setGalleryFiles([]);
       galleryPreviews.forEach(u => URL.revokeObjectURL(u));
       setGalleryPreviews([]);
-    } catch {
-      toasterrormsg("Failed to save item details.");
+    } catch (e: any) {
+      toasterrormsg(e?.response?.data?.error ?? "Failed to save item details.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Submit for approval ────────────────────────────────────────────────────
+  // ── Submit for approval (with confirmation) ───────────────────────────────
+  const openSubmit = () => {
+    setSubmitSuccess(false);
+    setSubmitError(false);
+    setSubmitOpen(true);
+  };
+
   const handleSubmit = async () => {
     if (!item) return;
-    setSaving(true);
+    setSubmitLoading(true);
     try {
       await Patch(`pos/website-items/${id}/update/`, { website_status: "pending" }, false);
       toastsuccessmsg("Item submitted for admin approval.");
-      await fetchItem();
-    } catch {
-      toasterrormsg("Failed to submit item.");
+      setSubmitSuccess(true);
+      await fetchItem(true);
+    } catch (e: any) {
+      toasterrormsg(e?.response?.data?.error ?? "Failed to submit item for approval.");
+      setSubmitError(true);
     } finally {
-      setSaving(false);
+      setSubmitLoading(false);
     }
   };
 
@@ -492,7 +563,7 @@ export default function WebsiteItemDetailPage() {
       cell: ({ getValue }: CellContext<Variant, unknown>) => <span className="font-medium text-gray-800 dark:text-dark-100">₹{Number(getValue() ?? 0)}</span> },
     { id: "stock", header: "Stock",
       cell: ({ row }: CellContext<Variant, unknown>) => {
-        const v = row.original.current_stock ?? row.original.opStock ?? 0;
+        const v = row.original.current_stock || row.original.opStock || 0;
         return <span className={clsx("font-medium", v === 0 ? "text-error-600" : "text-success-600")}>{v}</span>;
       },
     },
@@ -570,8 +641,8 @@ export default function WebsiteItemDetailPage() {
                 color="success"
                 variant="outlined"
                 className="h-9 gap-2 px-4 text-sm"
-                disabled={saving}
-                onClick={handleSubmit}
+                disabled={saving || submitLoading}
+                onClick={openSubmit}
               >
                 <CheckBadgeIcon className="size-4" /> Submit for Approval
               </Button>
@@ -588,36 +659,36 @@ export default function WebsiteItemDetailPage() {
           </div>
         </div>
 
-      {/* Variant product info banner */}
-      {isVariantProduct && (
-        <div className="px-(--margin-x) mb-4">
-          <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-900/40 dark:bg-purple-900/10">
-            <div className="flex items-start gap-2">
-              <InformationCircleIcon className="mt-0.5 size-4 shrink-0 text-purple-600 dark:text-purple-400" />
-              <p className="text-xs text-purple-700 dark:text-purple-300">
-                <span className="font-semibold">Variant Product</span> — this item has{" "}
-                {item.variants.length} variants. Upload variant-specific images in the{" "}
-                <strong>Images</strong> tab.
-              </p>
+        {/* Variant product info banner */}
+        {isVariantProduct && (
+          <div className="px-(--margin-x) mb-4">
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-900/40 dark:bg-purple-900/10">
+              <div className="flex items-start gap-2">
+                <InformationCircleIcon className="mt-0.5 size-4 shrink-0 text-purple-600 dark:text-purple-400" />
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  <span className="font-semibold">Variant Product</span> — this item has{" "}
+                  {item.variants.length} variants. Each variant will appear as a separate option on the website.
+                  Upload variant-specific images in the <strong>Images</strong> tab.
+                </p>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Tab bar */}
+        <div className="px-(--margin-x)">
+          <WithIcon
+            tabs={TABS}
+            selectedIndex={TABS.findIndex(t => t.id === activeTab)}
+            onChange={(idx) => setActiveTab(TABS[idx].id)}
+            hidePanels={true}
+          />
         </div>
-      )}
 
-      {/* Tab bar */}
-      <div className="px-(--margin-x)">
-        <WithIcon
-          tabs={TABS}
-          selectedIndex={TABS.findIndex(t => t.id === activeTab)}
-          onChange={(idx) => setActiveTab(TABS[idx].id)}
-          hidePanels={true}
-        />
-      </div>
-
-      {/* Tab content */}
-      <div className="px-(--margin-x)">
-        <Card className="overflow-hidden">
-          <div className="p-6">
+        {/* Tab content */}
+        <div className="px-(--margin-x)">
+          <Card className="overflow-hidden">
+            <div className="p-6">
 
               {/* ── Basic Info ── */}
               {activeTab === "basic" && (
@@ -714,16 +785,24 @@ export default function WebsiteItemDetailPage() {
                                   ) : (
                                     <>
                                       <ArrowUpTrayIcon className="mx-auto size-6 text-purple-400" />
-                                      <p className="mt-1 text-xs text-purple-600 dark:text-purple-400">Upload image</p>
+                                      <p className="mt-1 text-xs text-purple-600 dark:text-purple-400">Upload variant image</p>
                                     </>
                                   )}
                                   <input id={`vi-${idx}`} type="file" accept="image/*" className="hidden"
-                                    onChange={e => { if (e.target.files?.[0]) uploadVariantImage(idx, e.target.files[0]); }} />
+                                    onClick={e => e.stopPropagation()}
+                                    onChange={e => {
+                                      const f = e.target.files?.[0];
+                                      if (f) uploadVariantImage(idx, f);
+                                      e.target.value = "";
+                                    }} />
                                 </div>
                               </div>
                             );
                           })}
                         </div>
+                        <p className="mt-2 text-xs text-gray-400 dark:text-dark-500">
+                          Upload variant-specific images. These will be displayed when customers select different variants.
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -889,10 +968,10 @@ export default function WebsiteItemDetailPage() {
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <FieldLabel>Return Policy</FieldLabel>
-                      <ThemedSelect value={item.return_policy || ""} onChange={v => set("return_policy", v)}>
+                      <ThemedSelect value={item.return_policy || ""} onChange={handleReturnPolicyChange}>
                         <option value="">Select Return Policy</option>
-                        {["7 Days Return","15 Days Return","30 Days Return","No Return","Exchange Only"].map(p => (
-                          <option key={p} value={p}>{p}</option>
+                        {RETURN_OPTIONS.map(o => (
+                          <option key={o.label} value={o.label}>{o.label}</option>
                         ))}
                       </ThemedSelect>
                     </div>
@@ -961,9 +1040,9 @@ export default function WebsiteItemDetailPage() {
                       <p className="text-xs text-info-700 dark:text-info-300">
                         Total <strong>{item.variants.length}</strong> variant(s).{" "}
                         {isVariantProduct
-                          ? "Each variant appears as a separate option in the product."
+                          ? "Each variant will be created as a separate option in the product."
                           : "This is a simple product with one variant."}
-                        {" "}To upload variant images, go to the <strong>Images</strong> tab.
+                        {" "}For variant products, you can upload variant-specific images in the <strong>Images</strong> tab.
                       </p>
                     </div>
                   </div>
@@ -993,7 +1072,16 @@ export default function WebsiteItemDetailPage() {
         )}
 
       </div>
+
+      {/* ── Submit Confirm Modal ── */}
+      <ConfirmModal
+        show={submitOpen}
+        onClose={() => { if (!submitLoading) setSubmitOpen(false); }}
+        messages={submitMessages}
+        state={submitState}
+        onOk={handleSubmit}
+        confirmLoading={submitLoading}
+      />
     </Page>
   );
 }
-

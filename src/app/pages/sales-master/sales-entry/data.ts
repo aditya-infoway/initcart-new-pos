@@ -1,24 +1,10 @@
-// ── Sales Entry — types & helpers ────────────────────────────────────────────
+// src/app/pages/sales-master/sales-entry/data.ts
 
-export interface SaleRecord {
-  id: number;
-  date: string;
-  terms: string;
-  party: string;
-  billNo: string;
-  dueDate: string;
-  narration: string;
-  totalBasic: number;
-  totalTax: number;
-  for_: number;
-  grandTotal: number;
-  createdByName?: string;
-}
+// ── Shared types & helpers for all sales-entry pages ──────────────────────
 
-/** Variant row from sale-search-item — `id` is variant id, `itemId` is pos_items id */
 export interface SaleItem {
-  id: number;
-  itemId: number;
+  id: number;         // variant id
+  itemId: number;     // pos_items id
   itemName: string;
   hsn: string;
   barcode: string;
@@ -30,6 +16,20 @@ export interface SaleItem {
   unit: string;
   unitSupportsFractional: boolean;
   taxPercent: number;
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  mobile: string;
+  email: string;
+  address: string;
+  state?: string;
+}
+
+export interface PaymentTerm {
+  id: string;
+  label: string;
 }
 
 export interface CartLine {
@@ -55,18 +55,35 @@ export interface CartLine {
   igst: number;
 }
 
-export interface Customer {
+// Used by grid POS UX (sales-entry-form2.tsx) — uses strings for display
+export interface GridCartItem {
   id: number;
-  name: string;
-  mobile: string;
-  email: string;
-  address: string;
-  state?: string;
+  itemId: number;
+  variantId: number | null;
+  itemName: string;
+  hsnCode: string;
+  quantity: number;
+  price: number;
+  per: string;
+  taxSlab: string;
+  discountPercent: number;
+  basicAmount: string;
+  discountAmount: string;
+  taxAmount: string;
+  netValue: string;
+  cgst: string;
+  sgst: string;
+  igst: string;
 }
 
-export interface PaymentTerm {
-  id: string;
-  label: string;
+export interface ReferralLookupResult {
+  found: boolean;
+  agent_id?: number;
+  full_name?: string;
+  contact_number?: string;
+  agent_type?: string;
+  referral_code?: string;
+  message?: string;
 }
 
 export interface SaleItemTaxResult {
@@ -79,23 +96,20 @@ export interface SaleItemTaxResult {
   igst: number;
 }
 
-export function mapApiSaleRecord(raw: any): SaleRecord {
-  return {
-    id: Number(raw.id ?? 0),
-    date: String(raw.date ?? raw.bill_date ?? ""),
-    terms: String(raw.terms ?? raw.payment_terms ?? ""),
-    party: String(raw.party ?? raw.customer_name ?? ""),
-    billNo: String(raw.bill_no ?? raw.voucher_no ?? ""),
-    dueDate: String(raw.due_date ?? ""),
-    narration: String(raw.narration ?? ""),
-    totalBasic: Number(raw.total_basic ?? raw.basic_amount ?? 0),
-    totalTax: Number(raw.total_tax ?? raw.tax_amount ?? 0),
-    for_: Number(raw.for ?? raw.freight ?? 0),
-    grandTotal: Number(raw.grand_total ?? raw.net_amount ?? 0),
-    createdByName: String(raw.created_by_name ?? ""),
-  };
-}
+// ── Constants ─────────────────────────────────────────────────────────────
+export const VARIANT_BY_BRANCH: Record<string, string[]> = {
+  fashion: ["size", "color"],
+  electronics: ["size", "color", "srno", "warrantydate"],
+  mart: ["size"],
+};
 
+export const GRID_PAGE_SIZE = 24;
+export const LIST_PAGE_SIZE = 15;
+export const MODAL_PAGE_SIZE = 50;
+export const SEARCH_DEBOUNCE_MS = 150;
+export const CACHE_TTL_MS = 30000;
+
+// ── Mappers ────────────────────────────────────────────────────────────────
 export function mapApiSaleItem(raw: any): SaleItem {
   const variantId = Number(raw.id ?? 0);
   const itemId = Number(raw.itemId ?? raw.item_id ?? 0);
@@ -118,7 +132,9 @@ export function mapApiSaleItem(raw: any): SaleItem {
     stock: Number(raw.current_stock ?? raw.stock ?? 0),
     unit: String(raw.unit ?? raw.unit_name ?? "pc"),
     unitSupportsFractional,
-    taxPercent: Number(String(raw.taxSlab ?? raw.tax_percent ?? raw.gst ?? "0").replace("%", "")),
+    taxPercent: Number(
+      String(raw.taxSlab ?? raw.tax_percent ?? raw.gst ?? "0").replace("%", ""),
+    ),
   };
 }
 
@@ -145,6 +161,26 @@ export function mapTaxResponse(d: any): SaleItemTaxResult {
   };
 }
 
+// Grid POS mapper (raw rows from sale-search-item → SaleItem shape)
+export function mapGridRow(item: any): SaleItem {
+  return {
+    id: item.id,
+    itemId: item.itemId,
+    itemName: item.itemName,
+    hsn: item.hsnCode || "",
+    barcode: item.barcode || "",
+    size: item.size || "—",
+    color: item.color || "—",
+    salesPrice: item.salesPrice || 0,
+    perUnitPrice: item.per_unit_price || item.salesPrice || 0,
+    stock: item.current_stock || 0,
+    unit: item.unit || "",
+    unitSupportsFractional: item.unit_supports_fractional || false,
+    taxPercent: Number(String(item.taxSlab ?? "0").replace("%", "")),
+  };
+}
+
+// ── Builders / calculators ────────────────────────────────────────────────
 export function buildCartLine(
   id: number,
   item: SaleItem,
@@ -202,5 +238,18 @@ export function calcSummary(
     otherExpense,
     roundAmt,
     grandTotal,
+  };
+}
+
+// Grid POS: totals from GridCartItem list
+export function calcGridTotals(items: GridCartItem[]) {
+  return {
+    totalBasic: items.reduce((s, i) => s + Number(i.basicAmount || 0), 0),
+    totalDiscount: items.reduce((s, i) => s + Number(i.discountAmount || 0), 0),
+    totalTax: items.reduce((s, i) => s + Number(i.taxAmount || 0), 0),
+    totalNet: items.reduce((s, i) => s + Number(i.netValue || 0), 0),
+    totalCgst: items.reduce((s, i) => s + Number(i.cgst || 0), 0),
+    totalSgst: items.reduce((s, i) => s + Number(i.sgst || 0), 0),
+    totalIgst: items.reduce((s, i) => s + Number(i.igst || 0), 0),
   };
 }
