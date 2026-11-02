@@ -45,7 +45,7 @@ export const EMPTY_STATS: ReturnStats = {
 export const PAGE_SIZES = [10, 15, 25, 50];
 
 export const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL || "https://api.initcart.com";
+  (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:8000";
 
 export const getFullImageUrl = (url: string) =>
   url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
