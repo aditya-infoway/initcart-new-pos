@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "android": "npm run build && npx cap sync android && npx cap open android"
+    "build:android": "tsc -b && vite build --base ./",
+    "android": "npm run build:android && npx cap sync android && npx cap open android"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.7",

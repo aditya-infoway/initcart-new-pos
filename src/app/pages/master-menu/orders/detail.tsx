@@ -17,7 +17,7 @@ import {
   formatINR, getStatusBadge,
 } from "./data";
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "https://api.initcart.com/";
 
 const DEFAULT_DELIVERY: Partial<DeliveryInfo> = {
   delivery_service: "self",

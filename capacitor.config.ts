@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.superadmin.app",
-  appName: "SuperAdmin",
+  appName: "POS Branch Panel",
   webDir: "dist",
   server: {
     androidScheme: "https",

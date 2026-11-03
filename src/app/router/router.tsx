@@ -1,4 +1,5 @@
 // Import Dependencies
+import { Capacitor } from "@capacitor/core";
 import { createBrowserRouter, Navigate, RouteObject } from "react-router";
 
 // Local Imports
@@ -11,7 +12,7 @@ import { publicRoutes } from "./public";
 
 /**
  * Main application router configuration
- * All routes are nested under /pos2 prefix.
+ * Web routes are nested under /pos2; the native app is served from /.
  */
 const router = createBrowserRouter(
   [
@@ -24,7 +25,7 @@ const router = createBrowserRouter(
     },
   ],
   {
-    basename: "/pos2",
+    basename: Capacitor.isNativePlatform() ? "/" : "/pos2",
   },
 );
 
